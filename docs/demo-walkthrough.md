@@ -347,15 +347,74 @@ Blocked here, by design:
   503 `muse_bi_demo_events_not_configured`.
 - There is no live Meta ad ingestion path. Do not
   present BI as live Meta reporting.
-- BI HTTP routes against a running server were not
-  live-verified in the walkthrough that produced this
-  doc; they are code-verified and unit-tested
-  (observability tests, including BI tests, in CI).
-  Run one live response before claiming a live BI demo.
+
+Live-verified against a locally running API server
+(2026-10-26, no deployment, supplied events only):
+`GET /v1/muse/bi/report?metric=funnel_counts`
+returned `DEMO/SUPPLIED EVENTS`, verification status
+`verified`, and funnel counts 1/1/1/1/1 for the
+authenticated company only — an event belonging to
+another company was excluded (tenant trimming live,
+not just in code). `GET /v1/muse/bi/dashboard`
+returned 200 HTML, `GET /v1/muse/bi/export?format=csv`
+returned the labeled CSV, a differing `?companyId=`
+returned 403 `bi_tenant_mismatch`, and a server
+without `MUSE_BI_DEMO_EVENTS_JSON` returned 503
+`muse_bi_demo_events_not_configured`. That is a
+local-server demo response, not live Meta reporting.
+
+## Step 6b — Generic profile (explicit registration only)
+
+Files: `apps/api/src/muse-generic-profile.ts`,
+`apps/api/src/index.ts` (host wiring)
+Routes (authenticated company principal only):
+
+```sh
+# Register this company's own generic profile only.
+# companyId is principal.orgId; a body companyId that
+# differs is rejected, and no classification is ever
+# inferred from a name or domain.
+curl -X POST -H "x-org-id: <company-id>" \
+  -H "x-api-key: <company-api-key>" \
+  -H "content-type: application/json" \
+  -d '{"evidenceRef": "<server-side enrollment/connector record>"}' \
+  "$API_BASE/v1/muse/generic-profiles"
+
+curl -H "x-org-id: <company-id>" \
+  -H "x-api-key: <company-api-key>" \
+  "$API_BASE/v1/muse/generic-profiles/me"
+```
+
+Expected:
+
+- A registered company resolves to the generic
+  profile in the Muse host (`resolveExecutionProfile`
+  returns `'generic'`), with generic readiness true,
+  so executes go through `ZeroTrustConnectorRuntime`:
+  exact approval, consume-once, drift revalidation,
+  single execution claim, uncertain completion
+  becomes `reconciliation_required`, never a retry.
+- An unregistered company stays on the reference
+  (Stripe/Shopify) path. A placeholder evidence
+  reference, a company mismatch, or the synthetic
+  fixture companyId (`synthetic-fixture-demo-only`)
+  is rejected. The synthetic fixture is never
+  registered as an adapter and never wired to a real
+  company.
+- Registration alone does not commit anything:
+  execution additionally requires a connector adapter
+  registered in-process by the server operator
+  (adapters are never registered over HTTP). Without
+  one, generic submit fails closed with
+  `muse_generic_connector_not_registered` and no
+  approval is consumed. Without a database
+  (`DATABASE_URL` unset), the routes return 503
+  `generic_profile_store_not_configured` — fail
+  closed, not a silent reference fallback.
 
 ## Step 7 — What "done" looks like, and what is still not done
 
-Done at `f4bb662` (CI #39 green):
+Done, including the finish-all work (2026-10-26):
 
 - Copy + rebrand to Muse Shopping Index, readable
   workflow docs, review fix, wiring, Buy guard, draft
@@ -363,32 +422,50 @@ Done at `f4bb662` (CI #39 green):
   Shop Pay vehicle (blocked execution), persisted
   manifest store, live confirmation page, BI demo
   gates, training files in target.
+- Generic profile production wiring into
+  `apps/api/src/index.ts`: explicit Postgres-backed
+  company -> generic registry, host profile resolver,
+  generic readiness gate, verified signed generic
+  draft resolver, and `ZeroTrustConnectorRuntime`
+  submit — see Step 6b for the adapter caveat.
+  The synthetic fixture is never wired to a real
+  company.
+- BI demo verified against a locally running server
+  with supplied events only (see Step 6).
+- Deployment decision: Option B — no deployment for
+  Nov 3, local/demo + CI green only (user choice
+  2026-10-26). No host, no paid plan, no old-config
+  reuse.
 
 Still not done, and out of scope for this walkthrough
 unless they block the demo above:
 
-- Deployment choice (new deployment vs old config vs
-  none) — no deployment was made in this walkthrough.
-- Generic profile production wiring into
-  `apps/api/src/index.ts` — no production
-  classification registry exists; the synthetic
-  fixture must never be wired to a real company.
 - Workflow edits (user account only, no Workflows
   permission for Muse): add
   `apps/api/test/muse-seller-display.test.ts` and
   `services/mcp-gateway/test/provider-oauth.test.mjs`
   to CI's explicit test list. Neither blocks CI green
-  for the listed inventory.
+  for the listed inventory. Ready-to-apply patch
+  prepared in the finish-all work (workspace file,
+  not committed).
 - Binary image `apps/storefront/public/images/gift-editorial.webp`
   — user direct git push only; not required for CI
   or for this demo.
 - Full internal rebrand (`@gift-signal/*`, `gift-signal:`
-  prefixes) — intentionally retained to avoid breaking
-  the build; deferred, not blocking productivity.
+  prefixes, `GIFT_SIGNAL_API_KEYS`) — audited and
+  intentionally NOT renamed: package scope is
+  workspace-private, env-var names are an operator
+  contract (a hard rename silently breaks API auth),
+  and Stripe `gift-signal:` idempotency prefixes must
+  never change (a renamed key is no longer deduplicated
+  against the original request). Do not rename for
+  branding reasons.
 - Live Shop, live Meta, live Shop Pay execution, live
   payment, live Meta ad ingestion, real Postgres
   verification, consumer-enrollment test against a
   real Postgres (needs `ENROLLMENT_TEST_DATABASE_URL`
   and a Postgres service, as CI provides) — all
   still unverified/blocked, as documented in the
-  evidence table.
+  evidence table. A generic profile without an
+  operator-registered adapter also stays blocked at
+  submit time, by design.
