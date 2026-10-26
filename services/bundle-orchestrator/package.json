@@ -1,0 +1,1 @@
+{"name":"@gift-signal/bundle-orchestrator","version":"0.1.0","private":true,"type":"module","main":"src/index.ts","dependencies":{"@gift-signal/schemas":"workspace:*","@gift-signal/gift-intelligence":"workspace:*","@gift-signal/telemetry":"workspace:*"}}
