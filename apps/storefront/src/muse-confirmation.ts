@@ -12,6 +12,14 @@ export interface MuseApprovalEnvelope {
   };
   shipping:{handle:string;title:string;amount:string};
   payment:{provider:'stripe';externalAccountId:string};
+  // Optional, server-owned review facts only. Terms come from the
+  // company/draft, payment timing from the payment plan, and an
+  // estimated arrival only from a fulfillment estimate. If a field is
+  // absent, the sheet shows "not available" — it never invents a date,
+  // a term, or a payment time, and it never derives one from a raw ID.
+  terms?:string;
+  paymentTiming?:string;
+  estimatedArrival?:string;
   subtotal:string;
   tax:string;
   total:string;
@@ -29,6 +37,9 @@ export interface MuseConfirmationSheet {
   shipTo:string;
   shipping:string;
   payment:'Saved payment';
+  terms:string;
+  paymentTiming:string;
+  estimatedArrival:string;
   subtotal:string;
   tax:string;
   total:string;
@@ -47,6 +58,14 @@ function resolvedSellerName(envelope:MuseApprovalEnvelope):string{
     throw new Error('muse_confirmation_seller_display_required');
   }
   return displayName;
+}
+
+function optionalReviewText(value:string|undefined):string{
+  if(value===undefined) return 'not available';
+  const trimmed=value.trim();
+  if(!trimmed) return 'not available';
+  if(trimmed.length>1000||rawIdPattern.test(trimmed)) throw new Error('muse_confirmation_unsafe_display');
+  return trimmed;
 }
 
 function resolvedItemLabel(item:MuseApprovalEnvelope['items'][number]):string{
@@ -91,6 +110,9 @@ export function museConfirmationSheet(envelope:MuseApprovalEnvelope):MuseConfirm
     shipTo,
     shipping:`${envelope.shipping.title} · ${envelope.shipping.amount} ${envelope.currency}`,
     payment:'Saved payment',
+    terms:optionalReviewText(envelope.terms),
+    paymentTiming:optionalReviewText(envelope.paymentTiming),
+    estimatedArrival:optionalReviewText(envelope.estimatedArrival),
     subtotal:envelope.subtotal,
     tax:envelope.tax,
     total:envelope.total,
@@ -104,6 +126,11 @@ export function renderMuseConfirmation(sheet:MuseConfirmationSheet):string{
   if(rawIdPattern.test(sheet.seller)||sheet.items.some(item=>rawIdPattern.test(item.label))){
     throw new Error('muse_confirmation_unsafe_display');
   }
+  for(const value of [sheet.terms,sheet.paymentTiming,sheet.estimatedArrival]){
+    if(typeof value!=='string'||!value.trim()||value.length>1000||rawIdPattern.test(value)){
+      throw new Error('muse_confirmation_unsafe_display');
+    }
+  }
   const esc=(value:string)=>value.replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!));
   return `<section class="muse-confirmation" data-connection-id="${esc(sheet.connectionId)}" data-draft-id="${esc(sheet.draftId)}" data-draft-hash="${esc(sheet.displayedDraftHash)}">
   <p class="eyebrow">MUSE · REVIEW PURCHASE</p>
@@ -113,6 +140,9 @@ export function renderMuseConfirmation(sheet:MuseConfirmationSheet):string{
   <p><strong>Ship to:</strong> ${esc(sheet.shipTo)}</p>
   <p><strong>Shipping:</strong> ${esc(sheet.shipping)}</p>
   <p><strong>Payment:</strong> ${esc(sheet.payment)}</p>
+  <p><strong>Refund/cancellation terms:</strong> ${esc(sheet.terms)}</p>
+  <p><strong>Payment timing:</strong> ${esc(sheet.paymentTiming)}</p>
+  <p><strong>Estimated arrival:</strong> ${esc(sheet.estimatedArrival)}</p>
   <dl><div><dt>Subtotal</dt><dd>${esc(sheet.subtotal)} ${esc(sheet.currency)}</dd></div><div><dt>Tax</dt><dd>${esc(sheet.tax)} ${esc(sheet.currency)}</dd></div><div><dt>Total</dt><dd><strong>${esc(sheet.total)} ${esc(sheet.currency)}</strong></dd></div></dl>
   <button type="button" data-muse-buy data-connection-id="${esc(sheet.connectionId)}" data-draft-id="${esc(sheet.draftId)}" data-draft-hash="${esc(sheet.displayedDraftHash)}">${sheet.approvalLabel}</button>
 </section>`;
