@@ -96,7 +96,7 @@ node scripts/build-muse-commerce-training.mjs --check
 node scripts/rehearse-muse.mjs
 ```
 
-The offline rehearsal blocks default network fetch and clears transaction/model credentials in its child process. PostgreSQL integration runs separately in CI; an offline skip is not a passing database test. The full required suite is defined in [CI](.github/workflows/ci.yml) — pending: `.github/workflows/ci.yml` does not exist in this repo yet (the workflow file previously uploaded at the repo root as `GitHub workflow ci.yml.txt` was deleted); it must be created at exactly `.github/workflows/ci.yml` for GitHub Actions to run it, and Muse cannot push workflow files (no Workflows permission).
+The offline rehearsal blocks default network fetch and clears transaction/model credentials in its child process. PostgreSQL integration runs separately in CI; an offline skip is not a passing database test. The full required suite is defined in [CI](.github/workflows/ci.yml).
 
 For configuration checks, use `node scripts/hackathon-preflight.mjs`. Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is complete. Never use live money without explicit transaction approval.
 
