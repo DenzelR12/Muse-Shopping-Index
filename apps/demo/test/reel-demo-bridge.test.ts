@@ -56,8 +56,8 @@ test('demo Reel bridge returns one exact review and no approval token when ready
   assert.equal(result.review?.paymentLabel,'Saved payment');
   assert.equal(result.review?.approvalRequired,true);
   assert.equal(result.review?.approvalToken,null);
-  assert.match(result.review?.shopBackendNote ?? '','authorized on Shop');
-  assert.match(result.review?.shopBackendNote ?? '','does not claim live Shop integration');
+  assert.match(result.review?.shopBackendNote ?? '',/authorized on Shop/);
+  assert.match(result.review?.shopBackendNote ?? '',/does not claim live Shop integration/);
 });
 
 test('demo Reel bridge rejects an offer that was not in the Reel intent',()=>{
