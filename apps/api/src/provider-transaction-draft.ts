@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {signDraft,verifyDraft,type SignedDraftEnvelope} from '@gift-signal/zero-trust';
 import {decimalPriceToMinorUnits,type ConnectorActionDraft,type PostgresZeroTrustAuthority,type ShopifyLandedQuote,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
-import {validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
+import {validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 
 export interface ProviderApprovalEnvelope {
   connectionId:string;
@@ -9,6 +9,9 @@ export interface ProviderApprovalEnvelope {
   displayedDraftHash:string;
   expiresAt:string;
   description:string;
+  terms?:string;
+  paymentTiming?:string;
+  estimatedArrival?:string;
   seller:{provider:'shopify';externalAccountId:string;displayName?:string};
   items:Array<{variantId:string;quantity:number;unitPrice:string;title?:string}>;
   shippingAddress:ShopifyShippingAddress;
@@ -35,6 +38,9 @@ export interface ProviderTransactionDraftState {
     lines:Array<{variantId:string;quantity:number;unitPrice:string;availableForSale:boolean;inventoryQuantity:number|null;title?:string}>;
   };
   description:string;
+  terms?:string;
+  paymentTiming?:string;
+  estimatedArrival?:string;
   successUrl:string;
   cancelUrl:string;
 }
@@ -62,6 +68,9 @@ export class ProviderTransactionDraftService {
     pricing:{currency:string;lines:Array<{variantId:string;quantity:number;unitPrice:string;availableForSale:boolean;inventoryQuantity:number|null}>};
     sellerDisplayName?:string;
     itemTitles?:Record<string,string>;
+    terms?:string;
+    paymentTiming?:string;
+    estimatedArrival?:string;
     description:string;
     successUrl:string;
     cancelUrl:string;
@@ -91,6 +100,13 @@ export class ProviderTransactionDraftService {
     const sellerDisplayName = args.sellerDisplayName === undefined
       ? undefined
       : validateSellerDisplayName(args.sellerDisplayName, args.fulfillment.externalAccountId);
+    // Optional review facts, same pattern as display data: optional
+    // for backward compatibility, but if supplied they must be valid
+    // server-owned text — never a raw ID, never over 1000 characters,
+    // and never an invented date/term/payment time.
+    const terms = validateOptionalReviewFact(args.terms);
+    const paymentTiming = validateOptionalReviewFact(args.paymentTiming);
+    const estimatedArrival = validateOptionalReviewFact(args.estimatedArrival);
     const titledPricingLines = args.pricing.lines.map((line) => {
       if (!args.itemTitles || !(line.variantId in args.itemTitles)) return line;
       return {...line, title: validateItemTitle(args.itemTitles[line.variantId], line.variantId)};
@@ -106,6 +122,9 @@ export class ProviderTransactionDraftService {
       },
       pricing:{...structuredClone(args.pricing), lines: structuredClone(titledPricingLines)},
       description:args.description,
+      ...(terms ? {terms} : {}),
+      ...(paymentTiming ? {paymentTiming} : {}),
+      ...(estimatedArrival ? {estimatedArrival} : {}),
       successUrl:args.successUrl,
       cancelUrl:args.cancelUrl
     };
@@ -133,6 +152,9 @@ export class ProviderTransactionDraftService {
       displayedDraftHash:envelope.payloadHash,
       expiresAt:draft.expiresAt,
       description:state.description,
+      ...(state.terms ? {terms: state.terms} : {}),
+      ...(state.paymentTiming ? {paymentTiming: state.paymentTiming} : {}),
+      ...(state.estimatedArrival ? {estimatedArrival: state.estimatedArrival} : {}),
       seller:{provider:'shopify',externalAccountId:state.fulfillment.externalAccountId,
         ...(state.fulfillment.sellerDisplayName ? {displayName: state.fulfillment.sellerDisplayName} : {})},
       items:state.pricing.lines.map(line=>({variantId:line.variantId,quantity:line.quantity,unitPrice:line.unitPrice,
@@ -232,6 +254,12 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
   if(fulfillment.sellerDisplayName!==undefined){
     try{validateSellerDisplayName(fulfillment.sellerDisplayName, fulfillment.externalAccountId);}catch{throw new Error('provider_transaction_draft_state_invalid');}
   }
+  let terms: string|undefined; let paymentTiming: string|undefined; let estimatedArrival: string|undefined;
+  try{
+    terms=validateOptionalReviewFact(value.terms);
+    paymentTiming=validateOptionalReviewFact(value.paymentTiming);
+    estimatedArrival=validateOptionalReviewFact(value.estimatedArrival);
+  }catch{throw new Error('provider_transaction_draft_state_invalid');}
   return {
     payment:{provider:'stripe',externalAccountId:payment.externalAccountId},
     fulfillment:{provider:'shopify',externalAccountId:fulfillment.externalAccountId,
@@ -239,6 +267,9 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
       lineItems,...(shippingAddress?{shippingAddress,landedQuote}: {})},
     pricing:{currency:pricing.currency,lines:pricingLines},
     description:value.description,
+    ...(terms ? {terms} : {}),
+    ...(paymentTiming ? {paymentTiming} : {}),
+    ...(estimatedArrival ? {estimatedArrival} : {}),
     successUrl:value.successUrl,
     cancelUrl:value.cancelUrl
   };
@@ -292,3 +323,4 @@ function parseOptionalLandedQuote(value:unknown):ShopifyLandedQuote|undefined{
     total:record.total
   } as ShopifyLandedQuote;
 }
+

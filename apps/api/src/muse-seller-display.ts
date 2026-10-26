@@ -138,6 +138,32 @@ export function isValidItemTitle(title: unknown, variantId: string): title is st
   return true;
 }
 
+export function isValidReviewFact(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 1000) return false;
+  if (rawIdPattern.test(trimmed)) return false;
+  return true;
+}
+
+/**
+ * Validate an optional, server-owned review fact (refund/cancellation
+ * terms, payment timing, or estimated arrival) supplied at draft
+ * creation. Undefined means "not available" downstream. A supplied
+ * value must be a real, trimmed string, at most 1000 characters, and
+ * must not look like a raw provider ID; otherwise draft creation
+ * rejects it instead of storing a fact the review could not render.
+ * Estimated arrival is only a supplied fulfillment estimate — this
+ * validator never invents a date.
+ */
+export function validateOptionalReviewFact(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (!isValidReviewFact(value)) {
+    throw new Error('muse_review_fact_invalid');
+  }
+  return (value as string).trim();
+}
+
 export function validateItemTitle(title: unknown, variantId: string): string {
   if (!isValidItemTitle(title, variantId)) {
     throw new Error('muse_review_item_title_required');
