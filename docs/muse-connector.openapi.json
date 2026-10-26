@@ -1,0 +1,155 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MUSE SHOPPING INDEX \u2014 Muse connector onboarding draft",
+    "version": "0.1.0",
+    "description": "Preparation document, not a registered Meta connector. The agent continuation is a sensitive write. Model-visible arguments deliberately exclude approval issuance and signed Buy proof. A trusted human-confirmation integration must attach verified proof outside model output before purchase execution is enabled."
+  },
+  "servers": [
+    {
+      "url": "[deployment endpoint — configure in deployment]"
+    }
+  ],
+  "security": [
+    {
+      "consumerIdentity": []
+    }
+  ],
+  "paths": {
+    "/v1/muse/agent": {
+      "post": {
+        "operationId": "continue_muse_transaction",
+        "summary": "Continue an owned reviewed transaction; may execute an approved purchase",
+        "description": "Sensitive write. Requires approval for every purchase. Do not register as read-only. Starts from an existing signed draft. The trusted host, never the model, supplies any signed proof after a human approves exact transaction details. Until the human confirmation adapter is verified, use review/status only. MUSE_AGENT_ENABLED must be configured by the operator.",
+        "x-project-risk": "SENSITIVE_WRITE",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "connectionId",
+                  "draftId",
+                  "message"
+                ],
+                "properties": {
+                  "connectionId": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "draftId": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 4000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bounded native model result with structured consumer review, status or authentication events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "stop",
+                    "trace",
+                    "events"
+                  ],
+                  "properties": {
+                    "stop": {
+                      "type": "string"
+                    },
+                    "trace": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Identity token invalid or missing"
+          },
+          "404": {
+            "description": "Disabled feature or buyer-owned resource not found"
+          },
+          "409": {
+            "description": "Approval/enrollment/review conflict"
+          },
+          "503": {
+            "description": "Server or model configuration incomplete"
+          }
+        }
+      }
+    },
+    "/v1/muse/orders/{draftId}": {
+      "get": {
+        "operationId": "read_muse_order",
+        "summary": "Read buyer-owned order, tracking and refund state",
+        "x-project-risk": "READ",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned payment/order/tracking state; a pending state is not confirmation"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Identity token invalid or missing"
+          },
+          "404": {
+            "description": "Disabled feature or buyer-owned resource not found"
+          },
+          "409": {
+            "description": "Approval/enrollment/review conflict"
+          },
+          "503": {
+            "description": "Server or model configuration incomplete"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "consumerIdentity": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Verified OIDC identity JWT",
+        "description": "Use the configured identity issuer/audience and account linking approved for the service. Never use a shared merchant API key or accept subject/company IDs from model arguments. OAuth registration and the trusted confirmation callback require actual platform access."
+      }
+    }
+  }
+}
