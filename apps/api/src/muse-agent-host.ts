@@ -26,12 +26,29 @@ export interface MuseHostDependencies {
   identities:Pick<PostgresConsumerCommerceIdentityStore,'resolveStripeSavedPayment'>;
   transactions:Pick<PostgresProviderTransactionIntentStore,'getForConsumer'|'get'>;
   businessReady:(companyId:string,shopDomain:string)=>Promise<boolean>;
+  resolveSellerDisplayName?:(companyId:string)=>Promise<string|null>;
   submit:(args:{subjectId:string;consumerEmail?:string;connectionId:string;draftId:string;approvalToken:string})=>Promise<{
     handoff:{required:boolean};checkoutUrl?:string;
   }>;
   readTracking?:(transaction:ProviderTransactionIntent)=>Promise<Array<{company?:string;number?:string;url?:string}>>;
   readPaymentAuthentication?:(transaction:ProviderTransactionIntent)=>Promise<{status:'open'|'complete'|'expired';checkoutUrl?:string}>;
   approvalSecret:string;
+}
+
+
+function resolvedSellerDisplayName(displayName:string|null|undefined,externalAccountId:string):string{
+  const name=displayName?.trim();
+  if(!name||name===externalAccountId||/myshopify\.com|acct_|gid:\/\//i.test(name)){
+    throw Error('muse_review_seller_display_required');
+  }
+  return name;
+}
+function resolvedItemTitle(line:{variantId:string;title?:string;productTitle?:string}):string{
+  const title=(line.title??line.productTitle)?.trim();
+  if(!title||title===line.variantId||/gid:\/\//.test(title)){
+    throw Error('muse_review_item_title_required');
+  }
+  return title;
 }
 
 /** Request-scoped host; instantiate only after verifying OIDC. Do not create
@@ -116,9 +133,13 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
       const verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
       const state=verified.state;const landed=state.fulfillment.landedQuote;
       if(!landed||!state.fulfillment.shippingAddress) throw Error('provider_landed_quote_required');
+      const seller=resolvedSellerDisplayName(
+        this.deps.resolveSellerDisplayName?await this.deps.resolveSellerDisplayName(connection.companyId):null,
+        state.fulfillment.externalAccountId);
+      const items=state.pricing.lines.map((line)=>({title:resolvedItemTitle(line),quantity:line.quantity,unitPrice:line.unitPrice}));
       this.events.push({type:'review',requiresBuy:true,connectionId:this.request.connectionId,draftId:this.request.draftId,
         displayedDraftHash:verified.draftHash,expiresAt:verified.draft.expiresAt,description:state.description,
-        seller:state.fulfillment.externalAccountId,items:state.pricing.lines.map(({variantId,quantity,unitPrice})=>({variantId,quantity,unitPrice})),
+        seller,items,
         shippingAddress:state.fulfillment.shippingAddress,shipping:landed.shipping,subtotal:landed.subtotal,tax:landed.tax,total:landed.total,
         currency:landed.currency,paymentLabel:'Saved payment'});
       return {status:'review_required'};

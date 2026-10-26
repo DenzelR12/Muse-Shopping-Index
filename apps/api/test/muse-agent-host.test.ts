@@ -15,13 +15,14 @@ function fixture(approvalToken?:string){
     authority:{resolve:async()=>({subjectId:'buyer',companyId:'company',connectionId:'connection'})},
     drafts:{verifyForExecution:async()=>{calls.drafts++;return {draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
       description:'Headphones',payment:{provider:'stripe',externalAccountId:'acct_private'},
-      pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00'}]},
+      pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
       fulfillment:{externalAccountId:'seller.myshopify.com',shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
         landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
     }};}},
     identities:{resolveStripeSavedPayment:async()=>saved},
     transactions:{getForConsumer:async(subject:string)=>transaction?.consumerSubjectId===subject?transaction:null,get:async()=>transaction},
     businessReady:async()=>ready,
+    resolveSellerDisplayName:async()=>'Demo Seller',
     submit:async(args:any)=>{calls.submits.push(args);transaction={companyId:'company',consumerSubjectId:'buyer',draftId:'draft',state:'CHECKOUT_CREATED'};return {handoff:{required:false}};},
     approvalSecret:'approval-secret'
   };
@@ -44,6 +45,9 @@ test('ordinary Buy text does not create approval or authorize payment',async()=>
   await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
   const event=f.host.events[0];assert.equal(event.total,'58.00');assert.equal(event.requiresBuy,true);
   assert.equal(event.paymentLabel,'Saved payment');
+  assert.equal(event.seller,'Demo Seller');
+  assert.equal(event.items[0].title,'Headphones');
+  assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|variant/);
   assert.doesNotMatch(JSON.stringify(event),/acct_private|cus_owned|pm_owned|seti_owned|approval-secret/);
 });
 test('valid exact proof dispatches with authenticated subject and verified email only',async()=>{
