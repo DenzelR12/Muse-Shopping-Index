@@ -32,7 +32,7 @@ import {runRefundRecoveryWithAdvisoryLock} from './provider-refund-recovery.js';
 import {verifyApproval} from '@gift-signal/zero-trust';
 import {PostgresSecurityAuditSink} from '@gift-signal/mcp-gateway';
 import {submitMuseConfirmation} from './muse-confirmation-submit.js';
-import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
+import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
@@ -644,6 +644,9 @@ createServer(async(req,res)=>{
         cancelUrl?:unknown;
         sellerDisplayName?:unknown;
         itemTitles?:unknown;
+        terms?:unknown;
+        paymentTiming?:unknown;
+        estimatedArrival?:unknown;
       };
       if(typeof payload.connectionId!=='string'||!payload.connectionId.trim()||payload.connectionId.length>160){
         return send(res,400,{error:'provider_transaction_connection_id_invalid'},principal.requestId);
@@ -742,11 +745,17 @@ createServer(async(req,res)=>{
       // instead of showing a raw ID.
       let sellerDisplayName: string | undefined;
       let itemTitles: Record<string, string> | undefined;
+      let terms: string | undefined;
+      let paymentTiming: string | undefined;
+      let estimatedArrival: string | undefined;
       try {
         if (payload.sellerDisplayName !== undefined) {
           sellerDisplayName = validateSellerDisplayName(payload.sellerDisplayName, fulfillmentExternalAccountId);
           registerServerCompanyDisplayName(principal.orgId, sellerDisplayName, fulfillmentExternalAccountId);
         }
+        if (payload.terms !== undefined) terms = validateOptionalReviewFact(payload.terms);
+        if (payload.paymentTiming !== undefined) paymentTiming = validateOptionalReviewFact(payload.paymentTiming);
+        if (payload.estimatedArrival !== undefined) estimatedArrival = validateOptionalReviewFact(payload.estimatedArrival);
         if (payload.itemTitles !== undefined) {
           if (!payload.itemTitles || typeof payload.itemTitles !== 'object' || Array.isArray(payload.itemTitles)) {
             return send(res, 400, {error: 'provider_checkout_item_titles_invalid'}, principal.requestId);
@@ -766,6 +775,9 @@ createServer(async(req,res)=>{
         connectionId:payload.connectionId.trim(),
         ...(sellerDisplayName ? {sellerDisplayName} : {}),
         ...(itemTitles ? {itemTitles} : {}),
+        ...(terms ? {terms} : {}),
+        ...(paymentTiming ? {paymentTiming} : {}),
+        ...(estimatedArrival ? {estimatedArrival} : {}),
         payment:{provider:'stripe',externalAccountId:payment.externalAccountId.trim()},
         fulfillment:{
           provider:'shopify',

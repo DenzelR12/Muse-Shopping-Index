@@ -44,9 +44,10 @@ function resolvedItemTitle(line:{variantId:string;title?:string;productTitle?:st
   return validateItemTitle(line.title??line.productTitle,line.variantId);
 }
 
-// Optional review facts, sourced only from signed draft state (or, in
-// future, from a draft-state extension that carries them — see
-// provider-transaction-draft.ts). No date, term, or payment time is
+// Optional review facts, sourced only from signed draft state
+// top-level fields, supplied at draft creation by the authenticated
+// company caller and validated in provider-transaction-draft.ts.
+// No date, term, or payment time is
 // invented here: an absent, empty, over-long, or raw-ID-looking value
 // renders as "not available" in the review event, never as a guess.
 const rawReviewIdPattern=/gid:\/\/|myshopify\.com|acct_/i;
