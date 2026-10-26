@@ -102,12 +102,15 @@ export function buildReelDemoBridge(args:{
     'shop_backend_where_authorized',
     'owned_status'
   ];
-  const draft={
-    signed:false as const,
-    draftId:null as const,
-    draftHash:null as const,
-    expiresAt:null as const,
-    next:'EXISTING_DRAFT_SERVICE' as const,
+  // Typed as the result draft, not `as const`: `null as const` is not a
+  // valid const assertion (TS1355), and the annotation already pins the
+  // literal types (signed:false, null draft fields, fixed next value).
+  const draft: ReelDemoBridgeResult['draft']={
+    signed:false,
+    draftId:null,
+    draftHash:null,
+    expiresAt:null,
+    next:'EXISTING_DRAFT_SERVICE',
     note:'This harness does not create or sign a server draft and does not issue approval. ' +
       'The existing server draft service must create the signed draft, and the server must issue ' +
       'exact, consume-once approval before any execution.'

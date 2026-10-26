@@ -42,7 +42,7 @@ export interface SyntheticFixtureOptions{
 
 export class SyntheticFixtureConnectorAdapter implements ZeroTrustConnectorAdapter {
   readonly idempotentCommit:true=true;
-  private readonly executed=new Map<string:{executionId:string;draftId:string;status:'CONFIRMED'|'FAILED';providerReference?:string;committedAt:string;message:string}>();
+  private readonly executed=new Map<string, {executionId:string;draftId:string;status:'CONFIRMED'|'FAILED';providerReference?:string;committedAt:string;message:string}>();
   private calls=0;
   constructor(private readonly options:SyntheticFixtureOptions={}){}
   private clock():Date{return this.options.now?.()??new Date();}
