@@ -146,3 +146,47 @@ test('draft creation rejects any landed total that differs from the amount being
   );
   assert.equal(auth.envelopes.size,0);
 });
+
+test('draft creation carries a validated seller display name and item titles into the signed approval envelope',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create({
+    ...input,
+    sellerDisplayName:'Demo Seller',
+    itemTitles:{'gid://shopify/ProductVariant/123':'Assassin’s Creed Black Flag'}
+  });
+  assert.equal(created.approvalEnvelope.seller.displayName,'Demo Seller');
+  assert.equal(created.approvalEnvelope.items[0].title,'Assassin’s Creed Black Flag');
+  assert.equal(created.draft.providerState.fulfillment.sellerDisplayName,'Demo Seller');
+  assert.equal(created.draft.providerState.pricing.lines[0].title,'Assassin’s Creed Black Flag');
+  const verified=await service.verifyForExecution({
+    companyId:'org-a',
+    connectionId:'conn-1',
+    draftId:created.draft.draftId,
+    now:new Date('2026-10-25T02:01:00Z')
+  });
+  assert.equal(verified.state.fulfillment.sellerDisplayName,'Demo Seller');
+  assert.equal(verified.state.pricing.lines[0].title,'Assassin’s Creed Black Flag');
+});
+
+test('draft creation without display data leaves the envelope without a name or title, so a review must fail closed',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create(input);
+  assert.equal(created.approvalEnvelope.seller.displayName,undefined);
+  assert.equal(created.approvalEnvelope.items[0].title,undefined);
+});
+
+test('draft creation rejects a seller name derived from the shop domain and a title equal to a variant ID',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  await assert.rejects(
+    service.create({...input,sellerDisplayName:'example-shop.myshopify.com'}),
+    /muse_review_seller_display_required/
+  );
+  await assert.rejects(
+    service.create({...input,itemTitles:{'gid://shopify/ProductVariant/123':'gid://shopify/ProductVariant/123'}}),
+    /muse_review_item_title_required/
+  );
+  assert.equal(auth.envelopes.size,0);
+});

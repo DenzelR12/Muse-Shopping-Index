@@ -118,3 +118,27 @@ test('paid or expired Checkout never offers another payment or creates a new ses
     if(status==='expired') assert.equal(f.host.events[0].next,'NEW_REVIEW_REQUIRED');
   }
 });
+
+test('present_review uses a signed draft display name and title when no manifest resolver is available',async()=>{
+  const f=fixture();
+  f.deps.resolveSellerDisplayName=async()=>null;
+  f.deps.drafts.verifyForExecution=async()=>({draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
+    description:'Headphones',payment:{provider:'stripe',externalAccountId:'acct_private'},
+    pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
+    fulfillment:{externalAccountId:'seller.myshopify.com',sellerDisplayName:'Signed Demo Seller',
+      shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
+      landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
+  }});
+  await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
+  const event=f.host.events[0];
+  assert.equal(event.seller,'Signed Demo Seller');
+  assert.equal(event.items[0].title,'Headphones');
+  assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|acct_private/);
+});
+
+test('present_review fails closed when neither signed draft state nor a manifest resolver supplies a display name',async()=>{
+  const f=fixture();
+  f.deps.resolveSellerDisplayName=async()=>null;
+  // Fixture state has no sellerDisplayName, so the host must not fall back to the shop domain.
+  await assert.rejects(f.host.dispatch({action:'present_review',args:{draftId:'draft'}}),/muse_review_seller_display_required/);
+});
