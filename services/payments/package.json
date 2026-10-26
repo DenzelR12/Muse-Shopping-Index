@@ -1,0 +1,19 @@
+{
+  "name": "@gift-signal/payments",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "dependencies": {
+    "@gift-signal/zero-trust": "workspace:*"
+  },
+  "private": true,
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3"
+  }
+}
