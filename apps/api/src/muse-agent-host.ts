@@ -6,6 +6,7 @@ import type {PostgresZeroTrustAuthority} from '@gift-signal/mcp-gateway';
 import type {ProviderTransactionDraftService} from './provider-transaction-draft.js';
 import {validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
 import type {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
+import {paymentLabelForVehicle,resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import type {PostgresProviderTransactionIntentStore,ProviderTransactionIntent} from './provider-transaction-store.js';
 
 export interface MuseAgentRequest {connectionId:string;draftId:string;message:string;approvalToken?:string}
@@ -27,9 +28,16 @@ export interface MuseGenericExecutionResult{status:'CONFIRMED'|'DECLINED'|'FAILE
 export interface MuseHostDependencies {
   authority:Pick<PostgresZeroTrustAuthority,'resolve'>;
   drafts:Pick<ProviderTransactionDraftService,'verifyForExecution'>;
-  identities:Pick<PostgresConsumerCommerceIdentityStore,'resolveStripeSavedPayment'>;
+  identities:Pick<PostgresConsumerCommerceIdentityStore,'resolveStripeSavedPayment'> & Partial<Pick<PostgresConsumerCommerceIdentityStore,'resolveShopPaySavedPayment'>>;
   transactions:Pick<PostgresProviderTransactionIntentStore,'getForConsumer'|'get'>;
   businessReady:(companyId:string,shopDomain:string)=>Promise<boolean>;
+  // Optional server-supplied Shop Pay vehicle flag for the reference
+  // path. Only consulted for shop_pay drafts: when absent, a shop_pay
+  // draft is never business-ready (fail closed); when present it must
+  // return true AND businessReady must return true (AUTONOMOUS_READY
+  // in the API route, which is stricter than the TRANSACTION_READY
+  // floor in shop-pay-vehicle.ts). Stripe drafts never consult it.
+  shopPayVehicleReady?:(companyId:string)=>Promise<boolean>;
   resolveSellerDisplayName?:(companyId:string)=>Promise<string|null>;
   submit:(args:{subjectId:string;consumerEmail?:string;connectionId:string;draftId:string;approvalToken:string})=>Promise<{
     handoff:{required:boolean};checkoutUrl?:string;
@@ -200,8 +208,18 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
           paymentAuthorizationReference:'',expiresAt:genericApproval?.ok?genericApproval.claims.expiresAt:new Date(0).toISOString()}}:{})};
     }
     const verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
-    const saved=await this.deps.identities.resolveStripeSavedPayment(this.identity.subjectId);
-    const businessReady=await this.deps.businessReady(connection.companyId,verified.state.fulfillment.externalAccountId);
+    // The authorization follows the signed draft vehicle, never the
+    // caller: a stripe draft uses the Stripe saved payment, a shop_pay
+    // draft uses the Shop Pay saved authorization, and a consumer
+    // enrolled only on the other rail is not enrolled for this draft.
+    const vehicle=resolvePaymentVehicle({paymentProvider:(verified.state as any).payment?.provider,paymentVehicle:(verified.state as any).paymentVehicle});
+    const saved=vehicle==='shop_pay'
+      ? (this.deps.identities.resolveShopPaySavedPayment?await this.deps.identities.resolveShopPaySavedPayment(this.identity.subjectId):null)
+      : await this.deps.identities.resolveStripeSavedPayment(this.identity.subjectId);
+    const baseReady=await this.deps.businessReady(connection.companyId,verified.state.fulfillment.externalAccountId);
+    const businessReady=vehicle==='shop_pay'
+      ? baseReady&&(this.deps.shopPayVehicleReady?await this.deps.shopPayVehicleReady(connection.companyId):false)
+      : baseReady;
     const expected={subjectId:this.identity.subjectId,companyId:connection.companyId,connectionId:this.request.connectionId,
       draftId:this.request.draftId,draftHash:verified.draftHash,amount:verified.draft.total,currency:verified.draft.currency,
       paymentAuthorizationReference:saved?.reference??''};
@@ -257,7 +275,7 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
         displayedDraftHash:verified.draftHash,expiresAt:verified.draft.expiresAt,description:state.description,
         seller,items,...reviewFacts,
         shippingAddress:state.fulfillment.shippingAddress,shipping:landed.shipping,subtotal:landed.subtotal,tax:landed.tax,total:landed.total,
-        currency:landed.currency,paymentLabel:'Saved payment'});
+        currency:landed.currency,paymentLabel:paymentLabelForVehicle(resolvePaymentVehicle({paymentProvider:state.payment.provider,paymentVehicle:(state as any).paymentVehicle}))});
       return {status:'review_required'};
     }
     if(step.action==='open_payment_authentication'){

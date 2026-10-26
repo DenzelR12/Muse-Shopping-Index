@@ -32,6 +32,7 @@ import {runRefundRecoveryWithAdvisoryLock} from './provider-refund-recovery.js';
 import {verifyApproval} from '@gift-signal/zero-trust';
 import {PostgresSecurityAuditSink} from '@gift-signal/mcp-gateway';
 import {submitMuseConfirmation} from './muse-confirmation-submit.js';
+import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
@@ -243,7 +244,14 @@ createServer(async(req,res)=>{
       if(!consumerCommerceIdentities) return send(res,503,{error:'consumer_commerce_identity_store_not_configured'},requestId);
       const payload=await readJson(req) as Record<string,unknown>;
       return send(res,200,await issueHumanApproval(req,payload,{
-        resolveSavedPayment:(subjectId)=>consumerCommerceIdentities.resolveStripeSavedPayment(subjectId)
+        // Either enrolled rail may authorize: the approval's payment
+        // reference is matched exactly at submit time against the
+        // signed draft's vehicle, so a Shop Pay enrollment cannot
+        // authorize a Stripe draft or vice versa.
+        resolveSavedPayment:async(subjectId)=>(
+          await consumerCommerceIdentities.resolveStripeSavedPayment(subjectId)
+          ?? await consumerCommerceIdentities.resolveShopPaySavedPayment(subjectId)
+        )
       }),requestId);
     }catch(error){
       const message=error instanceof Error?error.message:'approval_failed';
@@ -309,10 +317,13 @@ createServer(async(req,res)=>{
         },
         submit:async(args)=>{
           const savedStripeAuthorization=await consumerCommerceIdentities.resolveStripeSavedPayment(args.subjectId);
-          if(!savedStripeAuthorization) throw Error('consumer_commerce_enrollment_required');
+          const savedShopPayAuthorization=await consumerCommerceIdentities.resolveShopPaySavedPayment(args.subjectId);
+          if(!savedStripeAuthorization&&!savedShopPayAuthorization) throw Error('consumer_commerce_enrollment_required');
           const checkout=await submitMuseConfirmation({...args,agentId:process.env.MUSE_TRANSACTION_AGENT_ID!,
             approvalSecret:process.env.APPROVAL_SIGNING_SECRET!,authority:providerZeroTrustAuthority,drafts:providerTransactionDrafts,
-            runtime:providerRuntimeControl,execution:providerTransactionExecution,savedStripeAuthorization,requestId});
+            runtime:providerRuntimeControl,execution:providerTransactionExecution,
+            ...(savedStripeAuthorization?{savedStripeAuthorization}:{}),
+            ...(savedShopPayAuthorization?{savedShopPayAuthorization}:{}),requestId});
           return {handoff:checkout.handoff,...('checkoutUrl' in checkout?{checkoutUrl:checkout.checkoutUrl}:{})};
         },
         readPaymentAuthentication:(transaction)=>readStripeTransactionCheckout({checkoutSessionId:transaction.paymentReference!,companyId:transaction.companyId,
@@ -352,7 +363,8 @@ createServer(async(req,res)=>{
       }
       if(!consumerCommerceIdentities) return send(res,503,{error:'consumer_commerce_identity_store_not_configured'},requestId);
       const savedStripeAuthorization=await consumerCommerceIdentities.resolveStripeSavedPayment(identity.subjectId);
-      if(!savedStripeAuthorization){
+      const savedShopPayAuthorization=await consumerCommerceIdentities.resolveShopPaySavedPayment(identity.subjectId);
+      if(!savedStripeAuthorization&&!savedShopPayAuthorization){
         return send(res,409,{error:'consumer_commerce_enrollment_required'},requestId);
       }
       const checkout=await submitMuseConfirmation({
@@ -367,7 +379,8 @@ createServer(async(req,res)=>{
         drafts:providerTransactionDrafts,
         runtime:providerRuntimeControl,
         execution:providerTransactionExecution,
-        savedStripeAuthorization,
+        ...(savedStripeAuthorization?{savedStripeAuthorization}:{}),
+        ...(savedShopPayAuthorization?{savedShopPayAuthorization}:{}),
         requestId
       });
       return send(res,201,{checkout},requestId);
@@ -638,6 +651,7 @@ createServer(async(req,res)=>{
       const payload=await readJson(req) as {
         connectionId?:unknown;
         payment?:unknown;
+        paymentVehicle?:unknown;
         fulfillment?:unknown;
         description?:unknown;
         successUrl?:unknown;
@@ -668,7 +682,20 @@ createServer(async(req,res)=>{
         return send(res,400,{error:'provider_checkout_payment_invalid'},principal.requestId);
       }
       const payment=payload.payment as Record<string,unknown>;
-      if(payment.provider!=='stripe'||typeof payment.externalAccountId!=='string'||!payment.externalAccountId.trim()){
+      // Shop Pay is an additional vehicle, not a Stripe relabel: the
+      // provider may be 'stripe' or 'shop_pay', and an optional
+      // paymentVehicle must agree with it. Execution of a shop_pay
+      // draft is still blocked (shop_pay_execution_blocked) — this
+      // only lets the signed draft/approval envelope carry the
+      // vehicle, with Stripe unchanged as the default for legacy
+      // callers that omit both fields.
+      let paymentVehicle:'stripe'|'shop_pay';
+      try{
+        paymentVehicle=resolvePaymentVehicle({paymentProvider:payment.provider,paymentVehicle:payload.paymentVehicle});
+      }catch{
+        return send(res,400,{error:'provider_checkout_payment_invalid'},principal.requestId);
+      }
+      if(typeof payment.externalAccountId!=='string'||!payment.externalAccountId.trim()){
         return send(res,400,{error:'provider_checkout_payment_invalid'},principal.requestId);
       }
       if(!payload.fulfillment||typeof payload.fulfillment!=='object'||Array.isArray(payload.fulfillment)){
@@ -778,7 +805,8 @@ createServer(async(req,res)=>{
         ...(terms ? {terms} : {}),
         ...(paymentTiming ? {paymentTiming} : {}),
         ...(estimatedArrival ? {estimatedArrival} : {}),
-        payment:{provider:'stripe',externalAccountId:payment.externalAccountId.trim()},
+        payment:{provider:paymentVehicle,externalAccountId:payment.externalAccountId.trim()},
+        paymentVehicle,
         fulfillment:{
           provider:'shopify',
           externalAccountId:fulfillmentExternalAccountId,

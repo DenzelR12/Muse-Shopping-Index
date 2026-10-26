@@ -11,7 +11,12 @@ export interface MuseApprovalEnvelope {
     provinceCode?:string;countryCode:string;zip:string;phone?:string;
   };
   shipping:{handle:string;title:string;amount:string};
-  payment:{provider:'stripe';externalAccountId:string};
+  // ADDITIONAL vehicle alongside Stripe. Optional for backward
+  // compatibility: when omitted it defaults to payment.provider, so a
+  // legacy stripe envelope still renders 'Saved payment'. When
+  // present it must agree with payment.provider.
+  paymentVehicle?:'stripe'|'shop_pay';
+  payment:{provider:'stripe'|'shop_pay';externalAccountId:string};
   // Optional, server-owned review facts only. Terms come from the
   // company/draft, payment timing from the payment plan, and an
   // estimated arrival only from a fulfillment estimate. If a field is
@@ -36,7 +41,7 @@ export interface MuseConfirmationSheet {
   items:Array<{label:string;quantity:number;unitPrice:string}>;
   shipTo:string;
   shipping:string;
-  payment:'Saved payment';
+  payment:'Saved payment'|'Shop Pay · Saved payment';
   terms:string;
   paymentTiming:string;
   estimatedArrival:string;
@@ -82,6 +87,12 @@ function resolvedItemLabel(item:MuseApprovalEnvelope['items'][number]):string{
 
 export function museConfirmationSheet(envelope:MuseApprovalEnvelope):MuseConfirmationSheet{
   if(!envelope.connectionId.trim()||!envelope.draftId.trim()||!hash.test(envelope.displayedDraftHash)) throw new Error('muse_confirmation_invalid_identity');
+  const paymentVehicle=envelope.paymentVehicle??envelope.payment.provider;
+  if(paymentVehicle!==envelope.payment.provider) throw new Error('muse_confirmation_unsafe_display');
+  // Label follows the signed envelope vehicle only: 'Saved payment'
+  // for Stripe, 'Shop Pay · Saved payment' only for shop_pay. A raw
+  // provider/account ID is never a label (checked again in render).
+  const paymentLabel=paymentVehicle==='shop_pay'?'Shop Pay · Saved payment' as const:'Saved payment' as const;
   if(!envelope.description.trim()||!envelope.seller.externalAccountId.trim()) throw new Error('muse_confirmation_invalid_seller');
   const seller=resolvedSellerName(envelope);
   if(!Array.isArray(envelope.items)||envelope.items.length<1) throw new Error('muse_confirmation_items_required');
@@ -109,7 +120,7 @@ export function museConfirmationSheet(envelope:MuseApprovalEnvelope):MuseConfirm
     items:envelope.items.map(item=>({label:resolvedItemLabel(item),quantity:item.quantity,unitPrice:item.unitPrice})),
     shipTo,
     shipping:`${envelope.shipping.title} · ${envelope.shipping.amount} ${envelope.currency}`,
-    payment:'Saved payment',
+    payment:paymentLabel,
     terms:optionalReviewText(envelope.terms),
     paymentTiming:optionalReviewText(envelope.paymentTiming),
     estimatedArrival:optionalReviewText(envelope.estimatedArrival),
@@ -122,7 +133,7 @@ export function museConfirmationSheet(envelope:MuseApprovalEnvelope):MuseConfirm
 }
 
 export function renderMuseConfirmation(sheet:MuseConfirmationSheet):string{
-  if(sheet.payment!=='Saved payment') throw new Error('muse_confirmation_unsafe_display');
+  if(sheet.payment!=='Saved payment'&&sheet.payment!=='Shop Pay · Saved payment') throw new Error('muse_confirmation_unsafe_display');
   if(rawIdPattern.test(sheet.seller)||sheet.items.some(item=>rawIdPattern.test(item.label))){
     throw new Error('muse_confirmation_unsafe_display');
   }
