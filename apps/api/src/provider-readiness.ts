@@ -1,9 +1,11 @@
 import {
   buildBusinessCapabilityManifest,
   type BusinessCapabilityManifest,
+  type BusinessOrigin,
   type BusinessReadinessEvidence,
   type ConnectorVertical,
   type IntegrationMode,
+  type MetaBusinessVerification,
   type ProviderCapability,
   type ProviderConnectionStatus
 } from '@gift-signal/mcp-gateway';
@@ -11,7 +13,18 @@ import {
 export interface ProviderVerificationEvidence {
   connection:ProviderConnectionStatus & {companyId:string};
   identityVerified:boolean;
+  // Business origin for the Meta verification gate. Omitted origin fails
+  // closed to the Meta-origin path in deriveBusinessReadiness, so a
+  // Meta-origin business evaluated without metaVerification can never
+  // reach TRANSACTION_READY here. metaVerification must be supplied and
+  // recorded server-side; it is not read from model output or browser JSON.
+  // Note: the Postgres readiness store does not yet persist
+  // metaVerification (it stores only the legacy metaBusinessVerified flag),
+  // so callers must supply it at evaluation time until that store gains a
+  // column for it. That gap fails closed rather than bypassing the gate.
+  origin?:BusinessOrigin;
   metaBusinessVerified?:boolean;
+  metaVerification?:MetaBusinessVerification;
   catalogValidated:boolean;
   webhookEvents:boolean;
   idempotency:boolean;
@@ -33,9 +46,11 @@ export function deriveProviderReadinessEvidence(input:ProviderVerificationEviden
   const granted=input.connection.grantedCapabilities;
 
   return {
+    origin:input.origin,
     connectorConfigured:connectionUsable,
     identityVerified:input.identityVerified,
     metaBusinessVerified:input.metaBusinessVerified===true,
+    ...(input.metaVerification?{metaVerification:input.metaVerification}:{}),
     catalogValidated:input.catalogValidated && hasCapability(granted,'catalog.read'),
     liveInventory:connectionUsable && hasCapability(granted,'inventory.read'),
     livePricing:connectionUsable && hasCapability(granted,'pricing.read'),

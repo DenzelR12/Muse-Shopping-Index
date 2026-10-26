@@ -5,8 +5,17 @@ export interface ConnectionGate {
   requiredForProduction:boolean;
 }
 
+// Meta business verification is required for Meta-origin businesses only,
+// and only as server-recorded evidence (see MetaBusinessVerification in
+// business-connectors.ts). It is not a live Meta API verification claim,
+// and it is never required for non-Meta-origin businesses. The old blanket
+// `metaBusinessRequired:false` was therefore wrong for Meta-origin
+// businesses and is replaced by the origin-conditional pair below; a
+// business whose origin is not explicitly declared 'non-meta' fails closed
+// to the Meta-origin path.
 export const businessParticipationModel={
-  metaBusinessRequired:false,
+  metaBusinessRequiredForMetaOrigin:true,
+  metaBusinessRequiredForNonMetaOrigin:false,
   supportedIntegrationModes:[
     {
       mode:'ZERO_CODE',
@@ -22,6 +31,13 @@ export const businessParticipationModel={
     }
   ],
   readinessStages:[
+    'CONNECTED',
+    'META_VERIFIED',
+    'CATALOG_VERIFIED',
+    'TRANSACTION_READY',
+    'AUTONOMOUS_READY'
+  ],
+  readinessStagesNonMetaOrigin:[
     'CONNECTED',
     'VERIFIED',
     'TRANSACTION_READY',
