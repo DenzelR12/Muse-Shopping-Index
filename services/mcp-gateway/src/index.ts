@@ -36,3 +36,4 @@ export * from './provider-oauth-transactions.js';
 export * from './provider-account-identity.js';
 
 export * from './provider-revoke.js';
+export * from './synthetic-fixture-connector.js';
