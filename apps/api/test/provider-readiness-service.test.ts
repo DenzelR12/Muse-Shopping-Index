@@ -266,3 +266,85 @@ test('revoked policy agents fail agent-policy readiness closed',async()=>{
     humanApprovalRequiredForCommit:true
   });
 });
+
+import {ProviderReadinessService as ManifestAwareReadinessService} from '../dist/provider-readiness-service.js';
+
+function fakeManifests() {
+  const rows = new Map();
+  return {
+    set(companyId, record) { rows.set(companyId, record); },
+    async get(companyId) { return rows.get(companyId) ?? null; },
+  };
+}
+
+function manifestReadySetup() {
+  const connections = fakeConnections();
+  const evidence = fakeEvidence();
+  connections.set({
+    companyId: 'org-a',
+    provider: 'walmart',
+    externalAccountId: 'seller-1',
+    grantedCapabilities: ['catalog.read', 'inventory.read', 'pricing.read', 'order.create', 'fulfillment.read'],
+  });
+  evidence.set({
+    companyId: 'org-a',
+    provider: 'walmart',
+    externalAccountId: 'seller-1',
+    identityVerified: true,
+    metaBusinessVerified: true,
+    catalogValidated: true,
+    webhookEvents: true,
+    idempotency: true,
+    providerRevalidation: true,
+    agentPolicyConfigured: false,
+    auditTrail: false,
+    recoveryActions: false,
+    fulfillmentStatus: true,
+  });
+  return {connections, evidence};
+}
+
+test('readiness service uses a stored non-meta origin when the caller omits origin', async () => {
+  const {connections, evidence} = manifestReadySetup();
+  const manifests = fakeManifests();
+  manifests.set('org-a', {origin: 'non-meta', metaVerification: null});
+  const service = new ManifestAwareReadinessService(connections, evidence, undefined, undefined, manifests);
+  const manifest = await service.evaluate({companyId: 'org-a', provider: 'walmart', externalAccountId: 'seller-1'});
+  assert.equal(manifest.readiness, 'TRANSACTION_READY');
+});
+
+test('readiness service uses stored Meta verification when the caller omits it', async () => {
+  const {connections, evidence} = manifestReadySetup();
+  const manifests = fakeManifests();
+  manifests.set('org-a', {
+    origin: 'meta',
+    metaVerification: {
+      verified: true,
+      verifiedAt: '2026-10-01T00:00:00Z',
+      evidenceRef: 'meta-ev-1',
+      issuer: 'Meta',
+      source: 'meta-business-record',
+    },
+  });
+  const service = new ManifestAwareReadinessService(connections, evidence, undefined, undefined, manifests);
+  const manifest = await service.evaluate({companyId: 'org-a', provider: 'walmart', externalAccountId: 'seller-1'});
+  assert.equal(manifest.readiness, 'TRANSACTION_READY');
+});
+
+test('readiness service still fails closed for a stored Meta origin with no stored verification', async () => {
+  const {connections, evidence} = manifestReadySetup();
+  const manifests = fakeManifests();
+  manifests.set('org-a', {origin: 'meta', metaVerification: null});
+  const service = new ManifestAwareReadinessService(connections, evidence, undefined, undefined, manifests);
+  const manifest = await service.evaluate({companyId: 'org-a', provider: 'walmart', externalAccountId: 'seller-1'});
+  assert.equal(manifest.readiness, 'CONNECTED');
+});
+
+test('an explicitly supplied origin wins over the stored record at evaluation time', async () => {
+  const {connections, evidence} = manifestReadySetup();
+  const manifests = fakeManifests();
+  manifests.set('org-a', {origin: 'meta', metaVerification: null});
+  const service = new ManifestAwareReadinessService(connections, evidence, undefined, undefined, manifests);
+  const manifest = await service.evaluate({companyId: 'org-a', provider: 'walmart', externalAccountId: 'seller-1', origin: 'non-meta'});
+  assert.equal(manifest.readiness, 'TRANSACTION_READY');
+});

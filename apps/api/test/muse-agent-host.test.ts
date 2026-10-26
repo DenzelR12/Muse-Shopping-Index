@@ -342,3 +342,18 @@ test('Shop Pay review is business-ready only when the host business check and th
   assert.equal(event.paymentLabel,'Shop Pay · Saved payment');
   assert.doesNotMatch(JSON.stringify(event),/acct_private|shop-pay-ref/);
 });
+
+test('present_review prefers the persisted manifest name over the signed draft name',async()=>{
+  const f=fixture();
+  f.deps.resolveSellerDisplayName=async()=>'Persisted Seller';
+  f.deps.drafts.verifyForExecution=async()=>({draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
+    description:'Headphones',payment:{provider:'stripe',externalAccountId:'acct_private'},
+    pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
+    fulfillment:{externalAccountId:'seller.myshopify.com',sellerDisplayName:'Signed Demo Seller',
+      shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
+      landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
+  }});
+  await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
+  const event=f.host.events[0];assert.equal(event.seller,'Persisted Seller');
+  assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|acct_private/);
+});
