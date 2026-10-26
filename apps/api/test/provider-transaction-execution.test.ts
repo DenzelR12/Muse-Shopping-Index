@@ -410,3 +410,25 @@ test('retry after checkout creation failure skips canceled direct PaymentIntent 
   assert.equal(result.paymentReferenceKind,'checkout_session');
   assert.equal(harness.intents.state,'CHECKOUT_CREATED');
 });
+
+test('Shop Pay execution is blocked by name before any intent, approval consumption, or Stripe call',async()=>{
+  const {svc,intents}=service();
+  let consumeCalls=0;let fetchCalls=0;
+  await assert.rejects(
+    svc.createCheckout({...args,provider:'shop_pay',paymentVehicle:'shop_pay' as const,
+      approval:{jti:'approval-shop-pay',consume:async()=>{consumeCalls++;return true;}},
+      fetchImpl:async()=>{fetchCalls++;throw new Error('should_not_call');}}),
+    /shop_pay_execution_blocked/
+  );
+  assert.equal(consumeCalls,0);
+  assert.equal(fetchCalls,0);
+  assert.equal(intents.pendingInput,null);
+});
+
+test('Shop Pay vehicle flag alone blocks execution even when provider is passed as stripe',async()=>{
+  const {svc}=service();
+  await assert.rejects(
+    svc.createCheckout({...args,paymentVehicle:'shop_pay' as const,approval:{jti:'approval-shop-pay-2',consume:async()=>true}}),
+    /shop_pay_execution_blocked/
+  );
+});

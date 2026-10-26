@@ -82,3 +82,16 @@ test('Muse confirmation fails closed when the signed hash is absent or malformed
 test('Muse confirmation fails closed when any monetary fact is malformed',()=>{
   assert.throws(()=>museConfirmationSheet({...envelope,total:'58.32 USD'}),/muse_confirmation_money_invalid/);
 });
+
+test('Shop Pay confirmation sheet shows Shop Pay label and never a raw account ID',()=>{
+  const sheet=museConfirmationSheet({...envelope,paymentVehicle:'shop_pay',payment:{provider:'shop_pay' as const,externalAccountId:'acct-consumer-1'}});
+  assert.equal(sheet.payment,'Shop Pay · Saved payment');
+  const html=renderMuseConfirmation(sheet);
+  assert.match(html,/Shop Pay · Saved payment/);
+  assert.doesNotMatch(html,/acct-consumer-1/);
+  assert.doesNotMatch(html,/myshopify\.com/);
+});
+
+test('Shop Pay confirmation fails closed when vehicle and provider disagree',()=>{
+  assert.throws(()=>museConfirmationSheet({...envelope,paymentVehicle:'shop_pay'}),/muse_confirmation_unsafe_display/);
+});

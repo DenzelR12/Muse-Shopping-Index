@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bindShopIdentity,consumerCommitGate,stripeSavedPaymentAuthorization,PostgresConsumerCommerceIdentityStore} from '../dist/consumer-commerce-identity.js';
+import {bindShopIdentity,consumerCommitGate,stripeSavedPaymentAuthorization,shopPaySavedPaymentAuthorization,PostgresConsumerCommerceIdentityStore} from '../dist/consumer-commerce-identity.js';
 
 test('consumer commit requires verified Shop identity, payment authorization and explicit approval',()=>{
   assert.deepEqual(
@@ -134,4 +134,23 @@ test('server identity store returns null for non-Stripe payment rails',async()=>
     }
   } as any);
   assert.equal(await store.resolveStripeSavedPayment('consumer-shop-pay'),null);
+});
+
+test('Shop Pay saved authorization resolves only for shop_pay identities, never as Stripe',async()=>{
+  const shopPayIdentity=bindShopIdentity({
+    subjectId:'consumer-shop-pay-1',shopUserPublicId:'shop-public-sp',verifiedAt:'2026-10-25T19:00:00Z',
+    paymentAuthorization:{rail:'shop_pay',reference:'shop-pay-ref-1',verifiedAt:'2026-10-25T19:00:05Z'}
+  });
+  assert.deepEqual(shopPaySavedPaymentAuthorization(shopPayIdentity),{reference:'shop-pay-ref-1'});
+  assert.equal(stripeSavedPaymentAuthorization(shopPayIdentity),null);
+  const stripeIdentity=bindShopIdentity({
+    subjectId:'consumer-stripe-1',shopUserPublicId:'shop-public-st',verifiedAt:'2026-10-25T19:00:00Z',
+    paymentAuthorization:{rail:'stripe',reference:'saved-stripe-1',verifiedAt:'2026-10-25T19:00:05Z',customerId:'cus_1',paymentMethodId:'pm_1',usage:'off_session'}
+  });
+  assert.equal(shopPaySavedPaymentAuthorization(stripeIdentity),null);
+  // Store round-trip: a shop_pay row resolves via the Shop Pay resolver and not via Stripe.
+  const row={subject_id:'consumer-shop-pay-1',shop_user_public_id:'shop-public-sp',email:null,shop_identity_verified_at:'2026-10-25T19:00:00Z',payment_rail:'shop_pay',payment_reference:'shop-pay-ref-1',payment_verified_at:'2026-10-25T19:00:05Z',stripe_customer_id:null,stripe_payment_method_id:null,payment_usage:null};
+  const store=new PostgresConsumerCommerceIdentityStore({async query(sql:string){if(sql.includes('CREATE TABLE')) return {rows:[]};return {rows:[row]};}} as any);
+  assert.deepEqual(await store.resolveShopPaySavedPayment('consumer-shop-pay-1'),{reference:'shop-pay-ref-1'});
+  assert.equal(await store.resolveStripeSavedPayment('consumer-shop-pay-1'),null);
 });

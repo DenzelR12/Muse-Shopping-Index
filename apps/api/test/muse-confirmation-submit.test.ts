@@ -158,3 +158,69 @@ test('Muse module fails closed if a caller omits saved payment authorization',as
   } as any),/consumer_commerce_enrollment_required/);
 });
 
+
+// --- Shop Pay vehicle (additional, alongside Stripe) ---
+const shopPayState={...state,paymentVehicle:'shop_pay' as const,payment:{provider:'shop_pay' as const,externalAccountId:'acct-1'}};
+const shopPayApproval=issueApprovalToken({
+  subjectId:'human-1',companyId:'org-a',connectionId:'conn-1',draftId:'draft-1',
+  draftHash,amount:58.32,currency:'USD',paymentAuthorizationReference:'shop-pay-ref-1',expiresAt:'2099-01-01T00:00:00Z'
+},'approval-secret','2026-10-25T00:00:00Z');
+function shopPaySubmit(overrides:any={}){
+  return submitMuseConfirmation({
+    connectionId:'conn-1',draftId:'draft-1',approvalToken:overrides.approvalToken??shopPayApproval,agentId:'muse-agent',subjectId:'human-1',
+    approvalSecret:'approval-secret',
+    authority:{async resolve(){return connection as any;},async consumeOnce(){if(overrides.onConsume) overrides.onConsume();return true;}} as any,
+    drafts:{async verifyForExecution(){return {connection,draft,draftHash,state:overrides.state??shopPayState} as any;}} as any,
+    runtime:{async quoteVariants(){return {quote:overrides.livePricing??pricing};},async quoteLandedTotal(){return {quote:overrides.liveLanded??landed};}} as any,
+    savedShopPayAuthorization:{reference:'shop-pay-ref-1'},
+    ...(overrides.extra??{}),
+    execution:{async createCheckout(){if(overrides.onExecute) overrides.onExecute();throw new Error('must_not_execute');}} as any
+  });
+}
+
+test('Shop Pay confirmation with a valid approval is blocked by name, without execution or approval consumption',async()=>{
+  let executed=false;let consumed=false;
+  await assert.rejects(shopPaySubmit({onExecute:()=>{executed=true;},onConsume:()=>{consumed=true;}}),/shop_pay_execution_blocked/);
+  assert.equal(executed,false);
+  assert.equal(consumed,false);
+});
+
+test('Shop Pay confirmation requires reapproval when live landed total drifts, exactly like Stripe',async()=>{
+  await assert.rejects(shopPaySubmit({liveLanded:{...landed,total:'59.32'}}),/provider_checkout_reapproval_required/);
+});
+
+test('Shop Pay confirmation rejects a Stripe authorization substituted for the Shop Pay reference',async()=>{
+  await assert.rejects(submitMuseConfirmation({
+    connectionId:'conn-1',draftId:'draft-1',approvalToken:shopPayApproval,agentId:'muse-agent',subjectId:'human-1',approvalSecret:'approval-secret',
+    authority:{async resolve(){return connection as any;},async consumeOnce(){throw new Error('must_not_consume');}} as any,
+    drafts:{async verifyForExecution(){return {connection,draft,draftHash,state:shopPayState} as any;}} as any,
+    runtime:{async quoteVariants(){return {quote:pricing};},async quoteLandedTotal(){return {quote:landed};}} as any,
+    savedStripeAuthorization:{reference:'seti_saved_1',customerId:'cus_123',paymentMethodId:'pm_123',usage:'off_session'},
+    execution:{async createCheckout(){throw new Error('must_not_execute');}} as any
+  }),/consumer_commerce_enrollment_required/);
+});
+
+test('Shop Pay confirmation rejects an approval bound to a different payment reference',async()=>{
+  const wrongRef=issueApprovalToken({subjectId:'human-1',companyId:'org-a',connectionId:'conn-1',draftId:'draft-1',
+    draftHash,amount:58.32,currency:'USD',paymentAuthorizationReference:'shop-pay-other',expiresAt:'2099-01-01T00:00:00Z'},'approval-secret','2026-10-25T00:00:00Z');
+  await assert.rejects(shopPaySubmit({approvalToken:wrongRef}),/approval_payment_authorization_mismatch/);
+});
+
+test('Shop Pay confirmation reports a not-ready vehicle distinctly from the execution block',async()=>{
+  await assert.rejects(shopPaySubmit({extra:{shopPayReadiness:{businessReadiness:'CONNECTED',shopPayVehicleReady:false}}}),/shop_pay_vehicle_not_ready/);
+  await assert.rejects(shopPaySubmit({extra:{shopPayReadiness:{businessReadiness:'TRANSACTION_READY',shopPayVehicleReady:true}}}),/shop_pay_execution_blocked/);
+});
+
+test('Stripe confirmation is unchanged when the draft carries no vehicle field (legacy default)',async()=>{
+  let captured:any;
+  const result=await submitMuseConfirmation({
+    connectionId:'conn-1',draftId:'draft-1',approvalToken:approval,agentId:'muse-agent',subjectId:'human-1',approvalSecret:'approval-secret',
+    authority:{async resolve(){return connection as any;},async consumeOnce(){return true;}} as any,
+    drafts:{async verifyForExecution(){return {connection,draft,draftHash,state} as any;}} as any,
+    runtime:{async quoteVariants(){return {quote:pricing};},async quoteLandedTotal(){return {quote:landed};}} as any,
+    savedStripeAuthorization:{reference:'seti_saved_1',customerId:'cus_123',paymentMethodId:'pm_123',usage:'off_session'},
+    execution:{async createCheckout(args:any){captured=args;return {checkoutSessionId:'cs_legacy'};}} as any
+  });
+  assert.equal(result.checkoutSessionId,'cs_legacy');
+  assert.equal(captured.paymentVehicle,'stripe');
+});

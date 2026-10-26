@@ -62,6 +62,7 @@ test('signed provider transaction draft round-trips exact execution state',async
     items:[{variantId:'gid://shopify/ProductVariant/123',quantity:2,unitPrice:'62.75'}],
     shippingAddress:input.fulfillment.shippingAddress,
     shipping:{handle:'ground',title:'Ground',amount:'7.50'},
+    paymentVehicle:'stripe',
     payment:{provider:'stripe',externalAccountId:'acct-1'},
     subtotal:'125.50',
     tax:'10.04',
@@ -241,5 +242,39 @@ test('draft creation rejects a raw-ID or over-long review fact and saves no enve
     service.create({...input,estimatedArrival:'acct_123'}),
     /muse_review_fact_invalid/
   );
+  assert.equal(auth.envelopes.size,0);
+});
+
+test('Shop Pay draft carries paymentVehicle shop_pay through the signed envelope and verifies it',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create({...input,payment:{provider:'shop_pay' as const,externalAccountId:'acct-1'},paymentVehicle:'shop_pay' as const});
+  assert.equal(created.approvalEnvelope.paymentVehicle,'shop_pay');
+  assert.equal(created.approvalEnvelope.payment.provider,'shop_pay');
+  assert.equal(created.draft.providerState.paymentVehicle,'shop_pay');
+  const verified=await service.verifyForExecution({companyId:'org-a',connectionId:'conn-1',draftId:created.draft.draftId,now:new Date('2026-10-25T02:01:00Z')});
+  assert.equal(verified.state.paymentVehicle,'shop_pay');
+  assert.equal(verified.state.payment.provider,'shop_pay');
+});
+
+test('Shop Pay draft defaults paymentVehicle from payment.provider when the field is omitted',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create({...input,payment:{provider:'shop_pay' as const,externalAccountId:'acct-1'}});
+  assert.equal(created.approvalEnvelope.paymentVehicle,'shop_pay');
+});
+
+test('legacy Stripe draft without a vehicle field still verifies as stripe',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create(input);
+  assert.equal(created.approvalEnvelope.paymentVehicle,'stripe');
+  assert.equal(created.draft.providerState.paymentVehicle,'stripe');
+});
+
+test('draft creation rejects a paymentVehicle that disagrees with payment.provider and saves nothing',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  await assert.rejects(service.create({...input,paymentVehicle:'shop_pay' as const}),/provider_transaction_payment_vehicle_mismatch/);
   assert.equal(auth.envelopes.size,0);
 });

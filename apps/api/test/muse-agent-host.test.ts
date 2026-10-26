@@ -303,3 +303,42 @@ test('generic execute with a mismatched step scope submits nothing',async()=>{
   await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'other'}}),/muse_step_scope_mismatch/);
   assert.equal(f.calls.genericSubmits.length,0);
 });
+
+// --- Shop Pay vehicle: review label and readiness ---
+test('Shop Pay review shows Shop Pay label, never a raw account ID, and is not business-ready without a vehicle flag',async()=>{
+  const f=fixture();
+  f.deps.drafts.verifyForExecution=async()=>({draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
+    description:'Headphones',paymentVehicle:'shop_pay',payment:{provider:'shop_pay',externalAccountId:'acct_private'},
+    pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
+    fulfillment:{externalAccountId:'seller.myshopify.com',sellerDisplayName:'Demo Seller',
+      shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
+      landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
+  }});
+  f.deps.identities.resolveStripeSavedPayment=async()=>null;
+  f.deps.identities.resolveShopPaySavedPayment=async()=>({reference:'shop-pay-ref'});
+  const context=await f.host.readContext();
+  assert.equal(context.businessReady,false);
+  assert.equal(context.consumerEnrolled,true);
+  // With no vehicle flag the validator routes to
+  // request_business_connection, so no review is presented.
+  await assert.rejects(f.host.dispatch({action:'present_review',args:{draftId:'draft'}}),/muse_step_not_authorized/);
+});
+
+test('Shop Pay review is business-ready only when the host business check and the vehicle flag both pass',async()=>{
+  const f=fixture();
+  f.deps.drafts.verifyForExecution=async()=>({draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
+    description:'Headphones',paymentVehicle:'shop_pay',payment:{provider:'shop_pay',externalAccountId:'acct_private'},
+    pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
+    fulfillment:{externalAccountId:'seller.myshopify.com',sellerDisplayName:'Demo Seller',
+      shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
+      landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
+  }});
+  f.deps.identities.resolveStripeSavedPayment=async()=>null;
+  f.deps.identities.resolveShopPaySavedPayment=async()=>({reference:'shop-pay-ref'});
+  f.deps.shopPayVehicleReady=async()=>true;
+  assert.equal((await f.host.readContext()).businessReady,true);
+  await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
+  const event=f.host.events[0];
+  assert.equal(event.paymentLabel,'Shop Pay · Saved payment');
+  assert.doesNotMatch(JSON.stringify(event),/acct_private|shop-pay-ref/);
+});
