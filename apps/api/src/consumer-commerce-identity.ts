@@ -70,6 +70,28 @@ export interface StripeSavedPaymentAuthorization {
   usage:'off_session';
 }
 
+// Shop Pay saved authorization: a Shop Pay rail identity carries only
+// a server-recorded reference, not Stripe customer/payment-method IDs.
+// It is an ADDITIONAL vehicle alongside Stripe, never a relabel of it:
+// stripeSavedPaymentAuthorization() still returns null for a shop_pay
+// identity, and this function returns null for a stripe identity.
+// The reference is opaque here — it is never rendered to a consumer,
+// only matched exactly against an approval token (see
+// muse-confirmation-submit.ts). Live Shop Pay execution is still
+// blocked (shop_pay_execution_blocked); this resolver only proves the
+// consumer enrolled on the Shop Pay rail.
+export interface ShopPaySavedPaymentAuthorization {
+  reference:string;
+}
+
+export function shopPaySavedPaymentAuthorization(identity:ConsumerCommerceIdentity):ShopPaySavedPaymentAuthorization|null{
+  const authorization=identity.paymentAuthorization;
+  if(authorization.rail!=='shop_pay') return null;
+  if(!authorization.reference.trim()) throw new Error('shop_pay_payment_reference_invalid');
+  if(!authorization.verifiedAt) throw new Error('shop_pay_payment_verification_required');
+  return {reference:authorization.reference};
+}
+
 export function stripeSavedPaymentAuthorization(identity:ConsumerCommerceIdentity):StripeSavedPaymentAuthorization|null{
   const authorization=identity.paymentAuthorization;
   if(authorization.rail!=='stripe') return null;
@@ -195,5 +217,11 @@ export class PostgresConsumerCommerceIdentityStore {
     const identity=await this.get(subjectId);
     if(!identity) return null;
     return stripeSavedPaymentAuthorization(identity);
+  }
+
+  async resolveShopPaySavedPayment(subjectId:string):Promise<ShopPaySavedPaymentAuthorization|null>{
+    const identity=await this.get(subjectId);
+    if(!identity) return null;
+    return shopPaySavedPaymentAuthorization(identity);
   }
 }

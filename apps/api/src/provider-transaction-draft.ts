@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {signDraft,verifyDraft,type SignedDraftEnvelope} from '@gift-signal/zero-trust';
 import {decimalPriceToMinorUnits,type ConnectorActionDraft,type PostgresZeroTrustAuthority,type ShopifyLandedQuote,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
 import {validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
+import {resolvePaymentVehicle,type PaymentVehicle} from './shop-pay-vehicle.js';
 
 export interface ProviderApprovalEnvelope {
   connectionId:string;
@@ -16,7 +17,11 @@ export interface ProviderApprovalEnvelope {
   items:Array<{variantId:string;quantity:number;unitPrice:string;title?:string}>;
   shippingAddress:ShopifyShippingAddress;
   shipping:{handle:string;title:string;amount:string};
-  payment:{provider:'stripe';externalAccountId:string};
+  // ADDITIONAL vehicle alongside Stripe. Always present on envelopes
+  // created after this step; legacy envelopes omit it and parse as
+  // 'stripe'. Must agree with payment.provider (see parseState).
+  paymentVehicle:PaymentVehicle;
+  payment:{provider:'stripe'|'shop_pay';externalAccountId:string};
   subtotal:string;
   tax:string;
   total:string;
@@ -24,7 +29,10 @@ export interface ProviderApprovalEnvelope {
 }
 
 export interface ProviderTransactionDraftState {
-  payment:{provider:'stripe';externalAccountId:string};
+  // Optional only for backward compatibility with legacy signed state;
+  // parseState defaults a missing field to 'stripe'.
+  paymentVehicle?:PaymentVehicle;
+  payment:{provider:'stripe'|'shop_pay';externalAccountId:string};
   fulfillment:{
     provider:'shopify';
     externalAccountId:string;
@@ -55,7 +63,11 @@ export class ProviderTransactionDraftService {
   async create(args:{
     companyId:string;
     connectionId:string;
-    payment:{provider:'stripe';externalAccountId:string};
+    payment:{provider:'stripe'|'shop_pay';externalAccountId:string};
+    // Optional: when omitted it defaults to payment.provider, so a
+    // stripe draft stays stripe and a shop_pay draft is shop_pay. When
+    // supplied it must agree with payment.provider.
+    paymentVehicle?:PaymentVehicle;
     fulfillment:{
       provider:'shopify';
       externalAccountId:string;
@@ -112,9 +124,11 @@ export class ProviderTransactionDraftService {
       return {...line, title: validateItemTitle(args.itemTitles[line.variantId], line.variantId)};
     });
 
+    const paymentVehicle=resolvePaymentVehicle({paymentProvider:args.payment.provider,paymentVehicle:args.paymentVehicle});
     const draftId=randomUUID();
     const expiresAt=new Date(now.getTime()+this.ttlMs).toISOString();
     const state:ProviderTransactionDraftState={
+      paymentVehicle,
       payment:structuredClone(args.payment),
       fulfillment:{
         ...structuredClone(args.fulfillment),
@@ -161,7 +175,8 @@ export class ProviderTransactionDraftService {
         ...(line.title ? {title: line.title} : {})})),
       shippingAddress:structuredClone(state.fulfillment.shippingAddress!),
       shipping:structuredClone(state.fulfillment.landedQuote!.shipping),
-      payment:{provider:'stripe',externalAccountId:state.payment.externalAccountId},
+      paymentVehicle:state.paymentVehicle!,
+      payment:{provider:state.payment.provider,externalAccountId:state.payment.externalAccountId},
       subtotal:state.fulfillment.landedQuote!.subtotal,
       tax:state.fulfillment.landedQuote!.tax,
       total:state.fulfillment.landedQuote!.total,
@@ -218,7 +233,10 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
   const payment=value.payment as Record<string,unknown>|undefined;
   const fulfillment=value.fulfillment as Record<string,unknown>|undefined;
   const pricing=value.pricing as Record<string,unknown>|undefined;
-  if(!payment||payment.provider!=='stripe'||typeof payment.externalAccountId!=='string') throw new Error('provider_transaction_draft_state_invalid');
+  if(!payment||(payment.provider!=='stripe'&&payment.provider!=='shop_pay')||typeof payment.externalAccountId!=='string') throw new Error('provider_transaction_draft_state_invalid');
+  let paymentVehicle:PaymentVehicle;
+  try{paymentVehicle=resolvePaymentVehicle({paymentProvider:payment.provider,paymentVehicle:value.paymentVehicle});}
+  catch{throw new Error('provider_transaction_draft_state_invalid');}
   if(!fulfillment||fulfillment.provider!=='shopify'||typeof fulfillment.externalAccountId!=='string'||!Array.isArray(fulfillment.lineItems)){
     throw new Error('provider_transaction_draft_state_invalid');
   }
@@ -261,7 +279,8 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
     estimatedArrival=validateOptionalReviewFact(value.estimatedArrival);
   }catch{throw new Error('provider_transaction_draft_state_invalid');}
   return {
-    payment:{provider:'stripe',externalAccountId:payment.externalAccountId},
+    paymentVehicle,
+    payment:{provider:payment.provider as 'stripe'|'shop_pay',externalAccountId:payment.externalAccountId},
     fulfillment:{provider:'shopify',externalAccountId:fulfillment.externalAccountId,
       ...(typeof fulfillment.sellerDisplayName==='string' ? {sellerDisplayName: fulfillment.sellerDisplayName} : {}),
       lineItems,...(shippingAddress?{shippingAddress,landedQuote}: {})},

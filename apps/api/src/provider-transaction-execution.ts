@@ -5,6 +5,7 @@ import type {PostgresProviderAgentRegistry} from './provider-agent-registry.js';
 import type {ProviderSecurityAuditor} from './provider-security-audit.js';
 import type {PostgresProviderTransactionIntentStore} from './provider-transaction-store.js';
 import type {ShopifyLandedQuote,ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
+import {executeShopPaySavedAuthorization,type PaymentVehicle} from './shop-pay-vehicle.js';
 import type {ProviderRuntimeControlPlane} from './provider-runtime-control.js';
 
 export type AutonomousTransactionResult =
@@ -52,9 +53,20 @@ export class ProviderTransactionExecutionService {
       landedQuote?:ShopifyLandedQuote;
     };
     approval:{jti:string;consume:()=>Promise<boolean>};
+    // Optional vehicle signal from the signed draft. When it is
+    // 'shop_pay' this method blocks before any commit (see below),
+    // even if provider was passed as 'stripe' by an older caller.
+    paymentVehicle?:PaymentVehicle;
     savedStripeAuthorization?:{customerId:string;paymentMethodId:string;usage:'off_session'};
     fetchImpl?:typeof fetch;
   }):Promise<AutonomousTransactionResult>{
+    // Shop Pay execution is blocked, not routed to Stripe: there is no
+    // Shop Pay API client, no authorized Shop Pay credentials, and no
+    // Shop Pay checkout endpoint in this codebase. This throw happens
+    // before any connection/policy/intent lookup, approval consumption,
+    // or payment attempt, so a blocked attempt commits nothing and
+    // cannot be mistaken for a Stripe checkout.
+    if(args.provider==='shop_pay'||args.paymentVehicle==='shop_pay') executeShopPaySavedAuthorization();
     if(args.provider!=='stripe') throw new Error('provider_transaction_not_supported');
     const connection=await this.connections.get(args.companyId,args.provider,args.externalAccountId);
     if(!connection) throw new Error('provider_connection_not_found');
