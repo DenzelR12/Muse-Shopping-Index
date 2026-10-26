@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {signDraft,verifyDraft,type SignedDraftEnvelope} from '@gift-signal/zero-trust';
 import {decimalPriceToMinorUnits,type ConnectorActionDraft,type PostgresZeroTrustAuthority,type ShopifyLandedQuote,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
+import {validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
 
 export interface ProviderApprovalEnvelope {
   connectionId:string;
@@ -8,8 +9,8 @@ export interface ProviderApprovalEnvelope {
   displayedDraftHash:string;
   expiresAt:string;
   description:string;
-  seller:{provider:'shopify';externalAccountId:string};
-  items:Array<{variantId:string;quantity:number;unitPrice:string}>;
+  seller:{provider:'shopify';externalAccountId:string;displayName?:string};
+  items:Array<{variantId:string;quantity:number;unitPrice:string;title?:string}>;
   shippingAddress:ShopifyShippingAddress;
   shipping:{handle:string;title:string;amount:string};
   payment:{provider:'stripe';externalAccountId:string};
@@ -24,13 +25,14 @@ export interface ProviderTransactionDraftState {
   fulfillment:{
     provider:'shopify';
     externalAccountId:string;
+    sellerDisplayName?:string;
     lineItems:Array<{variantId:string;quantity:number}>;
     shippingAddress?:ShopifyShippingAddress;
     landedQuote?:ShopifyLandedQuote;
   };
   pricing:{
     currency:string;
-    lines:Array<{variantId:string;quantity:number;unitPrice:string;availableForSale:boolean;inventoryQuantity:number|null}>;
+    lines:Array<{variantId:string;quantity:number;unitPrice:string;availableForSale:boolean;inventoryQuantity:number|null;title?:string}>;
   };
   description:string;
   successUrl:string;
@@ -58,6 +60,8 @@ export class ProviderTransactionDraftService {
     amount:number;
     currency:string;
     pricing:{currency:string;lines:Array<{variantId:string;quantity:number;unitPrice:string;availableForSale:boolean;inventoryQuantity:number|null}>};
+    sellerDisplayName?:string;
+    itemTitles?:Record<string,string>;
     description:string;
     successUrl:string;
     cancelUrl:string;
@@ -79,12 +83,28 @@ export class ProviderTransactionDraftService {
       throw new Error('connection_transaction_actions_not_granted');
     }
 
+    // Server-owned display data only: a seller name is never derived from
+    // the shop domain, and an item title is never a variant ID. Both are
+    // optional at draft creation for backward compatibility with existing
+    // callers, but if supplied they must be valid; a review later fails
+    // closed if no valid name/title is available at review time.
+    const sellerDisplayName = args.sellerDisplayName === undefined
+      ? undefined
+      : validateSellerDisplayName(args.sellerDisplayName, args.fulfillment.externalAccountId);
+    const titledPricingLines = args.pricing.lines.map((line) => {
+      if (!args.itemTitles || !(line.variantId in args.itemTitles)) return line;
+      return {...line, title: validateItemTitle(args.itemTitles[line.variantId], line.variantId)};
+    });
+
     const draftId=randomUUID();
     const expiresAt=new Date(now.getTime()+this.ttlMs).toISOString();
     const state:ProviderTransactionDraftState={
       payment:structuredClone(args.payment),
-      fulfillment:structuredClone(args.fulfillment),
-      pricing:structuredClone(args.pricing),
+      fulfillment:{
+        ...structuredClone(args.fulfillment),
+        ...(sellerDisplayName ? {sellerDisplayName} : {}),
+      },
+      pricing:{...structuredClone(args.pricing), lines: structuredClone(titledPricingLines)},
       description:args.description,
       successUrl:args.successUrl,
       cancelUrl:args.cancelUrl
@@ -113,8 +133,10 @@ export class ProviderTransactionDraftService {
       displayedDraftHash:envelope.payloadHash,
       expiresAt:draft.expiresAt,
       description:state.description,
-      seller:{provider:'shopify',externalAccountId:state.fulfillment.externalAccountId},
-      items:state.pricing.lines.map(line=>({variantId:line.variantId,quantity:line.quantity,unitPrice:line.unitPrice})),
+      seller:{provider:'shopify',externalAccountId:state.fulfillment.externalAccountId,
+        ...(state.fulfillment.sellerDisplayName ? {displayName: state.fulfillment.sellerDisplayName} : {})},
+      items:state.pricing.lines.map(line=>({variantId:line.variantId,quantity:line.quantity,unitPrice:line.unitPrice,
+        ...(line.title ? {title: line.title} : {})})),
       shippingAddress:structuredClone(state.fulfillment.shippingAddress!),
       shipping:structuredClone(state.fulfillment.landedQuote!.shipping),
       payment:{provider:'stripe',externalAccountId:state.payment.externalAccountId},
@@ -193,7 +215,13 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
     }
     const inventoryQuantity=record.inventoryQuantity===null?null:Number(record.inventoryQuantity);
     if(inventoryQuantity!==null&&!Number.isFinite(inventoryQuantity)) throw new Error('provider_transaction_draft_state_invalid');
-    return {variantId:record.variantId,quantity:record.quantity,unitPrice:record.unitPrice,availableForSale:record.availableForSale,inventoryQuantity};
+    if(record.title!==undefined){
+      // A title stored in signed state must itself be valid; an invalid
+      // stored title makes the whole state invalid rather than leaking.
+      try{validateItemTitle(record.title, record.variantId);}catch{throw new Error('provider_transaction_draft_state_invalid');}
+    }
+    return {variantId:record.variantId,quantity:record.quantity,unitPrice:record.unitPrice,availableForSale:record.availableForSale,inventoryQuantity,
+      ...(typeof record.title==='string' ? {title: record.title} : {})};
   });
   if(typeof value.description!=='string'||typeof value.successUrl!=='string'||typeof value.cancelUrl!=='string'){
     throw new Error('provider_transaction_draft_state_invalid');
@@ -201,9 +229,14 @@ function parseState(value:Record<string,unknown>|undefined):ProviderTransactionD
   const shippingAddress=parseOptionalShippingAddress(fulfillment.shippingAddress);
   const landedQuote=parseOptionalLandedQuote(fulfillment.landedQuote);
   if(Boolean(shippingAddress)!==Boolean(landedQuote)) throw new Error('provider_transaction_draft_state_invalid');
+  if(fulfillment.sellerDisplayName!==undefined){
+    try{validateSellerDisplayName(fulfillment.sellerDisplayName, fulfillment.externalAccountId);}catch{throw new Error('provider_transaction_draft_state_invalid');}
+  }
   return {
     payment:{provider:'stripe',externalAccountId:payment.externalAccountId},
-    fulfillment:{provider:'shopify',externalAccountId:fulfillment.externalAccountId,lineItems,...(shippingAddress?{shippingAddress,landedQuote}: {})},
+    fulfillment:{provider:'shopify',externalAccountId:fulfillment.externalAccountId,
+      ...(typeof fulfillment.sellerDisplayName==='string' ? {sellerDisplayName: fulfillment.sellerDisplayName} : {}),
+      lineItems,...(shippingAddress?{shippingAddress,landedQuote}: {})},
     pricing:{currency:pricing.currency,lines:pricingLines},
     description:value.description,
     successUrl:value.successUrl,

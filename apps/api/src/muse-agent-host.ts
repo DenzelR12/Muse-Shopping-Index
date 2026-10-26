@@ -4,6 +4,7 @@ import {validateMuseCommerceStep,type MuseCommerceContext,type MuseCommerceStep}
 import type {MuseToolAgentHost,MusePublicToolStatus} from '@gift-signal/competition-demo/muse-tool-agent';
 import type {PostgresZeroTrustAuthority} from '@gift-signal/mcp-gateway';
 import type {ProviderTransactionDraftService} from './provider-transaction-draft.js';
+import {validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
 import type {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
 import type {PostgresProviderTransactionIntentStore,ProviderTransactionIntent} from './provider-transaction-store.js';
 
@@ -37,18 +38,10 @@ export interface MuseHostDependencies {
 
 
 function resolvedSellerDisplayName(displayName:string|null|undefined,externalAccountId:string):string{
-  const name=displayName?.trim();
-  if(!name||name===externalAccountId||/myshopify\.com|acct_|gid:\/\//i.test(name)){
-    throw Error('muse_review_seller_display_required');
-  }
-  return name;
+  return validateSellerDisplayName(displayName,externalAccountId);
 }
 function resolvedItemTitle(line:{variantId:string;title?:string;productTitle?:string}):string{
-  const title=(line.title??line.productTitle)?.trim();
-  if(!title||title===line.variantId||/gid:\/\//.test(title)){
-    throw Error('muse_review_item_title_required');
-  }
-  return title;
+  return validateItemTitle(line.title??line.productTitle,line.variantId);
 }
 
 /** Request-scoped host; instantiate only after verifying OIDC. Do not create
@@ -133,8 +126,16 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
       const verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
       const state=verified.state;const landed=state.fulfillment.landedQuote;
       if(!landed||!state.fulfillment.shippingAddress) throw Error('provider_landed_quote_required');
+      // Server-owned supply, in order: (1) the signed draft state,
+      // which only an authenticated company caller could have populated
+      // at draft creation; (2) the injected manifest resolver, which
+      // must come from a company manifest/connection, never from the
+      // shop domain. No fallback to externalAccountId exists.
+      const stateDisplayName = state.fulfillment.sellerDisplayName;
+      const manifestDisplayName = stateDisplayName ? null
+        : (this.deps.resolveSellerDisplayName ? await this.deps.resolveSellerDisplayName(connection.companyId) : null);
       const seller=resolvedSellerDisplayName(
-        this.deps.resolveSellerDisplayName?await this.deps.resolveSellerDisplayName(connection.companyId):null,
+        stateDisplayName ?? manifestDisplayName,
         state.fulfillment.externalAccountId);
       const items=state.pricing.lines.map((line)=>({title:resolvedItemTitle(line),quantity:line.quantity,unitPrice:line.unitPrice}));
       this.events.push({type:'review',requiresBuy:true,connectionId:this.request.connectionId,draftId:this.request.draftId,
