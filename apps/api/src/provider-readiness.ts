@@ -18,10 +18,12 @@ export interface ProviderVerificationEvidence {
   // Meta-origin business evaluated without metaVerification can never
   // reach TRANSACTION_READY here. metaVerification must be supplied and
   // recorded server-side; it is not read from model output or browser JSON.
-  // Note: the Postgres readiness store does not yet persist
-  // metaVerification (it stores only the legacy metaBusinessVerified flag),
-  // so callers must supply it at evaluation time until that store gains a
-  // column for it. That gap fails closed rather than bypassing the gate.
+  // Note: the Postgres readiness store itself stores only the legacy
+  // metaBusinessVerified flag. Origin and metaVerification persist in
+  // the company seller-manifest store (muse-seller-display-store.ts),
+  // which the readiness service reads as a fallback; callers may also
+  // still supply them at evaluation time. Either way, a missing or
+  // invalid record fails closed rather than bypassing the gate.
   origin?:BusinessOrigin;
   metaBusinessVerified?:boolean;
   metaVerification?:MetaBusinessVerification;

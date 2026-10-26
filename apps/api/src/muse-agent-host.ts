@@ -258,16 +258,20 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
       const verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
       const state=verified.state;const landed=state.fulfillment.landedQuote;
       if(!landed||!state.fulfillment.shippingAddress) throw Error('provider_landed_quote_required');
-      // Server-owned supply, in order: (1) the signed draft state,
-      // which only an authenticated company caller could have populated
-      // at draft creation; (2) the injected manifest resolver, which
-      // must come from a company manifest/connection, never from the
-      // shop domain. No fallback to externalAccountId exists.
+      // Server-owned supply, in order: (1) the injected manifest
+      // resolver, which reads the persisted seller manifest store
+      // first (see muse-seller-display-store.ts) and falls back to
+      // the process-local registry only where it cannot leak; (2) the
+      // signed draft state, which only an authenticated company
+      // caller could have populated at draft creation. No fallback
+      // to externalAccountId exists, and neither source derives a
+      // name from the shop domain.
+      const manifestDisplayName = this.deps.resolveSellerDisplayName
+        ? await this.deps.resolveSellerDisplayName(connection.companyId)
+        : null;
       const stateDisplayName = state.fulfillment.sellerDisplayName;
-      const manifestDisplayName = stateDisplayName ? null
-        : (this.deps.resolveSellerDisplayName ? await this.deps.resolveSellerDisplayName(connection.companyId) : null);
       const seller=resolvedSellerDisplayName(
-        stateDisplayName ?? manifestDisplayName,
+        manifestDisplayName ?? stateDisplayName,
         state.fulfillment.externalAccountId);
       const items=state.pricing.lines.map((line)=>({title:resolvedItemTitle(line),quantity:line.quantity,unitPrice:line.unitPrice}));
       const reviewFacts=reviewFactsFromState(state);
