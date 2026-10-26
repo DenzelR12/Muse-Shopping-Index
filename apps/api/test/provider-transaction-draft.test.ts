@@ -190,3 +190,56 @@ test('draft creation rejects a seller name derived from the shop domain and a ti
   );
   assert.equal(auth.envelopes.size,0);
 });
+
+test('draft creation carries validated terms, payment timing, and estimated arrival into the signed approval envelope',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create({
+    ...input,
+    terms:'Returns within 30 days of delivery.',
+    paymentTiming:'Charged when you approve this exact transaction.',
+    estimatedArrival:'October 28, 2026'
+  });
+  assert.equal(created.approvalEnvelope.terms,'Returns within 30 days of delivery.');
+  assert.equal(created.approvalEnvelope.paymentTiming,'Charged when you approve this exact transaction.');
+  assert.equal(created.approvalEnvelope.estimatedArrival,'October 28, 2026');
+  assert.equal(created.draft.providerState.terms,'Returns within 30 days of delivery.');
+  assert.equal(created.draft.providerState.paymentTiming,'Charged when you approve this exact transaction.');
+  assert.equal(created.draft.providerState.estimatedArrival,'October 28, 2026');
+  const verified=await service.verifyForExecution({
+    companyId:'org-a',
+    connectionId:'conn-1',
+    draftId:created.draft.draftId,
+    now:new Date('2026-10-25T02:01:00Z')
+  });
+  assert.equal(verified.state.terms,'Returns within 30 days of delivery.');
+  assert.equal(verified.state.paymentTiming,'Charged when you approve this exact transaction.');
+  assert.equal(verified.state.estimatedArrival,'October 28, 2026');
+});
+
+test('draft creation without review facts leaves the envelope without them, so a review shows not available',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  const created=await service.create(input);
+  assert.equal(created.approvalEnvelope.terms,undefined);
+  assert.equal(created.approvalEnvelope.paymentTiming,undefined);
+  assert.equal(created.approvalEnvelope.estimatedArrival,undefined);
+});
+
+test('draft creation rejects a raw-ID or over-long review fact and saves no envelope',async()=>{
+  const auth=authority();
+  const service=new ProviderTransactionDraftService(auth as any,'draft-secret');
+  await assert.rejects(
+    service.create({...input,terms:'gid://shopify/ProductVariant/123'}),
+    /muse_review_fact_invalid/
+  );
+  await assert.rejects(
+    service.create({...input,paymentTiming:'x'.repeat(1001)}),
+    /muse_review_fact_invalid/
+  );
+  await assert.rejects(
+    service.create({...input,estimatedArrival:'acct_123'}),
+    /muse_review_fact_invalid/
+  );
+  assert.equal(auth.envelopes.size,0);
+});

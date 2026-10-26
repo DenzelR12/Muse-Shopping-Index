@@ -6,6 +6,7 @@ import {
   registerServerCompanyDisplayName,
   resolveServerCompanyDisplayName,
   resolveDraftItemTitles,
+  validateOptionalReviewFact,
 } from '../dist/muse-seller-display.js';
 
 test('seller display names are never derived from a raw shop domain or account ID', () => {
@@ -71,4 +72,14 @@ test('item titles fail closed instead of falling back to a variant ID', () => {
     () => resolveDraftItemTitles([line], {'gid://shopify/ProductVariant/123': 'gid://shopify/ProductVariant/123'}),
     /muse_review_item_title_required/
   );
+});
+
+test('optional review facts are validated, never a raw ID or an invented date', () => {
+  assert.equal(validateOptionalReviewFact(undefined), undefined);
+  assert.equal(validateOptionalReviewFact('  October 28, 2026  '), 'October 28, 2026');
+  assert.throws(() => validateOptionalReviewFact(''), /muse_review_fact_invalid/);
+  assert.throws(() => validateOptionalReviewFact('x'.repeat(1001)), /muse_review_fact_invalid/);
+  assert.throws(() => validateOptionalReviewFact('gid://shopify/ProductVariant/123'), /muse_review_fact_invalid/);
+  assert.throws(() => validateOptionalReviewFact('shop.myshopify.com'), /muse_review_fact_invalid/);
+  assert.throws(() => validateOptionalReviewFact('acct_123'), /muse_review_fact_invalid/);
 });
