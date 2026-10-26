@@ -1,0 +1,31 @@
+{
+  "name": "@gift-signal/competition-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@gift-signal/shopping-index": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "exports": {
+    "./muse-tool-agent": {
+      "types": "./dist/muse-tool-agent.d.ts",
+      "default": "./dist/muse-tool-agent.js"
+    },
+    "./muse-commerce": {
+      "types": "./dist/muse-commerce.d.ts",
+      "default": "./dist/muse-commerce.js"
+    }
+  }
+}
