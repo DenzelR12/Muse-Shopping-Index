@@ -652,7 +652,7 @@ test('Muse approval uses subject-owned saved payment while generic approval has 
   assert.ok(generic>=0&&muse>generic&&end>muse);
   assert.doesNotMatch(source.slice(generic,muse),/consumerCommerceIdentities|resolveSavedPayment|paymentAuthorizationReference/);
   const block=source.slice(muse,end);
-  assert.match(block,/resolveSavedPayment:\(subjectId\)=>consumerCommerceIdentities.resolveStripeSavedPayment\(subjectId\)/);
+  assert.match(block,/resolveSavedPayment:async\(subjectId\)=>\([\s\S]*?consumerCommerceIdentities\.resolveStripeSavedPayment\(subjectId\)[\s\S]*?consumerCommerceIdentities\.resolveShopPaySavedPayment\(subjectId\)/);
   assert.doesNotMatch(block,/payload.paymentAuthorizationReference|payload.customerId|payload.paymentMethodId/);
 });
 
