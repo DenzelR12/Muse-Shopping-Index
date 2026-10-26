@@ -1,0 +1,11 @@
+# Security-sensitive ownership. GitHub branch/ruleset settings should require CODEOWNER review on main.
+* @DenzelR12
+/apps/api/ @DenzelR12
+/packages/policy/ @DenzelR12
+/packages/zero-trust/ @DenzelR12
+/services/mcp-gateway/ @DenzelR12
+/services/payments/ @DenzelR12
+/services/link-authority/ @DenzelR12
+/services/shopify-webhooks/ @DenzelR12
+/.github/ @DenzelR12
+/SECURITY.md @DenzelR12
