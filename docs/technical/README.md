@@ -66,7 +66,7 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 ### 9. Run, test, and operate it
 
 - Read: [Development, testing and contribution](development.md), [Deployment and operations](operations.md)
-- Validate with: `pnpm typecheck`, `pnpm build`, `node scripts/build-muse-commerce-training.mjs --check`, `node scripts/rehearse-muse.mjs`, and the full suite in [.github/workflows/ci.yml](../../.github/workflows/ci.yml) — pending: the workflow file currently in this repo is at the repo root as `GitHub workflow ci.yml.txt` and must be moved/renamed to exactly `.github/workflows/ci.yml`; GitHub Actions will not run it from the root, and Muse cannot push workflow files (no Workflows permission).
+- Validate with: `pnpm typecheck`, `pnpm build`, `node scripts/build-muse-commerce-training.mjs --check`, `node scripts/rehearse-muse.mjs`, and the full suite in [.github/workflows/ci.yml](../../.github/workflows/ci.yml) — pending: `.github/workflows/ci.yml` does not exist in this repo yet (the workflow file previously uploaded at the repo root as `GitHub workflow ci.yml.txt` was deleted); it must be created at exactly `.github/workflows/ci.yml` for GitHub Actions to run it, and Muse cannot push workflow files (no Workflows permission).
 - Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is complete. Never use live money without explicit approval of that exact transaction.
 
 ## Reading paths by audience
