@@ -77,6 +77,20 @@ export function resolveSellerDisplayNameFromManifest(
  * ConnectorRegistry) is the follow-up integration; until it exists, a
  * company with no signed draft display name and no registered name
  * fails closed, by design.
+ *
+ * Persisted-store check, 2026-10-26: no suitable persisted store was
+ * found without a major migration. ConnectorRegistry in
+ * services/mcp-gateway/src/business-connectors.ts is also a
+ * process-local Map, lives in a different service from the API host,
+ * and is not shared with it. The API readiness, transaction, and
+ * identity stores persist drafts, transactions, readiness, and
+ * identities — none maps companyId to a display name. Replacing this
+ * registry would therefore require a new persisted manifest store,
+ * a schema/migration, and cross-service sharing, which is out of
+ * scope for this task and is intentionally NOT invented here. The
+ * signed draft state remains the durable path: a draft created with
+ * a validated display name carries that name in its signed state,
+ * so a review does not depend on this registry surviving a restart.
  */
 const serverCompanyDisplayNames = new Map<string, string>();
 
