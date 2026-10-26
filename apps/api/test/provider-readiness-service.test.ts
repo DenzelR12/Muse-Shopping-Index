@@ -79,7 +79,7 @@ test('readiness advances only when stored evidence and granted capabilities supp
     fulfillmentStatus:true
   });
   const service=new ProviderReadinessService(connections,evidence);
-  const manifest=await service.evaluate({companyId:'org-a',provider:'walmart',externalAccountId:'seller-1'});
+  const manifest=await service.evaluate({companyId:'org-a',provider:'walmart',externalAccountId:'seller-1',origin:'non-meta'});
   assert.equal(manifest.readiness,'TRANSACTION_READY');
 });
 
@@ -177,11 +177,71 @@ test('readiness derives agent policy from current persisted policy',async()=>{
   };
   const agents={async requireActive(){return [];}};
   const service=new ProviderReadinessService(connections,evidence,policies,agents);
-  const manifest=await service.evaluate({companyId:'org-a',provider:'walmart',externalAccountId:'seller-1'});
+  const manifest=await service.evaluate({companyId:'org-a',provider:'walmart',externalAccountId:'seller-1',origin:'non-meta'});
   assert.equal(manifest.readiness,'AUTONOMOUS_READY');
   assert.deepEqual(manifest.agentPolicy.allowedAgents,['muse','enterprise-agent']);
   assert.equal(manifest.agentPolicy.maxOrderAmount,2500);
   assert.equal(manifest.agentPolicy.currency,'USD');
+});
+
+test('Meta-origin readiness through the service fails closed without server-recorded evidence',async()=>{
+  const connections=fakeConnections();
+  const evidence=fakeEvidence();
+  connections.set({
+    companyId:'org-a',
+    provider:'walmart',
+    externalAccountId:'seller-1',
+    grantedCapabilities:['catalog.read','inventory.read','pricing.read','order.create','fulfillment.read']
+  });
+  evidence.set({
+    companyId:'org-a',
+    provider:'walmart',
+    externalAccountId:'seller-1',
+    identityVerified:true,
+    metaBusinessVerified:true,
+    catalogValidated:true,
+    webhookEvents:true,
+    idempotency:true,
+    providerRevalidation:true,
+    agentPolicyConfigured:false,
+    auditTrail:false,
+    recoveryActions:false,
+    fulfillmentStatus:true
+  });
+  const service=new ProviderReadinessService(connections,evidence);
+  // Omitted origin fails closed to the Meta path, and the Postgres store
+  // holds only the legacy flag, so no evidence is available here.
+  const blocked=await service.evaluate({companyId:'org-a',provider:'walmart',externalAccountId:'seller-1'});
+  assert.equal(blocked.readiness,'CONNECTED');
+  assert.equal(blocked.capabilities.purchase,false);
+  // Server-recorded evidence supplied at evaluation time advances it.
+  const advanced=await service.evaluate({
+    companyId:'org-a',provider:'walmart',externalAccountId:'seller-1',
+    origin:'meta',
+    metaVerification:{
+      verified:true,
+      verifiedAt:'2026-10-24T13:00:00.000Z',
+      evidenceRef:'meta-evidence-001',
+      issuer:'meta-business-record',
+      source:'server-recorded'
+    }
+  });
+  assert.equal(advanced.readiness,'TRANSACTION_READY');
+  assert.equal(advanced.capabilities.purchase,true);
+  // Self-attested evidence supplied the same way is still rejected.
+  const selfAttested=await service.evaluate({
+    companyId:'org-a',provider:'walmart',externalAccountId:'seller-1',
+    origin:'meta',
+    metaVerification:{
+      verified:true,
+      verifiedAt:'2026-10-24T13:00:00.000Z',
+      evidenceRef:'meta-evidence-001',
+      issuer:'self',
+      source:'self-attested'
+    }
+  });
+  assert.equal(selfAttested.readiness,'CONNECTED');
+  assert.equal(selfAttested.capabilities.purchase,false);
 });
 
 test('revoked policy agents fail agent-policy readiness closed',async()=>{
@@ -197,7 +257,7 @@ test('revoked policy agents fail agent-policy readiness closed',async()=>{
   };}};
   const agents={async requireActive(){return ['agent-a'];}};
   const service=new ProviderReadinessService(connections,evidence,policies,agents);
-  const manifest=await service.evaluate({companyId:'org-a',provider:'shopify',externalAccountId:'shop'});
+  const manifest=await service.evaluate({companyId:'org-a',provider:'shopify',externalAccountId:'shop',origin:'non-meta'});
   assert.equal(manifest.readiness,'TRANSACTION_READY');
   assert.deepEqual(manifest.agentPolicy,{
     allowedAgents:[],
