@@ -14,7 +14,7 @@ import {issueHumanApproval,verifyHumanIdentity,approvalErrorStatus} from './appr
 import {productionReadiness} from './readiness.js';
 import {handleStripeWebhook,handleShopifyWebhook} from './provider-webhooks.js';
 import {onboardingStatus} from './onboarding.js';
-import {providerCatalog,providerConnectionPlan,PostgresTenantProviderCredentialVault,VaultBackedProviderRuntime,PostgresProviderOAuthTransactionStore,ProviderOAuthCoordinator,PostgresZeroTrustAuthority,landedQuoteTotalAmount,decimalPriceToMinorUnits,type OAuthProvider,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
+import {providerCatalog,providerConnectionPlan,PostgresTenantProviderCredentialVault,VaultBackedProviderRuntime,PostgresProviderOAuthTransactionStore,ProviderOAuthCoordinator,PostgresZeroTrustAuthority,ZeroTrustConnectorRegistry,ZeroTrustConnectorRuntime,landedQuoteTotalAmount,decimalPriceToMinorUnits,type OAuthProvider,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
 import {PostgresProviderConnectionStore} from './provider-connections.js';
 import {ProviderRuntimeControlPlane} from './provider-runtime-control.js';
 import {PostgresProviderReadinessEvidenceStore} from './provider-readiness-store.js';
@@ -36,6 +36,7 @@ import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
+import {PostgresCompanyGenericProfileStore,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration,SYNTHETIC_FIXTURE_COMPANY_ID} from './muse-generic-profile.js';
 import {buildBiCsv,buildBiDashboardHtml,parseBiDemoEventsEnv,queryBiReport} from './muse-bi.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
@@ -97,6 +98,19 @@ const providerTransactionIntents=dbPool?new PostgresProviderTransactionIntentSto
 const providerObservability=dbPool?new PostgresProviderObservabilityStore(dbPool):null;
 const providerAlertState=dbPool?new PostgresProviderAlertStateStore(dbPool):null;
 const providerZeroTrustAuthority=dbPool?new PostgresZeroTrustAuthority(dbPool):null;
+const companyGenericProfiles=dbPool?new PostgresCompanyGenericProfileStore(dbPool):null;
+// Server-operator connector registry for the generic profile. It
+// starts empty and is populated only by server startup code, never
+// over HTTP and never with the synthetic fixture: a registered
+// generic profile without a registered adapter fails closed at
+// submit time (muse_generic_connector_not_registered) instead of
+// executing on a guessed provider. See muse-generic-profile.ts.
+const genericConnectorRegistry=new ZeroTrustConnectorRegistry();
+const genericConnectorRuntime=providerZeroTrustAuthority&&process.env.DRAFT_SIGNING_SECRET&&process.env.APPROVAL_SIGNING_SECRET
+  ? new ZeroTrustConnectorRuntime(genericConnectorRegistry,providerZeroTrustAuthority,providerZeroTrustAuthority,providerZeroTrustAuthority,
+      {draftSigningSecret:process.env.DRAFT_SIGNING_SECRET,approvalSigningSecret:process.env.APPROVAL_SIGNING_SECRET},
+      providerAuditSink??undefined)
+  : null;
 const consumerCommerceIdentities=dbPool?new PostgresConsumerCommerceIdentityStore(dbPool):null;
 const consumerEnrollments=dbPool?new PostgresEnrollmentStore(dbPool):null;
 const providerTransactionDrafts=providerZeroTrustAuthority&&process.env.DRAFT_SIGNING_SECRET
@@ -318,6 +332,16 @@ createServer(async(req,res)=>{
         // name.
         resolveSellerDisplayName:createPersistedSellerDisplayResolver(companySellerManifests,createServerCompanyDisplayResolver()),
         transactions:providerTransactionIntents,approvalSecret:process.env.APPROVAL_SIGNING_SECRET,
+        // Generic execution profile, wired in production: a company
+        // is generic only if it explicitly registered a profile
+        // (see POST /v1/muse/generic-profiles); otherwise it stays
+        // on the reference path. No classification is inferred from
+        // a name, domain, or model output, and the synthetic
+        // fixture is never registered as an adapter here.
+        resolveExecutionProfile:createGenericProfileResolver(companyGenericProfiles),
+        genericReadiness:createGenericReadiness(companyGenericProfiles),
+        submitGeneric:createGenericSubmit(genericConnectorRuntime),
+        genericDraft:createGenericDraftResolver(providerZeroTrustAuthority,process.env.DRAFT_SIGNING_SECRET??''),
         businessReady:async(companyId,shopDomain)=>{
           try{return (await providerReadiness.evaluate({companyId,provider:'shopify',externalAccountId:shopDomain})).readiness==='AUTONOMOUS_READY';}
           catch{return false;}
@@ -507,6 +531,51 @@ createServer(async(req,res)=>{
         const status=message==='bi_tenant_mismatch'?403:message==='muse_bi_demo_events_not_configured'?503:400;
         return send(res,status,{error:message},principal.requestId);
       }
+    }
+    // Generic execution profile registration — explicit only.
+    // A company registers its own profile (companyId is
+    // principal.orgId, never a body-supplied other company, never
+    // inferred from a name/domain). Registration alone does not
+    // commit anything: execution additionally requires a
+    // connector adapter registered in-process by the server
+    // operator; without one, generic submit fails closed with
+    // muse_generic_connector_not_registered. The synthetic
+    // fixture companyId is rejected here and is never registered
+    // as an adapter in this server. This route registers a
+    // profile, not an adapter and not a provider connection.
+    if(req.method==='POST'&&req.url==='/v1/muse/generic-profiles'){
+      if(!requireCapability(principal,'manage_provider_connections')) return send(res,403,{error:'forbidden'},principal.requestId);
+      if(!companyGenericProfiles) return send(res,503,{error:'generic_profile_store_not_configured'},principal.requestId);
+      try{
+        const payload=await readJson(req) as Record<string,unknown>;
+        if(payload.companyId!==undefined&&payload.companyId!==principal.orgId){
+          return send(res,403,{error:'generic_profile_company_mismatch'},principal.requestId);
+        }
+        const validated=validateGenericProfileRegistration({
+          companyId:principal.orgId,
+          evidenceRef:payload.evidenceRef,
+          registeredBy:principal.orgId,
+          principalOrgId:principal.orgId,
+        });
+        const profile=await companyGenericProfiles.register(validated);
+        return send(res,201,{profile,note:'profile_registered_adapter_still_required_for_execution'},principal.requestId);
+      }catch(error){
+        const message=error instanceof Error?error.message:'generic_profile_registration_failed';
+        const status=/not_configured/.test(message)?503:/mismatch|synthetic|invalid/.test(message)?400:500;
+        return send(res,status,{error:message},principal.requestId);
+      }
+    }
+    if(req.method==='GET'&&req.url==='/v1/muse/generic-profiles/me'){
+      if(!companyGenericProfiles) return send(res,503,{error:'generic_profile_store_not_configured'},principal.requestId);
+      const profile=await companyGenericProfiles.get(principal.orgId);
+      if(!profile) return send(res,404,{error:'generic_profile_not_found'},principal.requestId);
+      return send(res,200,{profile},principal.requestId);
+    }
+    if(req.method==='DELETE'&&req.url==='/v1/muse/generic-profiles/me'){
+      if(!requireCapability(principal,'manage_provider_connections')) return send(res,403,{error:'forbidden'},principal.requestId);
+      if(!companyGenericProfiles) return send(res,503,{error:'generic_profile_store_not_configured'},principal.requestId);
+      const removed=await companyGenericProfiles.deactivate(principal.orgId);
+      return send(res,removed?200:404,removed?{deactivated:true}:{error:'generic_profile_not_found'},principal.requestId);
     }
     if(req.method==='GET'&&req.url){
       const runtimeUrl=new URL(req.url,'http://localhost');

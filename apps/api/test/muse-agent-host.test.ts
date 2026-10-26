@@ -357,3 +357,57 @@ test('present_review prefers the persisted manifest name over the signed draft n
   const event=f.host.events[0];assert.equal(event.seller,'Persisted Seller');
   assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|acct_private/);
 });
+
+// Generic profile registry (muse-generic-profile.ts): explicit
+// registration only, never inferred, never the synthetic fixture.
+// These tests use a local test-only adapter shape, not the
+// synthetic fixture connector, which must never be registered
+// for a real company.
+import {MemoryCompanyGenericProfileStore,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration} from '../dist/muse-generic-profile.js';
+import {signDraft} from '@gift-signal/zero-trust';
+
+test('generic profile registration requires the principal company and real evidence, never a mismatch or placeholder',()=>{
+  assert.equal(validateGenericProfileRegistration({companyId:'co-1',evidenceRef:'oauth-conn-9',registeredBy:'co-1',principalOrgId:'co-1'}).companyId,'co-1');
+  assert.throws(()=>validateGenericProfileRegistration({companyId:'co-2',evidenceRef:'oauth-conn-9',registeredBy:'co-2',principalOrgId:'co-1'}),/generic_profile_company_mismatch/);
+  assert.throws(()=>validateGenericProfileRegistration({companyId:'co-1',evidenceRef:'placeholder',registeredBy:'co-1',principalOrgId:'co-1'}),/generic_profile_evidence_ref_invalid/);
+  assert.throws(()=>validateGenericProfileRegistration({companyId:'synthetic-fixture-demo-only',evidenceRef:'oauth-conn-9',registeredBy:'synthetic-fixture-demo-only',principalOrgId:'synthetic-fixture-demo-only'}),/synthetic_fixture_not_registerable/);
+});
+
+test('generic profile resolver returns generic only for a registered company, reference otherwise, and readiness matches',async()=>{
+  const store=new MemoryCompanyGenericProfileStore();
+  const resolve=createGenericProfileResolver(store);
+  const ready=createGenericReadiness(store);
+  assert.equal(await resolve({companyId:'co-1',connectionId:'c',draftId:'d'}),'reference');
+  assert.equal(await ready('co-1'),false);
+  await store.register({companyId:'co-1',evidenceRef:'oauth-conn-9',registeredBy:'co-1'});
+  assert.equal(await resolve({companyId:'co-1',connectionId:'c',draftId:'d'}),'generic');
+  assert.equal(await ready('co-1'),true);
+  assert.equal(await resolve({companyId:'co-2',connectionId:'c',draftId:'d'}),'reference');
+  await store.deactivate('co-1');
+  assert.equal(await resolve({companyId:'co-1',connectionId:'c',draftId:'d'}),'reference');
+});
+
+test('generic draft resolver verifies the signed envelope and scope-checks company and connection',async()=>{
+  const draft:any={draftId:'gd-1',companyId:'co-1',connectionId:'conn-1',kind:'BOOKING',offerIds:['offer-1'],quantity:1,total:120,currency:'USD',summary:'Test-only generic draft',createdAt:'2026-01-01T00:00:00Z',expiresAt,approvalRequired:true,liveRevalidationRequired:true};
+  const envelope=signDraft(draft,'draft-secret');
+  const drafts={get:async(id:string)=>id==='gd-1'?envelope:null};
+  const resolve=createGenericDraftResolver(drafts,'draft-secret');
+  const facts=await resolve({companyId:'co-1',connectionId:'conn-1',draftId:'gd-1'});
+  assert.equal(facts?.draftHash,envelope.payloadHash);
+  assert.equal(facts?.total,120);
+  assert.equal(await resolve({companyId:'co-2',connectionId:'conn-1',draftId:'gd-1'}),null);
+  assert.equal(await resolve({companyId:'co-1',connectionId:'conn-2',draftId:'gd-1'}),null);
+  assert.equal(await createGenericDraftResolver(drafts,'wrong-secret')({companyId:'co-1',connectionId:'conn-1',draftId:'gd-1'}),null);
+});
+
+test('generic submit without a runtime fails closed without consuming anything, and with a runtime maps CONFIRMED/FAILED',async()=>{
+  const submitNone=createGenericSubmit(null);
+  await assert.rejects(submitNone({subjectId:'buyer',companyId:'co-1',connectionId:'c',draftId:'d',approvalToken:'tok'}),/muse_generic_connector_not_registered/);
+  const runtime:any={execute:async()=>({status:'CONFIRMED',executionId:'exec-1',providerReference:'REF-1'})};
+  const submit=createGenericSubmit(runtime);
+  assert.deepEqual(await submit({subjectId:'buyer',companyId:'co-1',connectionId:'c',draftId:'d',approvalToken:'tok'}),{status:'CONFIRMED',executionId:'exec-1',providerReference:'REF-1'});
+  runtime.execute=async()=>({status:'FAILED',executionId:'exec-2'});
+  assert.deepEqual(await submit({subjectId:'buyer',companyId:'co-1',connectionId:'c',draftId:'d',approvalToken:'tok'}),{status:'FAILED',executionId:'exec-2'});
+  runtime.execute=async()=>{throw new Error('unknown_company_connector');};
+  await assert.rejects(submit({subjectId:'buyer',companyId:'co-1',connectionId:'c',draftId:'d',approvalToken:'tok'}),/muse_generic_connector_not_registered/);
+});
