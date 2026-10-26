@@ -167,3 +167,139 @@ test('present_review fails closed when neither signed draft state nor a manifest
   // Fixture state has no sellerDisplayName, so the host must not fall back to the shop domain.
   await assert.rejects(f.host.dispatch({action:'present_review',args:{draftId:'draft'}}),/muse_review_seller_display_required/);
 });
+// --- Generic execution profile: Muse host submit routing ---
+// The generic path never touches the reference (Stripe/Shopify) draft
+// service, business-ready check, or submit function: those stubs throw if
+// called, so any accidental reference-path use fails the test loudly.
+function genericToken(overrides:any={}){return issueApprovalToken({subjectId:'buyer',companyId:'generic-co',connectionId:'connection',draftId:'draft',
+  draftHash,amount:120,currency:'USD',expiresAt,...overrides},'approval-secret');}
+function genericFixture(approvalToken?:string){
+  const calls={genericSubmits:[] as any[],referenceSubmits:0};
+  let transaction:any=null;let ready=true;let profile='generic';
+  let genericResult:any={status:'CONFIRMED',executionId:'synthetic-exec-1',providerReference:'SYNTHETIC-DEMO-ONLY-1'};
+  let genericError:any=null;
+  const deps:any={
+    authority:{resolve:async()=>({subjectId:'buyer',companyId:'generic-co',connectionId:'connection'})},
+    drafts:{verifyForExecution:async()=>{throw Error('must_not_use_reference_draft');}},
+    identities:{resolveStripeSavedPayment:async()=>null},
+    transactions:{getForConsumer:async()=>transaction,get:async()=>transaction},
+    businessReady:async()=>{throw Error('must_not_use_reference_business_ready');},
+    submit:async()=>{calls.referenceSubmits++;throw Error('must_not_use_reference_submit');},
+    resolveExecutionProfile:async()=>profile,
+    genericReadiness:async()=>ready,
+    submitGeneric:async(args:any)=>{calls.genericSubmits.push(args);if(genericError) throw genericError;return genericResult;},
+    genericDraft:async()=>({draftHash,total:120,currency:'USD',expiresAt}),
+    approvalSecret:'approval-secret'
+  };
+  const host=new AuthenticatedMuseCommerceHost({subjectId:'buyer',email:'verified@example.com'},
+    {connectionId:'connection',draftId:'draft',message:'Buy now',...(approvalToken?{approvalToken}:{})},deps);
+  return {host,deps,calls,
+    set transaction(value:any){transaction=value;},
+    set ready(value:boolean){ready=value;},
+    set profile(value:string){profile=value;},
+    set genericResult(value:any){genericResult=value;},
+    set genericError(value:any){genericError=value;}};
+}
+
+test('generic profile routes Muse submit to the rail-independent executor, never the reference submit',async()=>{
+  const proof=genericToken();const f=genericFixture(proof);
+  assert.deepEqual(await f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),{status:'payment_processing'});
+  assert.deepEqual(f.calls.genericSubmits,[{subjectId:'buyer',consumerEmail:'verified@example.com',companyId:'generic-co',connectionId:'connection',draftId:'draft',approvalToken:proof}]);
+  assert.equal(f.calls.referenceSubmits,0);
+});
+
+test('generic profile without a configured generic submitter fails closed',async()=>{
+  const f=genericFixture(genericToken());delete f.deps.submitGeneric;
+  await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/muse_generic_submit_not_configured/);
+  assert.equal(f.calls.genericSubmits.length,0);
+});
+
+test('generic per-company readiness gate blocks submit when the company is not ready',async()=>{
+  const f=genericFixture(genericToken());f.ready=false;
+  await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/muse_generic_business_not_ready/);
+  assert.equal(f.calls.genericSubmits.length,0);
+});
+
+test('generic drift error surfaces for reapproval and is never retried by the host',async()=>{
+  const f=genericFixture(genericToken());f.genericError=Error('provider_state_changed_reapproval_required');
+  await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/provider_state_changed_reapproval_required/);
+  assert.equal(f.calls.genericSubmits.length,1);
+});
+
+test('generic replayed approval is rejected and the token is passed through unchanged',async()=>{
+  const proof=genericToken();const f=genericFixture(proof);
+  let attempts=0;
+  f.deps.submitGeneric=async(args:any)=>{attempts++;assert.equal(args.approvalToken,proof);if(attempts>1) throw Error('approval_replayed');return {status:'CONFIRMED'};};
+  assert.deepEqual(await f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),{status:'payment_processing'});
+  const second=new AuthenticatedMuseCommerceHost({subjectId:'buyer',email:'verified@example.com'},
+    {connectionId:'connection',draftId:'draft',message:'Buy now',approvalToken:proof},f.deps);
+  await assert.rejects(second.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/approval_replayed/);
+  assert.equal(attempts,2);
+});
+
+test('generic duplicate execute after a recorded transaction commits nothing',async()=>{
+  const f=genericFixture(genericToken());
+  f.transaction={companyId:'generic-co',consumerSubjectId:'buyer',draftId:'draft',state:'ORDER_CREATED'};
+  await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/muse_generic_execution_already_recorded/);
+  assert.equal(f.calls.genericSubmits.length,0);
+});
+
+test('generic cross-company submit forwards only the owned connection company and is rejected on scope mismatch',async()=>{
+  const seen:any[]=[];
+  const deps:any={
+    authority:{resolve:async()=>({subjectId:'buyer',companyId:'other-co',connectionId:'connection'})},
+    drafts:{verifyForExecution:async()=>{throw Error('must_not_use_reference_draft');}},
+    identities:{resolveStripeSavedPayment:async()=>null},
+    transactions:{getForConsumer:async()=>null,get:async()=>null},
+    businessReady:async()=>{throw Error('must_not_use_reference_business_ready');},
+    submit:async()=>{throw Error('must_not_use_reference_submit');},
+    resolveExecutionProfile:async()=>'generic',
+    genericReadiness:async()=>true,
+    submitGeneric:async(args:any)=>{seen.push(args);throw Error('draft_scope_mismatch');},
+    approvalSecret:'approval-secret'};
+  const host=new AuthenticatedMuseCommerceHost({subjectId:'buyer'},
+    {connectionId:'connection',draftId:'draft',message:'Buy now',approvalToken:genericToken()},deps);
+  await assert.rejects(host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/draft_scope_mismatch/);
+  assert.equal(seen.length,1);
+  assert.equal(seen[0].companyId,'other-co');
+});
+
+test('generic cancelled connection and expired draft commit nothing',async()=>{
+  const cancelled=genericFixture(genericToken());
+  cancelled.deps.authority.resolve=async()=>null;
+  await assert.rejects(cancelled.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/consumer_agent_not_found/);
+  assert.equal(cancelled.calls.genericSubmits.length,0);
+  const expired=genericFixture(genericToken());expired.genericError=Error('draft_expired');
+  await assert.rejects(expired.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),/draft_expired/);
+  assert.equal(expired.calls.genericSubmits.length,1);
+});
+
+test('generic uncertain completion goes to reconciliation, never a retry',async()=>{
+  const returned=genericFixture(genericToken());
+  returned.genericResult={status:'UNCERTAIN',executionId:'synthetic-exec-9'};
+  assert.deepEqual(await returned.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),{status:'reconciliation_required'});
+  assert.equal(returned.host.events[0].type,'reconciliation_required');
+  assert.equal(returned.calls.genericSubmits.length,1);
+  const thrown=genericFixture(genericToken());thrown.genericError=Error('execution_uncertain_reconciliation_required');
+  assert.deepEqual(await thrown.host.dispatch({action:'execute_approved_purchase',args:{draftId:'draft'}}),{status:'reconciliation_required'});
+  assert.equal(thrown.host.events[0].type,'reconciliation_required');
+  assert.equal(thrown.calls.genericSubmits.length,1);
+});
+
+test('generic readContext uses the owned connection and rail-independent approval, never a Stripe saved payment',async()=>{
+  const f=genericFixture(genericToken());
+  const context=await f.host.readContext();
+  assert.equal(context.businessReady,true);
+  assert.equal(context.consumerEnrolled,true);
+  assert.equal(context.draft?.draftHash,draftHash);
+  assert.equal(context.approval?.verified,true);
+  assert.equal(context.draft?.paymentAuthorizationReference,'');
+  const missing=genericFixture(genericToken());delete missing.deps.genericDraft;
+  await assert.rejects(missing.host.readContext(),/muse_generic_draft_not_configured/);
+});
+
+test('generic execute with a mismatched step scope submits nothing',async()=>{
+  const f=genericFixture(genericToken());
+  await assert.rejects(f.host.dispatch({action:'execute_approved_purchase',args:{draftId:'other'}}),/muse_step_scope_mismatch/);
+  assert.equal(f.calls.genericSubmits.length,0);
+});
