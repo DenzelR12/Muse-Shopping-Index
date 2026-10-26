@@ -25,6 +25,8 @@ Changed price, tax, shipping, configuration, terms, or payment authorization req
 
 Shop is the consumer backend story here, not a claim that every merchant is live on Shop. Each company still needs actual authorization, supported capabilities, credentials, implementation, and validation. A catalog name is not a live integration.
 
+Fewer clicks, in plain terms: intent → one batch of details → one exact review → one approval → server execution → Shop backend notifications, verification, email, and shipping where authorized. That is the intended backend story: Shop handles the post-approval backend where the merchant is authorized on Shop, while Muse presents verified owned status and recovery. This paragraph describes the intended flow; it does not claim a live Shop integration, live payment, or live shipping for any specific merchant.
+
 ## Documentation — start here, follow the workflow
 
 Start with the [technical documentation index](docs/technical/README.md). It is organized as a readable workflow, in the order a reader should follow it:
