@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MUSE SHOPPING INDEX — Provider Console</title>
+  <link rel="stylesheet" href="/provider-console.css"/>
+</head>
+<body>
+  <main>
+    <header class="top">
+      <div>
+        <p class="kicker">MUSE SHOPPING INDEX / BUSINESS CONSOLE</p>
+        <h1>Provider control plane</h1>
+        <p class="lede">Monitor connected providers, readiness, credential rotation and runtime actions without exposing provider credentials to the browser.</p>
+      </div>
+      <a class="back" href="/">← Shopping demo</a>
+    </header>
+
+    <section id="config" class="notice" hidden></section>
+
+    <section class="summary" id="summary">
+      <article><span>Connected</span><strong id="connected">—</strong></article>
+      <article><span>Healthy</span><strong id="healthy">—</strong></article>
+      <article><span>Needs attention</span><strong id="attention">—</strong></article>
+      <article><span>Not connected</span><strong id="not-connected">—</strong></article>
+    </section>
+
+    <section class="toolbar">
+      <div>
+        <h2>Credential rotation</h2>
+        <p>Re-encrypt stale provider credentials to the active key in tenant-scoped batches.</p>
+      </div>
+      <div class="toolbar-actions">
+        <input id="batch-limit" type="number" min="1" max="100" value="100"/>
+        <button id="rekey-batch">Run batch rekey</button>
+      </div>
+      <pre id="batch-result" class="status-box" hidden></pre>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Providers</h2>
+        <button class="secondary" id="refresh">Refresh</button>
+      </div>
+      <div id="providers" class="grid"></div>
+    </section>
+  </main>
+  <script type="module" src="/provider-console.js"></script>
+</body>
+</html>

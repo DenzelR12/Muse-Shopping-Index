@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MUSE SHOPPING INDEX — Shopping Intelligence Index</title>
+  <link rel="stylesheet" href="/styles.css"/>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="kicker">MUSE SHOPPING INDEX / MUSE</p>
+      <h1>Less clicks.<br/><em>Product to door.</em></h1>
+      <p class="lede">A Shopping Intelligence Index that lets Muse search, compare, prepare and securely complete actions across connected companies.</p>
+    </header>
+    <section class="prompt-card">
+      <label for="prompt">Tell Muse what you want</label>
+      <textarea id="prompt" rows="3">I need a premium carry-on under $350 for a business trip.</textarea>
+      <div class="examples">
+        <button data-example="I need a premium carry-on under $350 for a business trip.">Retail</button>
+        <button data-example="Plan a theme park trip for four in Orlando under $4,000 with two park days.">Travel</button>
+      </div>
+      <button class="primary" id="search">Find the best connected option →</button>
+      <p id="mode" class="muted"></p>
+    </section>
+    <section id="results" class="results" aria-live="polite"></section>
+    <section id="review" class="review" hidden></section>
+    <section class="metrics">
+      <div><strong id="baseline">12</strong><span>traditional interactions</span></div>
+      <div><strong id="connector">3</strong><span>ask · review · approve</span></div>
+      <div><strong id="removed">9</strong><span>interactions removed</span></div>
+      <div><strong id="reduction">75%</strong><span>demo friction reduction</span></div>
+    </section>
+    <footer>Demo mode never charges a card or places a real booking. Live company connectors remain authoritative for price, availability, payment and fulfillment. <a href="/provider-console.html">Open Business Console →</a></footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
