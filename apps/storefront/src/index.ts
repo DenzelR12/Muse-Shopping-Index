@@ -5,3 +5,8 @@ export const urgencyAxis=['10 MIN','TOMORROW','3 DAYS','THIS WEEK','NO RUSH'];
 
 export {museConfirmationSheet,renderMuseConfirmation} from './muse-confirmation.js';
 export type {MuseApprovalEnvelope,MuseConfirmationSheet} from './muse-confirmation.js';
+// Live Muse confirmation page (standalone module: the storefront has no
+// page-entry system, so hosts mount it on a container element; main.ts,
+// the separate gifting-concierge surface, is untouched).
+export {mountMuseConfirmationPage,createMuseConfirmationServerHandlers} from './muse-confirmation-page.js';
+export type {MuseConfirmationPageOptions,MuseConfirmationPageResult,MuseConfirmationPageRoot,MuseConfirmationServerConfig,MuseConfirmationFetch} from './muse-confirmation-page.js';

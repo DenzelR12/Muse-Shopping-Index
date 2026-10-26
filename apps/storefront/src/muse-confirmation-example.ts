@@ -1,12 +1,12 @@
 /**
  * EXAMPLE INTEGRATION — NOT A LIVE PAGE.
  *
- * No page in apps/storefront currently renders the HTML produced by
- * renderMuseConfirmation(). The storefront's main.ts is a separate
- * gifting-concierge surface and does not render that button, so this
- * file is only an example of how a page that DOES render a Muse
- * confirmation should wire it up. It is not imported by main.ts or
- * index.ts, and it must not be presented as a live confirmation page.
+ * The live page is now muse-confirmation-page.ts (mounted via
+ * mountMuseConfirmationPage() and exported from index.ts). This file
+ * remains only an example of the wiring pattern: the storefront's
+ * main.ts is a separate gifting-concierge surface and does not render
+ * that button, so this file is not imported by main.ts or index.ts,
+ * and it must not be presented as a live confirmation page.
  *
  * How a real page should use it:
  *  1. Build the sheet server-side from a signed approval envelope
