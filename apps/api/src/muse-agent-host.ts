@@ -21,6 +21,9 @@ export function parseMuseAgentRequest(value:unknown):MuseAgentRequest{
     ...(body.approvalToken?{approvalToken:body.approvalToken as string}:{})};
 }
 
+export type MuseExecutionProfile='reference'|'generic';
+export interface MuseGenericExecutionResult{status:'CONFIRMED'|'DECLINED'|'FAILED'|'UNCERTAIN';executionId?:string;providerReference?:string;message?:string}
+
 export interface MuseHostDependencies {
   authority:Pick<PostgresZeroTrustAuthority,'resolve'>;
   drafts:Pick<ProviderTransactionDraftService,'verifyForExecution'>;
@@ -31,6 +34,22 @@ export interface MuseHostDependencies {
   submit:(args:{subjectId:string;consumerEmail?:string;connectionId:string;draftId:string;approvalToken:string})=>Promise<{
     handoff:{required:boolean};checkoutUrl?:string;
   }>;
+  // Generic execution profile (rail-independent companies). All four are
+  // optional: when resolveExecutionProfile is absent the host keeps the
+  // existing reference (Stripe/Shopify) path unchanged.
+  resolveExecutionProfile?:(args:{companyId:string;connectionId:string;draftId:string})=>Promise<MuseExecutionProfile>;
+  // Per-company readiness gate for the generic path only. Absent means
+  // unverified, which fails closed; it never falls back to the reference
+  // businessReady check, which is Shopify-specific.
+  genericReadiness?:(companyId:string)=>Promise<boolean>;
+  // Rail-independent executor, normally ZeroTrustConnectorRuntime.execute.
+  // It owns exact approval verification/consumption, drift revalidation,
+  // and the single execution claim; the host never retries it.
+  submitGeneric?:(args:{subjectId:string;consumerEmail?:string;companyId:string;connectionId:string;draftId:string;approvalToken:string})=>Promise<MuseGenericExecutionResult>;
+  // Signed generic draft facts for readContext only. Dispatch of a generic
+  // execute never uses the reference draft service, whose state parser is
+  // Stripe/Shopify-shaped and would reject a generic draft.
+  genericDraft?:(args:{companyId:string;connectionId:string;draftId:string})=>Promise<{draftHash:string;total:number;currency:string;expiresAt:string}|null>;
   readTracking?:(transaction:ProviderTransactionIntent)=>Promise<Array<{company?:string;number?:string;url?:string}>>;
   readPaymentAuthentication?:(transaction:ProviderTransactionIntent)=>Promise<{status:'open'|'complete'|'expired';checkoutUrl?:string}>;
   approvalSecret:string;
@@ -106,6 +125,50 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
       });
     }catch{return [];}
   }
+  private async executionProfile(companyId:string):Promise<MuseExecutionProfile>{
+    if(!this.deps.resolveExecutionProfile) return 'reference';
+    const profile=await this.deps.resolveExecutionProfile({companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
+    if(profile!=='reference'&&profile!=='generic') throw Error('muse_execution_profile_invalid');
+    return profile;
+  }
+  private async dispatchGenericExecute(step:MuseCommerceStep):Promise<{status:MusePublicToolStatus}>{
+    // Equivalent gates to the reference validator, expressed for a
+    // rail-independent approval: exact step scope, an approval token, an
+    // owned connection, no already-recorded transaction, and the
+    // per-company generic readiness gate. Exact approval binding, drift
+    // revalidation, one-time consumption, and the single execution claim
+    // are enforced inside submitGeneric (ZeroTrustConnectorRuntime).
+    // This branch never retries: drift, expiry, replay, scope mismatch,
+    // and duplicate-claim errors propagate for reapproval or rebuild,
+    // and uncertain completion becomes reconciliation, not a new commit.
+    if(!step.args||typeof step.args!=='object'||Array.isArray(step.args)) throw Error('muse_step_invalid');
+    if(Object.keys(step.args).sort().join(',')!=='draftId'||step.args.draftId!==this.request.draftId) throw Error('muse_step_scope_mismatch');
+    if(!this.request.approvalToken) throw Error('approval_token_required');
+    const {connection,transaction}=await this.owned();
+    if(transaction) throw Error('muse_generic_execution_already_recorded');
+    if(!this.deps.genericReadiness) throw Error('muse_generic_readiness_not_configured');
+    if(!await this.deps.genericReadiness(connection.companyId)) throw Error('muse_generic_business_not_ready');
+    if(!this.deps.submitGeneric) throw Error('muse_generic_submit_not_configured');
+    let result:MuseGenericExecutionResult|null=null;
+    try{
+      result=await this.deps.submitGeneric({subjectId:this.identity.subjectId,
+        ...(this.identity.email?{consumerEmail:this.identity.email}:{}),companyId:connection.companyId,
+        connectionId:this.request.connectionId,draftId:this.request.draftId,approvalToken:this.request.approvalToken});
+    }catch(error){
+      if(error instanceof Error&&/execution_uncertain|provider_commit_uncertain|commit_status_unknown/.test(error.message)){
+        this.events.push({type:'reconciliation_required',draftId:this.request.draftId,connectionId:this.request.connectionId});
+        return {status:'reconciliation_required'};
+      }
+      throw error;
+    }
+    if(!result||result.status==='UNCERTAIN'){
+      this.events.push({type:'reconciliation_required',draftId:this.request.draftId,connectionId:this.request.connectionId,
+        ...(result?.executionId?{executionId:result.executionId}:{})});
+      return {status:'reconciliation_required'};
+    }
+    if(result.status==='CONFIRMED') return {status:'payment_processing'};
+    throw Error('muse_generic_execution_not_confirmed');
+  }
   async readContext():Promise<MuseCommerceContext>{
     const {connection,transaction}=await this.owned();
     const base={intentId:this.request.draftId,productResolved:true,businessReady:true,consumerEnrolled:true,missingDetails:[]};
@@ -116,6 +179,25 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
         state==='REFUNDED'?'REFUNDED':state.startsWith('REFUND_')?'REFUND_PENDING':this.fallbackUrl?'AUTHENTICATION_REQUIRED':'IN_PROGRESS';
       return {...base,execution:{state:mapped,draftId:transaction.draftId,
         ...(state==='ORDER_CREATED'?{trackingStatus:(await this.tracking(transaction)).length?'AVAILABLE' as const:'PENDING' as const}:{})}};
+    }
+    if((await this.executionProfile(connection.companyId))==='generic'){
+      // Generic enrollment is the owned ZeroTrust connection itself, not a
+      // Stripe saved payment, and approval is rail-independent, so no
+      // paymentAuthorizationReference is set here. The reference step
+      // validator's Stripe saved-payment condition cannot express that
+      // approval, which is why generic executes take the dedicated branch
+      // in dispatch() with equivalent gates instead of that validator.
+      if(!this.deps.genericDraft) throw Error('muse_generic_draft_not_configured');
+      const generic=await this.deps.genericDraft({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
+      if(!generic) throw Error('muse_generic_draft_not_found');
+      const genericReady=this.deps.genericReadiness?await this.deps.genericReadiness(connection.companyId):false;
+      const genericExpected={subjectId:this.identity.subjectId,companyId:connection.companyId,connectionId:this.request.connectionId,
+        draftId:this.request.draftId,draftHash:generic.draftHash,amount:generic.total,currency:generic.currency};
+      const genericApproval=this.request.approvalToken?verifyApproval({token:this.request.approvalToken,secret:this.deps.approvalSecret,expected:genericExpected}):null;
+      return {...base,businessReady:genericReady,consumerEnrolled:true,
+        draft:{draftId:this.request.draftId,draftHash:generic.draftHash,expiresAt:generic.expiresAt,paymentAuthorizationReference:''},
+        ...(this.request.approvalToken?{approval:{verified:Boolean(genericApproval?.ok),draftId:this.request.draftId,draftHash:generic.draftHash,
+          paymentAuthorizationReference:'',expiresAt:genericApproval?.ok?genericApproval.claims.expiresAt:new Date(0).toISOString()}}:{})};
     }
     const verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
     const saved=await this.deps.identities.resolveStripeSavedPayment(this.identity.subjectId);
@@ -130,6 +212,15 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
         paymentAuthorizationReference:saved?.reference??'',expiresAt:approval?.ok?approval.claims.expiresAt:new Date(0).toISOString()}}:{})};
   }
   async dispatch(step:MuseCommerceStep):Promise<{status:MusePublicToolStatus}>{
+    if(step.action==='execute_approved_purchase'){
+      // Route by draft capability before the reference validator: a
+      // generic draft has no Stripe saved payment, so the reference
+      // validator could never authorize it. The generic branch above
+      // enforces the equivalent gates; the reference path below is
+      // byte-for-byte unchanged in behavior.
+      const {connection}=await this.owned();
+      if((await this.executionProfile(connection.companyId))==='generic') return this.dispatchGenericExecute(step);
+    }
     // Also validate here so direct host callers cannot bypass the model runner.
     validateMuseCommerceStep(step,await this.readContext());
     if(step.action==='execute_approved_purchase'){
