@@ -44,6 +44,11 @@ test('ordinary Buy text does not create approval or authorize payment',async()=>
   assert.equal(f.calls.submits.length,0);
   await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
   const event=f.host.events[0];assert.equal(event.total,'58.00');assert.equal(event.requiresBuy,true);
+  // No terms, payment timing, or fulfillment estimate in this draft
+  // state, so the review must say so — never invent a date or term.
+  assert.equal(event.terms,'not available');
+  assert.equal(event.paymentTiming,'not available');
+  assert.equal(event.estimatedArrival,'not available');
   assert.equal(event.paymentLabel,'Saved payment');
   assert.equal(event.seller,'Demo Seller');
   assert.equal(event.items[0].title,'Headphones');
@@ -133,6 +138,26 @@ test('present_review uses a signed draft display name and title when no manifest
   const event=f.host.events[0];
   assert.equal(event.seller,'Signed Demo Seller');
   assert.equal(event.items[0].title,'Headphones');
+  assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|acct_private/);
+});
+
+test('present_review surfaces supplied terms, payment timing, and estimated arrival, and never a raw ID',async()=>{
+  const f=fixture();
+  f.deps.drafts.verifyForExecution=async()=>({draft:{draftId:'draft',total:58,currency:'USD',expiresAt},draftHash,state:{
+    description:'Headphones',payment:{provider:'stripe',externalAccountId:'acct_private'},
+    pricing:{lines:[{variantId:'variant',quantity:1,unitPrice:'50.00',title:'Headphones'}]},
+    terms:'Returns within 30 days of delivery.',
+    paymentTiming:'Charged when you approve this exact transaction.',
+    estimatedArrival:'October 28, 2026',
+    fulfillment:{externalAccountId:'seller.myshopify.com',sellerDisplayName:'Signed Demo Seller',
+      shippingAddress:{address1:'123 Example',city:'Example',countryCode:'US',zip:'12345'},
+      landedQuote:{shipping:{title:'Delivery',handle:'standard',amount:'3.00'},subtotal:'50.00',tax:'5.00',total:'58.00',currency:'USD'}}
+  }});
+  await f.host.dispatch({action:'present_review',args:{draftId:'draft'}});
+  const event=f.host.events[0];
+  assert.equal(event.terms,'Returns within 30 days of delivery.');
+  assert.equal(event.paymentTiming,'Charged when you approve this exact transaction.');
+  assert.equal(event.estimatedArrival,'October 28, 2026');
   assert.doesNotMatch(JSON.stringify(event),/seller\.myshopify\.com|acct_private/);
 });
 

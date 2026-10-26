@@ -44,6 +44,28 @@ function resolvedItemTitle(line:{variantId:string;title?:string;productTitle?:st
   return validateItemTitle(line.title??line.productTitle,line.variantId);
 }
 
+// Optional review facts, sourced only from signed draft state (or, in
+// future, from a draft-state extension that carries them — see
+// provider-transaction-draft.ts). No date, term, or payment time is
+// invented here: an absent, empty, over-long, or raw-ID-looking value
+// renders as "not available" in the review event, never as a guess.
+const rawReviewIdPattern=/gid:\/\/|myshopify\.com|acct_/i;
+function optionalReviewText(value:unknown):string{
+  if(typeof value!=='string') return 'not available';
+  const trimmed=value.trim();
+  if(!trimmed||trimmed.length>1000||rawReviewIdPattern.test(trimmed)) return 'not available';
+  return trimmed;
+}
+function reviewFactsFromState(state:unknown):{terms:string;paymentTiming:string;estimatedArrival:string}{
+  const record=(state && typeof state==='object' ? state : {}) as Record<string,unknown>;
+  const fulfillment=(record.fulfillment && typeof record.fulfillment==='object' ? record.fulfillment : {}) as Record<string,unknown>;
+  return {
+    terms:optionalReviewText(record.terms ?? fulfillment.terms),
+    paymentTiming:optionalReviewText(record.paymentTiming ?? fulfillment.paymentTiming),
+    estimatedArrival:optionalReviewText(record.estimatedArrival ?? fulfillment.estimatedArrival),
+  };
+}
+
 /** Request-scoped host; instantiate only after verifying OIDC. Do not create
  * identity or dependencies from model output, Reel metadata or browser JSON. */
 export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
@@ -138,9 +160,10 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
         stateDisplayName ?? manifestDisplayName,
         state.fulfillment.externalAccountId);
       const items=state.pricing.lines.map((line)=>({title:resolvedItemTitle(line),quantity:line.quantity,unitPrice:line.unitPrice}));
+      const reviewFacts=reviewFactsFromState(state);
       this.events.push({type:'review',requiresBuy:true,connectionId:this.request.connectionId,draftId:this.request.draftId,
         displayedDraftHash:verified.draftHash,expiresAt:verified.draft.expiresAt,description:state.description,
-        seller,items,
+        seller,items,...reviewFacts,
         shippingAddress:state.fulfillment.shippingAddress,shipping:landed.shipping,subtotal:landed.subtotal,tax:landed.tax,total:landed.total,
         currency:landed.currency,paymentLabel:'Saved payment'});
       return {status:'review_required'};
