@@ -6,7 +6,13 @@ export type ConnectorAction =
   | 'execute_action';
 
 export type ConnectorActionRisk='READ'|'DRAFT'|'COMMIT';
-export type BusinessReadinessStage='CONNECTED'|'VERIFIED'|'TRANSACTION_READY'|'AUTONOMOUS_READY';
+// Meta-origin businesses walk CONNECTED -> META_VERIFIED -> CATALOG_VERIFIED ->
+// TRANSACTION_READY -> AUTONOMOUS_READY. Non-Meta-origin businesses keep the
+// pre-existing CONNECTED -> VERIFIED -> TRANSACTION_READY -> AUTONOMOUS_READY
+// ladder. VERIFIED therefore only ever appears for non-Meta-origin
+// businesses; it is never a Meta-origin stage.
+export type BusinessReadinessStage='CONNECTED'|'META_VERIFIED'|'CATALOG_VERIFIED'|'VERIFIED'|'TRANSACTION_READY'|'AUTONOMOUS_READY';
+export type BusinessOrigin='meta'|'non-meta';
 export type IntegrationMode='ZERO_CODE'|'LOW_CODE'|'CUSTOM_API';
 
 export interface ConnectorActionDefinition {
@@ -26,10 +32,38 @@ export interface CompanyConnectorManifest {
   actions:ConnectorActionDefinition[];
 }
 
+// Server-recorded Meta business verification evidence. This is a record of
+// verification that was confirmed and stored server-side; it is NOT a live
+// Meta API verification, and it is never accepted from model output or
+// browser JSON alone. `issuer` names the authority that issued the
+// verification (for example the Meta business record); `source` names the
+// server-side recording channel. Self-attestation, model output and browser
+// JSON are rejected by validateMetaBusinessVerification, as are missing,
+// placeholder or expired evidence. `expiresAt` is optional: evidence without
+// it does not expire on its own, so callers should set it whenever the
+// issuer supplies an expiry.
+export interface MetaBusinessVerification {
+  verified:boolean;
+  verifiedAt:string;
+  evidenceRef:string;
+  issuer:string;
+  source:string;
+  expiresAt?:string;
+}
+
 export interface BusinessReadinessEvidence {
+  // Business origin. Omitted origin fails closed to the Meta-origin path:
+  // callers must explicitly set origin:'non-meta' to use the non-Meta path.
+  // Never infer origin from a model statement, a browser payload, or a
+  // provider display name; it is a server-owned enrollment fact.
+  origin?:BusinessOrigin;
   connectorConfigured:boolean;
   identityVerified:boolean;
+  // Legacy flag. For Meta-origin businesses it must agree with a valid
+  // metaVerification record: a flag without evidence, or evidence without
+  // the flag, both fail closed. For non-Meta-origin businesses it is ignored.
   metaBusinessVerified?:boolean;
+  metaVerification?:MetaBusinessVerification;
   catalogValidated:boolean;
   liveInventory:boolean;
   livePricing:boolean;
@@ -48,7 +82,10 @@ export interface BusinessCapabilityManifest {
   vertical:ConnectorVertical;
   readiness:BusinessReadinessStage;
   integrationMode:IntegrationMode;
-  metaBusinessRequired:true;
+  // True for Meta-origin businesses (and for businesses whose origin is
+  // omitted, which fail closed to the Meta path); false for explicitly
+  // declared non-Meta-origin businesses.
+  metaBusinessRequired:boolean;
   capabilities:{
     search:boolean;
     quote:boolean;
@@ -163,10 +200,76 @@ export function clickReduction(baselineClicks:number,connectorClicks:number):Cli
   };
 }
 
-export function deriveBusinessReadiness(evidence:BusinessReadinessEvidence):BusinessReadinessStage {
+const SELF_ATTESTED_SOURCES=new Set([
+  'self','self-attested','self_attested','selfattested',
+  'model','model-output','model_output',
+  'browser','browser-json','browser_json',
+  'user-claim','user_claim','user-attestation','user_attestation',
+  'unverified','none',''
+]);
+
+const PLACEHOLDER_EVIDENCE_REFS=new Set(['pending','todo','tbd','none','n/a','placeholder']);
+
+export function validateMetaBusinessVerification(
+  value:unknown,
+  now=new Date()
+):{valid:boolean;reason:string} {
+  if(!value||typeof value!=='object'||Array.isArray(value)) {
+    return {valid:false,reason:'meta_verification_missing'};
+  }
+  const verification=value as Partial<MetaBusinessVerification>;
+  if(verification.verified!==true) {
+    return {valid:false,reason:'meta_verification_not_confirmed'};
+  }
+  const verifiedTime=Date.parse(String(verification.verifiedAt??''));
+  if(!Number.isFinite(verifiedTime)) {
+    return {valid:false,reason:'meta_verification_timestamp_invalid'};
+  }
+  if(verifiedTime>now.getTime()) {
+    return {valid:false,reason:'meta_verification_timestamp_in_future'};
+  }
+  const evidenceRef=typeof verification.evidenceRef==='string'?verification.evidenceRef.trim():'';
+  if(!evidenceRef||evidenceRef.length>500) {
+    return {valid:false,reason:'meta_verification_evidence_ref_required'};
+  }
+  if(PLACEHOLDER_EVIDENCE_REFS.has(evidenceRef.toLowerCase())) {
+    return {valid:false,reason:'meta_verification_evidence_ref_placeholder'};
+  }
+  const issuer=typeof verification.issuer==='string'?verification.issuer.trim():'';
+  if(!issuer||issuer.length>200||SELF_ATTESTED_SOURCES.has(issuer.toLowerCase())||
+    issuer.toLowerCase().includes('self-attest')||issuer.toLowerCase().includes('self_attest')) {
+    return {valid:false,reason:'meta_verification_issuer_not_accepted'};
+  }
+  const source=typeof verification.source==='string'?verification.source.trim():'';
+  if(!source||source.length>200||SELF_ATTESTED_SOURCES.has(source.toLowerCase())||
+    source.toLowerCase().includes('self-attest')||source.toLowerCase().includes('self_attest')) {
+    return {valid:false,reason:'meta_verification_source_not_accepted'};
+  }
+  if(verification.expiresAt!==undefined){
+    const expiresTime=Date.parse(String(verification.expiresAt));
+    if(!Number.isFinite(expiresTime)) {
+      return {valid:false,reason:'meta_verification_timestamp_invalid'};
+    }
+    if(expiresTime<=now.getTime()) {
+      return {valid:false,reason:'meta_verification_expired'};
+    }
+  }
+  return {valid:true,reason:'meta_verification_valid'};
+}
+
+// Origin is a server-owned enrollment fact. Anything that is not explicitly
+// declared 'non-meta' is treated as Meta-origin, so an omitted or unknown
+// origin can never bypass the Meta verification gate.
+export function isMetaBusinessOrigin(evidence:Pick<BusinessReadinessEvidence,'origin'>):boolean {
+  return evidence.origin!=='non-meta';
+}
+
+export function deriveBusinessReadiness(
+  evidence:BusinessReadinessEvidence,
+  now=new Date()
+):BusinessReadinessStage {
   if(!evidence.connectorConfigured) return 'CONNECTED';
-  if(!evidence.identityVerified||evidence.metaBusinessVerified!==true) return 'CONNECTED';
-  if(!evidence.catalogValidated) return 'VERIFIED';
+  if(!evidence.identityVerified) return 'CONNECTED';
 
   const transactionReady=
     evidence.liveInventory &&
@@ -176,15 +279,50 @@ export function deriveBusinessReadiness(evidence:BusinessReadinessEvidence):Busi
     evidence.idempotency &&
     evidence.providerRevalidation;
 
-  if(!transactionReady) return 'VERIFIED';
-
   const autonomousReady=
     evidence.agentPolicyConfigured &&
     evidence.auditTrail &&
     evidence.recoveryActions &&
     evidence.fulfillmentStatus;
 
+  if(isMetaBusinessOrigin(evidence)){
+    // Meta-origin only: a business cannot leave CONNECTED until Meta
+    // business verification evidence is confirmed. A bare
+    // metaBusinessVerified flag is self-attestation and is not enough;
+    // neither is a valid evidence record without the flag. Both must agree.
+    // This is evidence-recorded verification, not a live Meta API claim.
+    if(evidence.metaBusinessVerified!==true||
+      !validateMetaBusinessVerification(evidence.metaVerification,now).valid) return 'CONNECTED';
+    if(!evidence.catalogValidated) return 'META_VERIFIED';
+    if(!transactionReady) return 'CATALOG_VERIFIED';
+  } else {
+    // Non-Meta-origin businesses keep their existing path unchanged:
+    // Meta verification is neither required nor consulted.
+    if(!evidence.catalogValidated) return 'VERIFIED';
+    if(!transactionReady) return 'VERIFIED';
+  }
+
   return autonomousReady?'AUTONOMOUS_READY':'TRANSACTION_READY';
+}
+
+// Fail-closed transaction gate for callers that check readiness before
+// allowing a purchase, booking or other commit. A Meta-origin business
+// without confirmed verification evidence throws
+// meta_business_verification_required; it is never approved at a degraded
+// stage. Every other not-yet-transaction-ready business throws
+// business_not_transaction_ready.
+export function assertBusinessTransactionReady(
+  evidence:BusinessReadinessEvidence,
+  now=new Date()
+):BusinessReadinessStage {
+  const readiness=deriveBusinessReadiness(evidence,now);
+  if(readiness==='TRANSACTION_READY'||readiness==='AUTONOMOUS_READY') return readiness;
+  if(isMetaBusinessOrigin(evidence)&&
+    (evidence.metaBusinessVerified!==true||
+      !validateMetaBusinessVerification(evidence.metaVerification,now).valid)) {
+    throw new Error('meta_business_verification_required');
+  }
+  throw new Error('business_not_transaction_ready');
 }
 
 export function buildBusinessCapabilityManifest(args:{
@@ -196,15 +334,16 @@ export function buildBusinessCapabilityManifest(args:{
   allowedAgents?:string[];
   maxOrderAmount?:number;
   currency?:string;
+  now?:Date;
 }):BusinessCapabilityManifest {
-  const readiness=deriveBusinessReadiness(args.evidence);
+  const readiness=deriveBusinessReadiness(args.evidence,args.now??new Date());
   const canTransact=readiness==='TRANSACTION_READY'||readiness==='AUTONOMOUS_READY';
   return {
     companyId:args.companyId,
     vertical:args.vertical,
     readiness,
     integrationMode:args.integrationMode,
-    metaBusinessRequired:true,
+    metaBusinessRequired:isMetaBusinessOrigin(args.evidence),
     capabilities:{
       search:args.evidence.catalogValidated,
       quote:args.evidence.livePricing,
