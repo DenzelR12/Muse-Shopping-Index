@@ -1,13 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildProviderAuthorization,
-  exchangeProviderAuthorizationCode,
-  issueProviderState,
-  verifyProviderState,
-  syncEbayInventory,
-  syncWalmartCatalog
-} from '../dist/provider-oauth.js';
+import {buildProviderAuthorization,issueProviderState,verifyProviderState} from '../dist/provider-oauth.js';
+import {exchangeProviderAuthorizationCode} from '../dist/provider-token-exchange.js';
+import {syncEbayInventory,syncWalmartCatalog} from '../dist/provider-sync.js';
 
 const stateEnv={PROVIDER_OAUTH_STATE_SECRET:'12345678901234567890123456789012'};
 
