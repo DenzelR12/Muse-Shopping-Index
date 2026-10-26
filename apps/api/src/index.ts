@@ -32,6 +32,7 @@ import {runRefundRecoveryWithAdvisoryLock} from './provider-refund-recovery.js';
 import {verifyApproval} from '@gift-signal/zero-trust';
 import {PostgresSecurityAuditSink} from '@gift-signal/mcp-gateway';
 import {submitMuseConfirmation} from './muse-confirmation-submit.js';
+import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle} from './muse-seller-display.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
@@ -295,6 +296,12 @@ createServer(async(req,res)=>{
       if(!process.env.META_MODEL_API_KEY||!process.env.META_MODEL_API_BASE_URL||!process.env.META_MUSE_MODEL) return send(res,503,{error:'muse_not_configured'},requestId);
       const host=new AuthenticatedMuseCommerceHost(identity,payload,{
         authority:providerZeroTrustAuthority,drafts:providerTransactionDrafts,identities:consumerCommerceIdentities,
+        // Server-owned manifest resolver: names registered by authenticated
+        // company callers at draft creation (see muse-seller-display.ts).
+        // It never derives a name from a shop domain, and it returns null
+        // when no registered name exists, so the host then fails closed
+        // unless the signed draft state itself carries a valid name.
+        resolveSellerDisplayName:createServerCompanyDisplayResolver(),
         transactions:providerTransactionIntents,approvalSecret:process.env.APPROVAL_SIGNING_SECRET,
         businessReady:async(companyId,shopDomain)=>{
           try{return (await providerReadiness.evaluate({companyId,provider:'shopify',externalAccountId:shopDomain})).readiness==='AUTONOMOUS_READY';}
@@ -635,6 +642,8 @@ createServer(async(req,res)=>{
         description?:unknown;
         successUrl?:unknown;
         cancelUrl?:unknown;
+        sellerDisplayName?:unknown;
+        itemTitles?:unknown;
       };
       if(typeof payload.connectionId!=='string'||!payload.connectionId.trim()||payload.connectionId.length>160){
         return send(res,400,{error:'provider_transaction_connection_id_invalid'},principal.requestId);
@@ -725,9 +734,38 @@ createServer(async(req,res)=>{
       if(quoteResult.quote.currency.toUpperCase()!==currency) return send(res,409,{error:'provider_pricing_currency_mismatch'},principal.requestId);
       if(!supportedCurrencyCodes.has(currency)) return send(res,409,{error:'provider_pricing_currency_unsupported'},principal.requestId);
 
+      // Server-owned display data, supplied only by the authenticated
+      // company caller (principal.orgId), never by a consumer browser or
+      // model. A name is never derived from the shop domain, and a title
+      // is never a variant ID. If the caller does not supply them, the
+      // draft is created without them and a later review fails closed
+      // instead of showing a raw ID.
+      let sellerDisplayName: string | undefined;
+      let itemTitles: Record<string, string> | undefined;
+      try {
+        if (payload.sellerDisplayName !== undefined) {
+          sellerDisplayName = validateSellerDisplayName(payload.sellerDisplayName, fulfillmentExternalAccountId);
+          registerServerCompanyDisplayName(principal.orgId, sellerDisplayName, fulfillmentExternalAccountId);
+        }
+        if (payload.itemTitles !== undefined) {
+          if (!payload.itemTitles || typeof payload.itemTitles !== 'object' || Array.isArray(payload.itemTitles)) {
+            return send(res, 400, {error: 'provider_checkout_item_titles_invalid'}, principal.requestId);
+          }
+          itemTitles = {};
+          for (const [variantId, title] of Object.entries(payload.itemTitles as Record<string, unknown>)) {
+            itemTitles[variantId] = validateItemTitle(title, variantId);
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'provider_checkout_display_invalid';
+        return send(res, 400, {error: message}, principal.requestId);
+      }
+
       const result=await providerTransactionDrafts.create({
         companyId:principal.orgId,
         connectionId:payload.connectionId.trim(),
+        ...(sellerDisplayName ? {sellerDisplayName} : {}),
+        ...(itemTitles ? {itemTitles} : {}),
         payment:{provider:'stripe',externalAccountId:payment.externalAccountId.trim()},
         fulfillment:{
           provider:'shopify',
