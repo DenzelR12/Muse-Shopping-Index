@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: enrollment_test
+          POSTGRES_DB: enrollment_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm --filter @gift-signal/api exec node -e "import('@gift-signal/payments').then(m=>{if(typeof m.createStripeCheckout!=='function') process.exit(1)})"
+      - run: pnpm --filter @gift-signal/storefront test
+      - run: node --test tests/product-context.test.mjs
+      - run: node --test tests/api-auth.test.mjs
+      - run: node --test services/mcp-gateway/test/business.test.mjs
+      - run: node --test services/mcp-gateway/test/connectors.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-adapters.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-oauth-sync.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-oauth-transactions.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-refresh.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-marketplace-sync.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-credential-vault.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-runtime.test.mjs
+      - run: node --test services/mcp-gateway/test/provider-pricing.test.mjs
+      - run: node --test services/mcp-gateway/test/commerce-journey.test.mjs
+      - run: node --test packages/shopping-index/test/index.test.mjs
+      - run: node --test packages/shopping-index/test/learning.test.mjs
+      - run: node --test packages/shopping-index/test/company-learning.test.mjs
+      - run: node --test packages/commerce-network/test/index.test.mjs
+      - run: pnpm --filter @gift-signal/competition-demo test
+      - run: node scripts/build-muse-commerce-training.mjs --check
+      - run: pnpm exec tsx --test services/payments/test/stripe.test.ts
+      - run: pnpm exec tsx --test services/link-authority/test/index.test.ts
+      - run: pnpm exec tsx --test services/shopify-webhooks/test/index.test.ts
+      - run: node --test services/mcp-gateway/test/approval.test.mjs
+      - run: node --test services/mcp-gateway/test/identity.test.mjs
+      - run: node --test services/mcp-gateway/test/zero-trust-connectors.test.mjs
+      - run: node --test packages/zero-trust/test/index.test.mjs
+      - run: node --test packages/audit/test/index.test.mjs
+      - run: node --test apps/business/test/company-intelligence.test.mjs
+      - run: node --test apps/business/test/provider-console.test.mjs
+      - run: pnpm exec tsx --test apps/api/test/rate-limit.test.ts
+      - run: pnpm exec tsx --test apps/api/test/readiness.test.ts
+      - run: pnpm exec tsx --test apps/api/test/consumer-commerce-identity.test.ts
+      - run: pnpm exec tsx --test apps/api/test/approval.test.ts
+      - run: pnpm exec tsx --test apps/api/test/muse-agent-host.test.ts
+      - run: pnpm exec tsx --test apps/api/test/consumer-enrollment.test.ts
+        env:
+          ENROLLMENT_TEST_DATABASE_URL: postgres://postgres:enrollment_test@localhost:5432/enrollment_test
+      - run: pnpm exec tsx --test apps/api/test/onboarding.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-connections.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-runtime-control.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-transaction-execution.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-transaction-draft.test.ts
+      - run: pnpm exec tsx --test apps/api/test/muse-confirmation-submit.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-transaction-store.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-refund-compensation.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-refund-webhook.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-paid-fulfillment-reconciliation.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-refund-recovery.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-refund-recovery-lock.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-observability.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-alerts.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-readiness.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-readiness-service.test.ts
+      - run: pnpm exec tsx --test apps/api/test/provider-security-audit.test.ts
+      - run: node scripts/rehearse-muse.mjs
