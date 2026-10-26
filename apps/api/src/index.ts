@@ -34,6 +34,7 @@ import {PostgresSecurityAuditSink} from '@gift-signal/mcp-gateway';
 import {submitMuseConfirmation} from './muse-confirmation-submit.js';
 import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
+import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
@@ -88,6 +89,7 @@ const providerAuditSink=dbPool&&process.env.AUDIT_SIGNING_SECRET
   : null;
 const providerAuditor=providerAuditSink?new ProviderSecurityAuditor(providerAuditSink):null;
 const providerReadinessEvidence=dbPool?new PostgresProviderReadinessEvidenceStore(dbPool):null;
+const companySellerManifests=dbPool?new PostgresCompanySellerManifestStore(dbPool):null;
 const providerAgentPolicies=dbPool?new PostgresProviderAgentPolicyStore(dbPool):null;
 const providerAgentRegistry=dbPool?new PostgresProviderAgentRegistry(dbPool):null;
 const providerTransactionIntents=dbPool?new PostgresProviderTransactionIntentStore(dbPool):null;
@@ -104,7 +106,7 @@ const providerRuntimeControl=providerRuntime&&providerConnections
   : null;
 const providerAuditReady=process.env.NODE_ENV!=='production'||Boolean(providerAuditor);
 const providerReadiness=providerConnections&&providerReadinessEvidence
-  ? new ProviderReadinessService(providerConnections,providerReadinessEvidence,providerAgentPolicies??undefined,providerAgentRegistry??undefined)
+  ? new ProviderReadinessService(providerConnections,providerReadinessEvidence,providerAgentPolicies??undefined,providerAgentRegistry??undefined,companySellerManifests??undefined)
   : null;
 const providerTransactionExecution=providerConnections&&providerAgentPolicies&&providerAgentRegistry&&providerTransactionIntents
   ? new ProviderTransactionExecutionService(providerConnections,providerAgentPolicies,providerAgentRegistry,providerTransactionIntents,providerRuntimeControl??undefined,providerAuditor??undefined)
@@ -304,12 +306,16 @@ createServer(async(req,res)=>{
       if(!process.env.META_MODEL_API_KEY||!process.env.META_MODEL_API_BASE_URL||!process.env.META_MUSE_MODEL) return send(res,503,{error:'muse_not_configured'},requestId);
       const host=new AuthenticatedMuseCommerceHost(identity,payload,{
         authority:providerZeroTrustAuthority,drafts:providerTransactionDrafts,identities:consumerCommerceIdentities,
-        // Server-owned manifest resolver: names registered by authenticated
-        // company callers at draft creation (see muse-seller-display.ts).
-        // It never derives a name from a shop domain, and it returns null
-        // when no registered name exists, so the host then fails closed
-        // unless the signed draft state itself carries a valid name.
-        resolveSellerDisplayName:createServerCompanyDisplayResolver(),
+        // Server-owned manifest resolver: persisted seller-manifest
+        // store first (names registered by authenticated company
+        // callers at draft creation, see
+        // muse-seller-display-store.ts), process-local registry as
+        // fallback only, then the signed draft state in the host.
+        // It never derives a name from a shop domain, and it returns
+        // null when no registered name exists, so the host then fails
+        // closed unless the signed draft state itself carries a valid
+        // name.
+        resolveSellerDisplayName:createPersistedSellerDisplayResolver(companySellerManifests,createServerCompanyDisplayResolver()),
         transactions:providerTransactionIntents,approvalSecret:process.env.APPROVAL_SIGNING_SECRET,
         businessReady:async(companyId,shopDomain)=>{
           try{return (await providerReadiness.evaluate({companyId,provider:'shopify',externalAccountId:shopDomain})).readiness==='AUTONOMOUS_READY';}
@@ -795,6 +801,22 @@ createServer(async(req,res)=>{
       } catch (error) {
         const message = error instanceof Error ? error.message : 'provider_checkout_display_invalid';
         return send(res, 400, {error: message}, principal.requestId);
+      }
+
+      // Persist the validated name so a later review survives a
+      // restart without depending on the signed draft alone. A store
+      // failure fails closed here (503) rather than silently falling
+      // back to process-local-only state for this draft.
+      if (sellerDisplayName && companySellerManifests) {
+        try {
+          await companySellerManifests.upsertDisplayName({
+            companyId: principal.orgId,
+            displayName: sellerDisplayName,
+            externalAccountId: fulfillmentExternalAccountId,
+          });
+        } catch {
+          return send(res, 503, {error: 'seller_manifest_store_unavailable'}, principal.requestId);
+        }
       }
 
       const result=await providerTransactionDrafts.create({
