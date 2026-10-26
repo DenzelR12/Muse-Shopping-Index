@@ -36,6 +36,7 @@ import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
+import {buildBiCsv,buildBiDashboardHtml,parseBiDemoEventsEnv,queryBiReport} from './muse-bi.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
 import {PostgresEnrollmentStore,startConsumerEnrollment,completeConsumerEnrollment,enrollmentRequest,enrollmentErrorStatus} from './consumer-enrollment.js';
@@ -462,6 +463,51 @@ createServer(async(req,res)=>{
     : authenticateRequest(req);
   if(!principal) return send(res,401,{error:'unauthorized'});
   try {
+    // Muse BI secondary demo — read-only, company-scoped, authenticated.
+    // Company ID is principal.orgId ONLY: a ?companyId= query value that
+    // differs from the principal fails closed (bi_tenant_mismatch in
+    // queryBiReport), and one that matches is ignored in favour of the
+    // principal. Data is SUPPLIED/DEMO events only, configured via
+    // MUSE_BI_DEMO_EVENTS_JSON; with no such configuration the routes
+    // return 503 instead of inventing live data. These routes never
+    // change campaigns, budgets, routing, ranking, or policy, and they
+    // never claim live Shop, Meta, or payment data. Stale reports are
+    // returned labeled stale in provenance, never as current claims.
+    if(req.method==='GET'&&req.url?.startsWith('/v1/muse/bi/')){
+      const biUrl=new URL(req.url,'http://localhost');
+      const biPath=biUrl.pathname;
+      if(biPath!=='/v1/muse/bi/report'&&biPath!=='/v1/muse/bi/dashboard'&&biPath!=='/v1/muse/bi/export'){
+        return send(res,404,{error:'not_found'},principal.requestId);
+      }
+      try{
+        const events=parseBiDemoEventsEnv(process.env.MUSE_BI_DEMO_EVENTS_JSON);
+        const metric=biUrl.searchParams.get('metric')??'funnel_counts';
+        const dimensionsRaw=biUrl.searchParams.get('dimensions');
+        const dimensions=dimensionsRaw?dimensionsRaw.split(',').map(value=>value.trim()).filter(Boolean):[];
+        const report=queryBiReport({
+          principalCompanyId:principal.orgId,
+          ...(biUrl.searchParams.has('companyId')?{attemptedCompanyId:biUrl.searchParams.get('companyId')??''}:{}),
+          metric,dimensions,events
+        });
+        if(biPath==='/v1/muse/bi/dashboard'){
+          res.writeHead(200,{'content-type':'text/html; charset=utf-8'});
+          res.end(buildBiDashboardHtml(report));
+          return;
+        }
+        if(biPath==='/v1/muse/bi/export'){
+          const format=biUrl.searchParams.get('format')??'csv';
+          if(format!=='csv') return send(res,400,{error:'bi_export_format_invalid'},principal.requestId);
+          res.writeHead(200,{'content-type':'text/csv; charset=utf-8'});
+          res.end(buildBiCsv(report));
+          return;
+        }
+        return send(res,200,report,principal.requestId);
+      }catch(error){
+        const message=error instanceof Error?error.message:'muse_bi_failed';
+        const status=message==='bi_tenant_mismatch'?403:message==='muse_bi_demo_events_not_configured'?503:400;
+        return send(res,status,{error:message},principal.requestId);
+      }
+    }
     if(req.method==='GET'&&req.url){
       const runtimeUrl=new URL(req.url,'http://localhost');
       const orderMatch=runtimeUrl.pathname.match(/^\/v1\/provider-orders\/([^/]+)\/([^/]+)$/);
