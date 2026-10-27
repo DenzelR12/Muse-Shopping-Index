@@ -619,3 +619,43 @@ test('Muse panel mount adapter gate: no principal, missing draft, and draft-comp
   assert.equal(wrongCompany.status, 403);
   assert.equal(calls, 0, 'no refused mount request may reach a handler');
 });
+
+// Meta lead callback webhook gate (full suite is
+// apps/api/test/muse-lead-webhook.test.ts); this gate mirrors its
+// two fail-closed cases. The handler is pure and NOT mounted in
+// apps/api/src/index.ts: there is no live lead webhook endpoint,
+// no live Graph fetch, no leadgen subscription, and no
+// leads_retrieval approval claimed. See docs/meta-lead-webhook.md.
+import { createLeadCallbackMemoryStore, handleLeadWebhook } from '../src/muse-lead-webhook.js';
+
+test('Meta lead webhook gate: missing secret and bad signature fail closed without fetch', async () => {
+  const rawBody = '{"object":"page"}';
+  const makeArgs = (overrides: Record<string, unknown>) => {
+    let fetches = 0;
+    const args = {
+      event: { leadgenId: 'test-leadgen-1', pageId: 'test-page-1' },
+      rawBody,
+      signature: 'sha256=00',
+      secret: 'test-app-secret-only',
+      pageToCompany: (pageId: string) => (pageId === 'test-page-1' ? 'company-1' : undefined),
+      fetchLead: async () => {
+        fetches += 1;
+        return { field_data: [] };
+      },
+      store: createLeadCallbackMemoryStore(),
+      now: '2026-10-27T12:00:00.000Z',
+      ...overrides,
+    };
+    return { args, fetchCount: () => fetches };
+  };
+  const missingSecret = makeArgs({ secret: undefined });
+  assert.deepEqual(await handleLeadWebhook(missingSecret.args), {
+    status: 'rejected', error: 'muse_lead_webhook_secret_not_configured',
+  });
+  assert.equal(missingSecret.fetchCount(), 0, 'missing secret must never reach a fetch');
+  const badSignature = makeArgs({});
+  assert.deepEqual(await handleLeadWebhook(badSignature.args), {
+    status: 'rejected', error: 'muse_lead_webhook_bad_signature',
+  });
+  assert.equal(badSignature.fetchCount(), 0, 'bad signature must never reach a fetch');
+});
