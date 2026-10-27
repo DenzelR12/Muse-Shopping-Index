@@ -23,11 +23,15 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @gift-signal/api build
+# The trailing ... builds @gift-signal/api and its workspace dependencies
+# first, so their dist output exists when the API TypeScript build runs.
+RUN pnpm --filter @gift-signal/api... build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/apps/api/dist ./dist
+# The API dist alone is not enough at runtime: it imports workspace
+# packages, so carry the built workspace and node_modules with it.
+COPY --from=build /app /app
 EXPOSE 3000
-CMD ["node","dist/index.js"]
+CMD ["node", "apps/api/dist/index.js"]
