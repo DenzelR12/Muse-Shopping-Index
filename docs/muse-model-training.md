@@ -82,6 +82,33 @@ Full audit, scenario tables, must-not-teach list, format limitation,
 and evaluation criteria: [Training preparation update — multilingual
 locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md).
 
+## Locale as code — 2026-10-27 (supersedes the multilingual format limitation)
+
+After the training preparation above, the locale rule was implemented
+in code in `apps/demo/src/muse-commerce.ts` (target main, after
+`a8b6e847…`): `MuseCommerceContext` now carries `consumerLocale`
+(profile language, device locale, location) and
+`verifiedReviewLanguages`; `resolveReviewLanguage` implements profile
+first, device second, location never a language; and
+`expectedMuseCommerceStep` fails closed to `request_details` for
+`verifiedReviewTranslation` when no verified exact review exists in
+the resolved language — no `present_review` with an unverified or
+model-translated review, and no approval or execution from that state,
+even with a previously verified approval. Tests were added for
+profile-over-device, device fallback, both location traps, region
+subtag matching, fail-closed untranslatable terms, rejected
+smuggled language keys, and ignored caption price formats. Training
+scenarios and counts are unchanged (48 teaching / 30 held-out):
+scenario contexts carry no `consumerLocale`, so the gate does not
+fire for them. **Explicit limits:** production host wiring (supplying
+the locale fields from authenticated profile/device data) is still a
+separate change, the demo review rendering itself remains English-only
+in presentation, and no multilingual UI or live multilingual review
+is claimed.
+
+Full code, gate, tests, and remaining work: [Locale as code —
+2026-10-27](locale-implementation-2026-10-27.md).
+
 ## Training preparation update — accessibility and abandoned-chat recovery — 2026-10-27
 
 The curriculum was updated at target main `02cb70e5…`. Teaching

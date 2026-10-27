@@ -140,24 +140,42 @@ must stay out of training. They use holdout fixture IDs.
   remain English-only until a real implementation, with verified
   translations, exists and is separately verified.
 
-## Format limitation, stated plainly
+## Format limitation, stated plainly — updated 2026-10-27 (locale as code)
 
-The action protocol has **no consumer-locale field**: the
-`MuseCommerceContext` in `apps/demo/src/muse-commerce.ts` carries no
-profile-language, device-locale, or location field, and no new action
-(`catalog_read`, `reel_entry`, or a locale action) was added — this was
-a preparation task, not a code change. Locale behaviour is therefore
-taught through the **existing actions plus the scenario user-message
-text**, which states the consumer's profile preference, device locale,
-location, and caption language explicitly, and through server-side
-gating described in the scenario text. Where the existing action set
-has no "fail closed, present nothing" action, the untranslatable-terms
-and missing-verified-title scenarios use `request_details` as the
-teaching proxy: do not present an unverified review; a verified version
-must be supplied first, and if none can be supplied, no approval is
-ever sought. That proxy is a training device, not a code path, and a
-real implementation would need a locale field and a fail-closed review
-gate in code, as a separate, deliberate change.
+At the time of this update, the action protocol had **no
+consumer-locale field**: the `MuseCommerceContext` in
+`apps/demo/src/muse-commerce.ts` carried no profile-language,
+device-locale, or location field, and no new action (`catalog_read`,
+`reel_entry`, or a locale action) was added — this was a preparation
+task, not a code change. Locale behaviour was therefore taught through
+the **existing actions plus the scenario user-message text**, which
+states the consumer's profile preference, device locale, location, and
+caption language explicitly, and through server-side gating described
+in the scenario text. Where the existing action set had no "fail
+closed, present nothing" action, the untranslatable-terms and
+missing-verified-title scenarios used `request_details` as the
+teaching proxy: do not present an unverified review; a verified
+version must be supplied first, and if none can be supplied, no
+approval is ever sought.
+
+**Update (locale as code, later the same day): that limitation is now
+superseded for the step machine.** `MuseCommerceContext` now carries
+`consumerLocale` (profile language, device locale, location) and
+`verifiedReviewLanguages`, `resolveReviewLanguage` implements the
+precedence rule (profile first, device second, location never a
+language), and `expectedMuseCommerceStep` fails closed to
+`request_details` for `verifiedReviewTranslation` when no verified
+review exists in the resolved language — see [Locale as
+code — 2026-10-27](locale-implementation-2026-10-27.md). The
+`request_details` step for an untranslatable review is therefore no
+longer only a teaching proxy; it is the real expected step for a
+context carrying that consumer's locale. The training scenarios
+themselves were not changed by that code commit (their contexts carry
+no `consumerLocale`, so the gate does not fire for them and their
+expected actions are unchanged, verified by `--check` still passing
+at 48/30), and no new tool action was added. Production host wiring
+— supplying the locale fields from authenticated profile/device data
+— remains a separate change.
 
 ## Evaluation criteria
 

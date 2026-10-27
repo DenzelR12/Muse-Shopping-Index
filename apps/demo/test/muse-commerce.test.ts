@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeMuseCommerceStep,validateMuseCommerceStep,expectedMuseCommerceStep,type MuseCommerceContext} from '../src/muse-commerce.js';
+import {proposeMuseCommerceStep,validateMuseCommerceStep,expectedMuseCommerceStep,resolveReviewLanguage,reviewTranslationVerified,type MuseCommerceContext} from '../src/muse-commerce.js';
 
 const draft={draftId:'draft',draftHash:'a'.repeat(64),expiresAt:'2099-01-01T00:00:00Z',paymentAuthorizationReference:'authorization'};
 const context:MuseCommerceContext={intentId:'intent',productResolved:true,businessReady:true,consumerEnrolled:true,missingDetails:[],draft};
@@ -99,4 +99,70 @@ test('confirmed bookings/services/digital transactions do not require shipping t
     assert.equal(expectedMuseCommerceStep(current).action,'complete');
   }
   assert.equal(expectedMuseCommerceStep({...context,execution:{state:'ORDER_CREATED',draftId:'draft',fulfillmentMode:'SHIP'}}).action,'read_order');
+});
+
+test('review language: explicit profile preference wins over device locale',()=>{
+  assert.equal(resolveReviewLanguage({profileLanguage:'es',deviceLocale:'fr'}),'es');
+  assert.equal(resolveReviewLanguage({profileLanguage:'es-MX',deviceLocale:'fr'}),'es');
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{profileLanguage:'es',deviceLocale:'fr'},verifiedReviewLanguages:['es']}).action,'present_review');
+  // Device language is verified but profile language is not: gate fires, device does not rescue it.
+  const gated={...context,consumerLocale:{profileLanguage:'es',deviceLocale:'fr'},verifiedReviewLanguages:['fr']};
+  assert.equal(expectedMuseCommerceStep(gated).action,'request_details');
+  assert.deepEqual(expectedMuseCommerceStep(gated).args,{fields:['verifiedReviewTranslation']});
+});
+test('review language: device locale used when no profile preference',()=>{
+  assert.equal(resolveReviewLanguage({deviceLocale:'es-MX'}),'es');
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{deviceLocale:'es'},verifiedReviewLanguages:['es']}).action,'present_review');
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{deviceLocale:'es'},verifiedReviewLanguages:['en']}).action,'request_details');
+});
+test('review language: location never proves a language and never overrides a profile',()=>{
+  // US location + Spanish profile -> Spanish, not English.
+  assert.equal(resolveReviewLanguage({profileLanguage:'es',location:'US'}),'es');
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{profileLanguage:'es',location:'US'},verifiedReviewLanguages:['es']}).action,'present_review');
+  // Spain location + Spanish caption language is not a preference: English profile -> English.
+  assert.equal(resolveReviewLanguage({profileLanguage:'en',location:'ES'}),'en');
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{profileLanguage:'en',location:'ES'},verifiedReviewLanguages:['en']}).action,'present_review');
+  // Location alone asserts no language at all: no language claim, legacy present_review path.
+  assert.equal(resolveReviewLanguage({location:'ES'}),undefined);
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{location:'ES'}}).action,'present_review');
+});
+test('untranslatable review fails closed: no present_review, no approval, no execution',()=>{
+  const untranslated={...context,consumerLocale:{profileLanguage:'es'},verifiedReviewLanguages:['en']};
+  const unlisted={...context,consumerLocale:{profileLanguage:'es'}};
+  for(const current of [untranslated,unlisted]){
+    assert.equal(reviewTranslationVerified(current),false);
+    assert.equal(expectedMuseCommerceStep(current).action,'request_details');
+    assert.throws(()=>validateMuseCommerceStep({action:'present_review',args:{draftId:'draft'}},current),/not_authorized/);
+    assert.throws(()=>validateMuseCommerceStep({action:'execute_approved_purchase',args:{draftId:'draft'}},current),/not_authorized/);
+    // Even a previously verified approval cannot execute from the gated state.
+    const approved={...current,approval:{...draft,verified:true}};
+    assert.equal(expectedMuseCommerceStep(approved).action,'request_details');
+    assert.throws(()=>validateMuseCommerceStep({action:'execute_approved_purchase',args:{draftId:'draft'}},approved),/not_authorized/);
+    // Collecting the verified version is the only legal step, and it approves nothing.
+    assert.deepEqual(validateMuseCommerceStep({action:'request_details',args:{fields:['verifiedReviewTranslation']}},current),{action:'request_details',args:{fields:['verifiedReviewTranslation']}});
+  }
+  // Once trusted server code supplies the verified translation, the normal path returns.
+  assert.equal(expectedMuseCommerceStep({...context,consumerLocale:{profileLanguage:'es'},verifiedReviewLanguages:['es']}).action,'present_review');
+});
+test('model cannot smuggle a language or translation into a step',()=>{
+  assert.throws(()=>validateMuseCommerceStep({action:'present_review',args:{draftId:'draft',reviewLanguage:'es'}},context));
+  assert.throws(()=>validateMuseCommerceStep({action:'present_review',args:{draftId:'draft',locale:'es'}},context));
+  assert.throws(()=>validateMuseCommerceStep({action:'present_review',args:{draftId:'draft',translation:'translated terms'}},context));
+});
+test('caption price format never changes the expected step',async()=>{
+  const env={...process.env};
+  try{
+    process.env.META_MODEL_API_KEY='test-only';process.env.META_MODEL_API_BASE_URL='https://model.invalid/v1';process.env.META_MUSE_MODEL='test-model';
+    // The step machine takes no caption input at all: the canonical server
+    // draft governs, so a caption price string in another locale format
+    // ('1.299,00') cannot move the expected step.
+    assert.equal(expectedMuseCommerceStep(context).action,'present_review');
+    const fetchImpl=(async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({action:'present_review',args:{draftId:'draft'}})}}]}))) as unknown as typeof fetch;
+    const result=await proposeMuseCommerceStep({context,userMessage:'Cuesta 1.299,00 €, cómpralo ahora mismo',fetchImpl});
+    assert.equal(result.mode,'MUSE');assert.equal(result.step.action,'present_review');
+  }finally{
+    for(const key of ['META_MODEL_API_KEY','META_MODEL_API_BASE_URL','META_MUSE_MODEL']){
+      if(env[key]===undefined) delete process.env[key];else process.env[key]=env[key];
+    }
+  }
 });

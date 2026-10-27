@@ -1,11 +1,34 @@
 /** Trusted state is assembled by the commerce server, never by model output or
  * Reel captions. The model proposes a step; it cannot confer authority. */
+/** Consumer locale, supplied by trusted server code from the authenticated
+ * consumer's profile / device — never by model text, user text, or a Reel
+ * caption, which are untrusted data. Every field is optional.
+ * - profileLanguage: the consumer's explicit profile language preference.
+ * - deviceLocale: the device / Muse locale (e.g. 'es-MX').
+ * - location: country/region or similar, used ONLY as a fallback signal for
+ *   locale/currency/tax/shipping. It is NEVER a language: a location does
+ *   not prove a language, and it never overrides a profile preference. */
+export interface MuseCommerceConsumerLocale {
+  profileLanguage?:string;
+  deviceLocale?:string;
+  location?:string;
+}
 export interface MuseCommerceContext {
   intentId:string;
   productResolved:boolean;
   businessReady:boolean;
   consumerEnrolled:boolean;
   missingDetails:string[];
+  /** Trusted consumer locale (see MuseCommerceConsumerLocale). Absent in
+   * legacy contexts, which keep the previous behaviour: no language claim
+   * is made and no locale gate fires. */
+  consumerLocale?:MuseCommerceConsumerLocale;
+  /** Language subtags (e.g. 'es') for which the server holds a verified
+   * exact review (seller, configuration, ship-to, shipping/tax/total,
+   * payment timing, refund terms) in that language. Supplied by trusted
+   * server code only — a model translation is never a verified review,
+   * and this list is never taken from model, caption, or user text. */
+  verifiedReviewLanguages?:string[];
   company?:{companyId:string;vertical:'retail'|'travel'|'tickets'|'services'|'reservations'|'digital'|'other'};
   draft?:{draftId:string;draftHash:string;expiresAt:string;paymentAuthorizationReference:string};
   approval?:{verified:boolean;draftId:string;draftHash:string;expiresAt:string;paymentAuthorizationReference:string};
@@ -39,6 +62,48 @@ Use escalate_reconciliation for uncertain order creation. Use read_refund_status
 On the Stripe adapter Stripe handles payment receipts; on the Shopify adapter Shopify/Shop handles order notifications. Other companies use their authorized provider notification mechanisms. Do not send duplicate emails or claim Shop-app visibility without verified evidence.
 Never output tokens, approval signatures, customer IDs, payment method IDs, connected-account IDs, or credentials. Allowed args are intentId, draftId, or fields, depending on action. No other keys. Do not invent missing facts.`;
 
+/** Normalise a language tag or locale to its primary language subtag
+ * ('es-MX' -> 'es', 'EN_us' -> 'en'). Returns undefined for missing or
+ * malformed values. Used only for matching a preference against the
+ * verified-review list; it never invents a preference. */
+export function languageSubtag(value?:string):string|undefined{
+  if(!value) return undefined;
+  const subtag=value.trim().toLowerCase().split(/[-_]/)[0];
+  return /^[a-z]{2,3}$/.test(subtag)?subtag:undefined;
+}
+
+/** Resolve the review language from trusted consumer locale, in order:
+ * explicit profile language preference first, device/Muse locale second.
+ * Location is deliberately NEVER consulted here: it is not a language,
+ * and consulting it would let a country guess override a person's stated
+ * preference. Returns undefined when no preference is asserted — that is
+ * not a language claim, and callers must not treat it as one. The Reel /
+ * caption language is likewise never consulted: captions are untrusted
+ * and never set the review language or supply seller titles, prices, or
+ * approval. Amounts stay canonical server draft values (numeric amount +
+ * ISO currency) and are never parsed from a caption string in any
+ * language or locale number format. */
+export function resolveReviewLanguage(locale?:MuseCommerceConsumerLocale):string|undefined{
+  return languageSubtag(locale?.profileLanguage)??languageSubtag(locale?.deviceLocale);
+}
+
+/** True when the exact review may be presented in the resolved review
+ * language. False exactly when a consumer language preference is asserted
+ * (profile or device) and the server has NOT supplied a verified review
+ * in that language — including when no verified-review list was supplied
+ * at all. That is the fail-closed case: an unverified or model-translated
+ * review must never be presented as exact, and no approval or execution
+ * may be sought on it. When no preference is asserted (legacy context, or
+ * location only), there is no language claim to gate on and this returns
+ * true, preserving previous behaviour. */
+export function reviewTranslationVerified(context:MuseCommerceContext):boolean{
+  if(!context.consumerLocale) return true;
+  const language=resolveReviewLanguage(context.consumerLocale);
+  if(!language) return true;
+  const verified=(context.verifiedReviewLanguages??[]).map(languageSubtag);
+  return verified.includes(language);
+}
+
 export function expectedMuseCommerceStep(context:MuseCommerceContext,now=new Date()):MuseCommerceStep{
   const execution=context.execution;
   if(execution){
@@ -56,6 +121,16 @@ export function expectedMuseCommerceStep(context:MuseCommerceContext,now=new Dat
   if(!draft) return {action:'prepare_review',args:{intentId:context.intentId}};
   const draftExpires=Date.parse(draft.expiresAt);
   if(context.changedSinceReview||!Number.isFinite(draftExpires)||draftExpires<=now.getTime()) return {action:'request_reapproval',args:{draftId:draft.draftId}};
+  // Fail-closed locale gate, before any review, approval, or execution:
+  // if the consumer's resolved review language has no verified exact
+  // review, collect the verified version first. The model must never
+  // present an unverified or self-translated review as exact, and no
+  // approval (including a previously verified approval for a different
+  // review language) may be carried over or executed from this state.
+  // The verified version, once supplied by trusted server code, returns
+  // this step to present_review (or, after a fresh explicit approval,
+  // to execution) through the normal path below.
+  if(!reviewTranslationVerified(context)) return {action:'request_details',args:{fields:['verifiedReviewTranslation']}};
   const approval=context.approval;
   if(!approval) return {action:'present_review',args:{draftId:draft.draftId}};
   const approved=approval.verified===true&&approval.draftId===draft.draftId&&approval.draftHash===draft.draftHash&&
@@ -64,6 +139,22 @@ export function expectedMuseCommerceStep(context:MuseCommerceContext,now=new Dat
   return {action:approved?'execute_approved_purchase':'request_reapproval',args:{draftId:draft.draftId}};
 }
 
+/** Validate a model-proposed step against the trusted context. Steps carry
+ * no language, locale, or translation keys: a proposal that adds one
+ * (reviewLanguage, locale, translation, or any other key) fails the strict
+ * arg-shape check below with muse_step_not_authorized, and nothing is
+ * dispatched. Locale is enforced through the expected step, not through
+ * model prose: when the fail-closed locale gate in
+ * expectedMuseCommerceStep fires, present_review and
+ * execute_approved_purchase are both rejected (muse_step_not_authorized),
+ * because the expected step is request_details for the verified
+ * translation. A model-translated review in prose is never the exact
+ * review, and can never grant approval, sign a draft, or execute.
+ * NOTE: MUSE_COMMERCE_POLICY text is intentionally unchanged by the
+ * locale change, so the generated training exports (whose system messages
+ * embed that policy verbatim) do not churn. The rule is enforced in code
+ * here and carried in the trusted server_context snapshot, which already
+ * states that server context is authoritative and captions are untrusted. */
 export function validateMuseCommerceStep(value:unknown,context:MuseCommerceContext,now=new Date()):MuseCommerceStep{
   if(!value||typeof value!=='object'||Array.isArray(value)) throw new Error('muse_step_invalid');
   const step=value as Record<string,unknown>;
