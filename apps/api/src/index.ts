@@ -37,7 +37,9 @@ import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,vali
 import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {PostgresCompanyGenericProfileStore,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration,SYNTHETIC_FIXTURE_COMPANY_ID} from './muse-generic-profile.js';
-import {buildBiCsv,buildBiDashboardHtml,parseBiDemoEventsEnv,queryBiReport} from './muse-bi.js';
+import {buildBiCsv,buildBiDashboardHtml,InMemoryBiEventStore,parseBiDemoEventsEnv,queryBiReport,type BiEventStore,type BiWatermarkStore} from './muse-bi.js';
+import {PostgresBiEventStore} from './muse-bi-store.js';
+import {getMetaAdsClient,getShopPayExecutionClient,ingestMetaAdEvents,parseGenericAdapterConfig,resolveLiveActivationConfig,validateMetaVerificationRecording,validateReelEntry} from './live-activation.js';
 import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
 import {PostgresEnrollmentStore,startConsumerEnrollment,completeConsumerEnrollment,enrollmentRequest,enrollmentErrorStatus} from './consumer-enrollment.js';
@@ -106,6 +108,30 @@ const companyGenericProfiles=dbPool?new PostgresCompanyGenericProfileStore(dbPoo
 // submit time (muse_generic_connector_not_registered) instead of
 // executing on a guessed provider. See muse-generic-profile.ts.
 const genericConnectorRegistry=new ZeroTrustConnectorRegistry();
+// Live activation (see live-activation.ts and docs/live-readiness.md):
+// presence booleans only — secret values are never logged or read
+// back. By default every client registry is empty, so every gated
+// path fails closed until the operator supplies credentials/config
+// AND a startup-registered client. Generic adapter config declares
+// which adapter serves which company; it does not create an adapter.
+const liveActivation=resolveLiveActivationConfig(process.env);
+let genericAdapterConfig:Record<string,string>={};
+try{
+  genericAdapterConfig=parseGenericAdapterConfig(process.env.MUSE_GENERIC_ADAPTER_CONFIG_JSON);
+}catch{
+  console.log(JSON.stringify({event:'live_activation_generic_adapter_config_invalid'}));
+}
+console.log(JSON.stringify({
+  event:'live_activation_config_present',
+  shopPayReady:liveActivation.shopPay.ready,
+  metaVerificationRecordingConfigured:liveActivation.metaVerificationRecording.secretConfigured,
+  metaAdsReady:liveActivation.metaAds.ready,
+  reelEntryConfigured:liveActivation.reelEntry.secretConfigured,
+  genericAdapterCompanies:Object.keys(genericAdapterConfig),
+}));
+const biLiveEventStore:BiEventStore&BiWatermarkStore=(dbPool
+  ? new PostgresBiEventStore(dbPool)
+  : new InMemoryBiEventStore()) as BiEventStore&BiWatermarkStore;
 const genericConnectorRuntime=providerZeroTrustAuthority&&process.env.DRAFT_SIGNING_SECRET&&process.env.APPROVAL_SIGNING_SECRET
   ? new ZeroTrustConnectorRuntime(genericConnectorRegistry,providerZeroTrustAuthority,providerZeroTrustAuthority,providerZeroTrustAuthority,
       {draftSigningSecret:process.env.DRAFT_SIGNING_SECRET,approvalSigningSecret:process.env.APPROVAL_SIGNING_SECRET},
@@ -246,6 +272,30 @@ createServer(async(req,res)=>{
       return send(res,status,{error:message},requestId);
     }
   }
+  // Trusted Reel entry callback (live-activation point). Like the
+  // Stripe/Shopify webhooks above, this sits before the company
+  // principal block because its authentication is the HMAC
+  // signature, not an API key — and it is safe to do so because it
+  // creates NOTHING: no draft, no approval, no execution, no state
+  // change. It only normalizes a signature-verified intent. Without
+  // META_REEL_CALLBACK_SIGNING_SECRET it is 410; with a bad
+  // signature it is 401. Meta actually sending Reels to this
+  // endpoint (distribution approval) remains an external Meta
+  // decision, not something this route grants.
+  if(req.method==='POST'&&req.url==='/v1/muse/reel-entry'){
+    try{
+      const secret=process.env.META_REEL_CALLBACK_SIGNING_SECRET??'';
+      const raw=await readRaw(req);
+      const header=req.headers['x-meta-reel-signature'];
+      const signature=Array.isArray(header)?header[0]:header;
+      const intent=validateReelEntry({secret,rawBody:raw,signatureHeader:signature});
+      return send(res,200,{intent,note:'reel_intent_received_no_draft_no_approval_no_execution'},requestId);
+    }catch(error){
+      const message=error instanceof Error?error.message:'reel_entry_failed';
+      const status=/not_configured/.test(message)?410:/signature/.test(message)?401:/payload|invalid/.test(message)?400:500;
+      return send(res,status,{error:message},requestId);
+    }
+  }
   if(process.env.NODE_ENV==='production'&&!sharedLimiter) return send(res,503,{error:'persistent_rate_limit_not_configured'},requestId);
   if(req.method==='POST'&&req.url==='/v1/approvals/issue'){
     try{
@@ -354,7 +404,9 @@ createServer(async(req,res)=>{
             approvalSecret:process.env.APPROVAL_SIGNING_SECRET!,authority:providerZeroTrustAuthority,drafts:providerTransactionDrafts,
             runtime:providerRuntimeControl,execution:providerTransactionExecution,
             ...(savedStripeAuthorization?{savedStripeAuthorization}:{}),
-            ...(savedShopPayAuthorization?{savedShopPayAuthorization}:{}),requestId});
+            ...(savedShopPayAuthorization?{savedShopPayAuthorization}:{}),
+            ...(getShopPayExecutionClient()?{shopPayClient:getShopPayExecutionClient()!}:{}),
+            shopPayExecutionReady:liveActivation.shopPay.ready,requestId});
           return {handoff:checkout.handoff,...('checkoutUrl' in checkout?{checkoutUrl:checkout.checkoutUrl}:{})};
         },
         readPaymentAuthentication:(transaction)=>readStripeTransactionCheckout({checkoutSessionId:transaction.paymentReference!,companyId:transaction.companyId,
@@ -412,6 +464,8 @@ createServer(async(req,res)=>{
         execution:providerTransactionExecution,
         ...(savedStripeAuthorization?{savedStripeAuthorization}:{}),
         ...(savedShopPayAuthorization?{savedShopPayAuthorization}:{}),
+        ...(getShopPayExecutionClient()?{shopPayClient:getShopPayExecutionClient()!}:{}),
+        shopPayExecutionReady:liveActivation.shopPay.ready,
         requestId
       });
       return send(res,201,{checkout},requestId);
@@ -504,15 +558,43 @@ createServer(async(req,res)=>{
         return send(res,404,{error:'not_found'},principal.requestId);
       }
       try{
-        const events=parseBiDemoEventsEnv(process.env.MUSE_BI_DEMO_EVENTS_JSON);
         const metric=biUrl.searchParams.get('metric')??'funnel_counts';
         const dimensionsRaw=biUrl.searchParams.get('dimensions');
         const dimensions=dimensionsRaw?dimensionsRaw.split(',').map(value=>value.trim()).filter(Boolean):[];
-        const report=queryBiReport({
-          principalCompanyId:principal.orgId,
-          ...(biUrl.searchParams.has('companyId')?{attemptedCompanyId:biUrl.searchParams.get('companyId')??''}:{}),
-          metric,dimensions,events
-        });
+        const attemptedCompanyId=biUrl.searchParams.has('companyId')?biUrl.searchParams.get('companyId')??'':undefined;
+        let report;
+        if(biUrl.searchParams.get('source')==='live'){
+          // Live ad ingestion (read-only, live-activation point):
+          // token + account must be configured AND an operator
+          // Meta Ads client must be startup-registered. Without
+          // either, 503 — the demo-events path is never silently
+          // substituted for live data, and a live report is never
+          // labeled demo (or vice versa).
+          if(!liveActivation.metaAds.ready) return send(res,503,{error:'muse_bi_live_ads_not_configured'},principal.requestId);
+          const liveClient=getMetaAdsClient();
+          if(!liveClient) return send(res,503,{error:'muse_bi_live_ads_client_not_registered'},principal.requestId);
+          const ingestion=await ingestMetaAdEvents({
+            client:liveClient,
+            companyId:principal.orgId,
+            store:biLiveEventStore,
+            watermarkStore:biLiveEventStore,
+          });
+          if(!ingestion.ok) return send(res,502,{error:'muse_bi_live_ads_ingestion_failed',ingestion},principal.requestId);
+          const liveEvents=await biLiveEventStore.list(principal.orgId);
+          report=queryBiReport({
+            principalCompanyId:principal.orgId,
+            ...(attemptedCompanyId!==undefined?{attemptedCompanyId}:{}),
+            metric,dimensions,events:liveEvents,
+            sourceLabel:'LIVE AD INGESTION',sourceVersion:'live-ads-1',
+          });
+        }else{
+          const events=parseBiDemoEventsEnv(process.env.MUSE_BI_DEMO_EVENTS_JSON);
+          report=queryBiReport({
+            principalCompanyId:principal.orgId,
+            ...(attemptedCompanyId!==undefined?{attemptedCompanyId}:{}),
+            metric,dimensions,events
+          });
+        }
         if(biPath==='/v1/muse/bi/dashboard'){
           res.writeHead(200,{'content-type':'text/html; charset=utf-8'});
           res.end(buildBiDashboardHtml(report));
@@ -1146,6 +1228,42 @@ createServer(async(req,res)=>{
           requestId:principal.requestId
         });
         return send(res,200,{policy},principal.requestId);
+      }
+    }
+    // Trusted Meta business-verification recording (live-activation
+    // point). This is the ONLY recording route for Meta evidence:
+    // it requires an authenticated company principal, a configured
+    // META_VERIFICATION_WEBHOOK_SECRET, and a valid HMAC signature
+    // over the raw body. Without the secret it is 410 — the generic
+    // readiness POST below stays 410 for self-attestation, and this
+    // route does not reopen it. Evidence is validated with the
+    // existing rules (missing/placeholder/self-attested/future/
+    // expired rejected, flag AND evidence must agree) and stored
+    // in the seller-manifest store, which the readiness service
+    // reads as its Meta-evidence fallback. This records evidence;
+    // it is not a Meta API call, and Meta accepting this channel
+    // remains an external decision.
+    const metaVerificationMatch=req.url?.match(/^\/v1\/provider-readiness\/([^/]+)\/([^/]+)\/meta-verification$/);
+    if(req.method==='POST'&&metaVerificationMatch){
+      if(!requireCapability(principal,'manage_provider_connections')) return send(res,403,{error:'forbidden'},principal.requestId);
+      if(!companySellerManifests) return send(res,503,{error:'seller_manifest_store_not_configured'},principal.requestId);
+      try{
+        const secret=process.env.META_VERIFICATION_WEBHOOK_SECRET??'';
+        const raw=await readRaw(req);
+        const header=req.headers['x-meta-verification-signature'];
+        const signature=Array.isArray(header)?header[0]:header;
+        const recorded=validateMetaVerificationRecording({secret,rawBody:raw,signatureHeader:signature});
+        if(recorded.companyId!==principal.orgId) return send(res,403,{error:'meta_verification_company_mismatch'},principal.requestId);
+        await companySellerManifests.upsertMetaVerification({
+          companyId:principal.orgId,
+          origin:'meta',
+          metaVerification:recorded.metaVerification,
+        });
+        return send(res,201,{recorded:true,companyId:principal.orgId,verified:true},principal.requestId);
+      }catch(error){
+        const message=error instanceof Error?error.message:'meta_verification_recording_failed';
+        const status=/recording_disabled/.test(message)?410:/signature/.test(message)?401:/mismatch/.test(message)?403:/meta_verification_/.test(message)?400:500;
+        return send(res,status,{error:message},principal.requestId);
       }
     }
     const readinessMatch=req.url?.match(/^\/v1\/provider-readiness\/([^/]+)\/([^/]+)$/);

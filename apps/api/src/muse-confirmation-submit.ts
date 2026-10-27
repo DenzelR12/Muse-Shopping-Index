@@ -3,7 +3,7 @@ import {decimalPriceToMinorUnits,landedQuoteTotalAmount,type PostgresZeroTrustAu
 import type {ProviderTransactionDraftService} from './provider-transaction-draft.js';
 import type {ProviderRuntimeControlPlane} from './provider-runtime-control.js';
 import type {ProviderTransactionExecutionService} from './provider-transaction-execution.js';
-import {executeShopPaySavedAuthorization,assertShopPayVehicleReady,paymentLabelForVehicle,resolvePaymentVehicle,type PaymentVehicle,type ShopPayVehicleReadiness} from './shop-pay-vehicle.js';
+import {executeShopPaySavedAuthorization,executeShopPayWithClient,assertShopPayVehicleReady,paymentLabelForVehicle,resolvePaymentVehicle,type PaymentVehicle,type ShopPayExecutionClient,type ShopPayVehicleReadiness} from './shop-pay-vehicle.js';
 import type {ShopPaySavedPaymentAuthorization} from './consumer-commerce-identity.js';
 
 export async function submitMuseConfirmation(args:{
@@ -32,6 +32,15 @@ export async function submitMuseConfirmation(args:{
   // shop_pay_execution_blocked before any approval consumption or
   // commit.
   shopPayReadiness?:ShopPayVehicleReadiness;
+  // Credential-gated Shop Pay execution (live-activation point):
+  // when a startup-registered client is supplied AND its env
+  // config is ready, a fully verified Shop Pay attempt executes
+  // through that client (approval consumed exactly once on
+  // success, never on a client throw). When either is absent,
+  // the blocked stub below throws and no approval is consumed.
+  // Callers that pass no client preserve the old blocked behaviour.
+  shopPayClient?:ShopPayExecutionClient;
+  shopPayExecutionReady?:boolean;
   requestId?:string;
 }){
   const connection=await args.authority.resolve(args.connectionId);
@@ -124,6 +133,33 @@ export async function submitMuseConfirmation(args:{
   // so a not-ready vehicle is reported distinctly from the block.
   if(paymentVehicle==='shop_pay'){
     if(args.shopPayReadiness) assertShopPayVehicleReady(args.shopPayReadiness);
+    if(args.shopPayClient && args.shopPayExecutionReady === true){
+      const shopPayResult=await executeShopPayWithClient({
+        client:args.shopPayClient,
+        config:{
+          enabled:true,
+          credentialConfigured:true,
+          clientConfigured:true,
+          ready:true,
+        },
+        execution:{
+          companyId:connection.companyId,
+          draftId:verified.draft.draftId,
+          total:verified.draft.total,
+          currency:verified.draft.currency,
+          authorizationReference:savedPaymentAuthorization.reference,
+        },
+      });
+      // Success only: consume the one-time approval exactly once,
+      // exactly as the Stripe path does inside createCheckout.
+      // A client throw above reaches no consume and no commit.
+      await args.authority.consumeOnce('approval:'+approval.claims.jti,approval.claims.expiresAt);
+      return {
+        shopPayExecution:shopPayResult,
+        paymentReference:shopPayResult.providerReference,
+        paymentReferenceKind:'shop_pay' as const,
+      } as unknown as Awaited<ReturnType<typeof args.execution.createCheckout>>;
+    }
     executeShopPaySavedAuthorization();
   }
 

@@ -60,9 +60,14 @@ export class ProviderTransactionExecutionService {
     savedStripeAuthorization?:{customerId:string;paymentMethodId:string;usage:'off_session'};
     fetchImpl?:typeof fetch;
   }):Promise<AutonomousTransactionResult>{
-    // Shop Pay execution is blocked, not routed to Stripe: there is no
-    // Shop Pay API client, no authorized Shop Pay credentials, and no
-    // Shop Pay checkout endpoint in this codebase. This throw happens
+    // Shop Pay execution is blocked here, not routed to Stripe, and
+    // NOT delegated to a client from this service: this service
+    // never receives the saved Shop Pay authorization reference, so
+    // it cannot execute a Shop Pay payment correctly. The
+    // credential-gated Shop Pay path lives in
+    // muse-confirmation-submit.ts, where the saved authorization
+    // reference, drift revalidation, and exact approval binding are
+    // all present before the client is called. This throw happens
     // before any connection/policy/intent lookup, approval consumption,
     // or payment attempt, so a blocked attempt commits nothing and
     // cannot be mistaken for a Stripe checkout.

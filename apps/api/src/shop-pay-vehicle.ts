@@ -114,3 +114,72 @@ export function assertShopPayVehicleReady(input: ShopPayVehicleReadiness): void 
 export function executeShopPaySavedAuthorization(): never {
   throw new Error(SHOP_PAY_EXECUTION_BLOCKED);
 }
+
+/**
+ * Credential-gated Shop Pay execution (live-activation point).
+ *
+ * The operator's authorized Shop Pay checkout client is an
+ * interface, deliberately NOT a guessed Shop Pay API endpoint:
+ * no Shop Pay API shape exists in this repo, and inventing one
+ * would be a fake success path. At activation the operator
+ * supplies, via secret manager + startup registration only:
+ *  - SHOP_PAY_EXECUTION_ENABLED=true
+ *  - SHOP_PAY_API_KEY (presence only; the value is never logged
+ *    or read back here)
+ *  - SHOP_PAY_CHECKOUT_CLIENT (identifier of the operator's
+ *    startup-registered client)
+ * plus a client registered at server startup (see
+ * live-activation.ts). Without all three, or without a client,
+ * execution fails closed with shop_pay_execution_blocked (config
+ * missing) or shop_pay_execution_client_not_registered (config
+ * present, no client), and the caller must not consume the
+ * approval. With a client, the client executes and the caller
+ * consumes the approval exactly once on success; a client throw
+ * consumes nothing and must be reconciled, never blindly retried.
+ */
+export interface ShopPayExecutionClient {
+  execute(args: {
+    companyId: string;
+    draftId: string;
+    total: number;
+    currency: string;
+    authorizationReference: string;
+  }): Promise<{providerReference: string; executionId?: string}>;
+}
+
+export interface ShopPayExecutionConfig {
+  enabled: boolean;
+  credentialConfigured: boolean;
+  clientConfigured: boolean;
+  ready: boolean;
+}
+
+export function resolveShopPayExecutionConfig(
+  env: NodeJS.ProcessEnv
+): ShopPayExecutionConfig {
+  const enabled = env.SHOP_PAY_EXECUTION_ENABLED === 'true';
+  const credentialConfigured = Boolean(env.SHOP_PAY_API_KEY?.trim());
+  const clientConfigured = Boolean(env.SHOP_PAY_CHECKOUT_CLIENT?.trim());
+  return {
+    enabled,
+    credentialConfigured,
+    clientConfigured,
+    ready: enabled && credentialConfigured && clientConfigured,
+  };
+}
+
+export async function executeShopPayWithClient(args: {
+  client: ShopPayExecutionClient | null;
+  config: ShopPayExecutionConfig;
+  execution: {
+    companyId: string;
+    draftId: string;
+    total: number;
+    currency: string;
+    authorizationReference: string;
+  };
+}): Promise<{providerReference: string; executionId?: string}> {
+  if (!args.config.ready) throw new Error(SHOP_PAY_EXECUTION_BLOCKED);
+  if (!args.client) throw new Error('shop_pay_execution_client_not_registered');
+  return args.client.execute(args.execution);
+}

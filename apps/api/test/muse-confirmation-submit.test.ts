@@ -224,3 +224,39 @@ test('Stripe confirmation is unchanged when the draft carries no vehicle field (
   assert.equal(result.checkoutSessionId,'cs_legacy');
   assert.equal(captured.paymentVehicle,'stripe');
 });
+
+// --- Credential-gated Shop Pay execution (live-activation point) ---
+// Mocked client only: no real Shop Pay API, endpoint, or credential
+// is used here. Absent client/config still fails closed, with no
+// approval consumed; a mocked ready client executes and consumes
+// exactly once, and a client throw consumes nothing.
+
+test('Shop Pay confirmation executes through a mocked ready client and consumes the approval exactly once',async()=>{
+  let consumed=0; let executed:any=null;
+  const result:any=await shopPaySubmit({onConsume:()=>{consumed++;},extra:{
+    shopPayClient:{async execute(args:any){executed=args;return {providerReference:'sp_mock_1',executionId:'sp_exec_1'};}},
+    shopPayExecutionReady:true,
+  }});
+  assert.equal(result.paymentReference,'sp_mock_1');
+  assert.equal(result.shopPayExecution.providerReference,'sp_mock_1');
+  assert.deepEqual(executed,{companyId:'org-a',draftId:'draft-1',total:58.32,currency:'USD',authorizationReference:'shop-pay-ref-1'});
+  assert.equal(consumed,1);
+});
+
+test('Shop Pay confirmation fails closed when a client is supplied but its config is not ready',async()=>{
+  let consumed=0;
+  await assert.rejects(shopPaySubmit({onConsume:()=>{consumed++;},extra:{
+    shopPayClient:{async execute(){throw new Error('must_not_execute');}},
+    shopPayExecutionReady:false,
+  }}),/shop_pay_execution_blocked/);
+  assert.equal(consumed,0);
+});
+
+test('Shop Pay confirmation fails closed on a client throw, without consuming the approval',async()=>{
+  let consumed=0;
+  await assert.rejects(shopPaySubmit({onConsume:()=>{consumed++;},extra:{
+    shopPayClient:{async execute(){throw new Error('shop_pay_client_uncertain');}},
+    shopPayExecutionReady:true,
+  }}),/shop_pay_client_uncertain/);
+  assert.equal(consumed,0);
+});

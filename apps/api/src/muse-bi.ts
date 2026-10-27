@@ -91,7 +91,7 @@ export interface BiProvenance {
   codeVersion: string;
   inputHash: string;
   verificationStatus: BiVerificationStatus;
-  dataSourceLabel: typeof BI_DATA_SOURCE_LABEL;
+  dataSourceLabel: string;
 }
 
 function stableStringify(value: unknown): string {
@@ -130,6 +130,7 @@ export function buildBiProvenance(args: {
   freshnessSlaMs?: number;
   inputHash: string;
   verificationStatus: BiVerificationStatus;
+  dataSourceLabel?: string;
 }): BiProvenance {
   const definition = BI_METRIC_DEFINITIONS[args.metric];
   return {
@@ -142,7 +143,7 @@ export function buildBiProvenance(args: {
     codeVersion: BI_CODE_VERSION,
     inputHash: args.inputHash,
     verificationStatus: args.verificationStatus,
-    dataSourceLabel: BI_DATA_SOURCE_LABEL,
+    dataSourceLabel: args.dataSourceLabel ?? BI_DATA_SOURCE_LABEL,
   };
 }
 
@@ -402,7 +403,7 @@ function dimensionValue(event: BiFunnelEvent, dimension: BiDimension): string {
 }
 
 export interface BiReport {
-  dataSourceLabel: typeof BI_DATA_SOURCE_LABEL;
+  dataSourceLabel: string;
   demoLabel: string;
   companyId: string;
   tenantFilteredBeforeAggregation: true;
@@ -429,6 +430,11 @@ export function queryBiReport(args: {
   freshnessSlaMs?: number;
   sourceVersion?: string;
   now?: Date;
+  // Live-activation override: ONLY the live ad-ingestion route may
+  // pass this, with 'LIVE AD INGESTION'. The default stays
+  // DEMO/SUPPLIED EVENTS, so a supplied-events report can never be
+  // relabeled live by accident — the caller must explicitly opt in.
+  sourceLabel?: string;
 }): BiReport {
   const principalCompanyId = args.principalCompanyId?.trim();
   if (!principalCompanyId) throw new Error('bi_principal_required');
@@ -495,13 +501,15 @@ export function queryBiReport(args: {
     computedAt, now: args.now, freshnessSlaMs, sourceValid, actualInputHash: inputHash,
   });
   return {
-    dataSourceLabel: BI_DATA_SOURCE_LABEL,
-    demoLabel: 'DEMO/SUPPLIED EVENTS — not live Shop, Meta, or payment data',
+    dataSourceLabel: args.sourceLabel ?? BI_DATA_SOURCE_LABEL,
+    demoLabel: args.sourceLabel
+      ? `${args.sourceLabel} — authorized advertising connection, read-only, not live Shop or payment data`
+      : 'DEMO/SUPPLIED EVENTS — not live Shop, Meta, or payment data',
     companyId: principalCompanyId,
     tenantFilteredBeforeAggregation: true,
     metric,
     dimensions,
-    provenance: buildBiProvenance({ metric, computedAt, freshnessSlaMs, inputHash, verificationStatus, sourceVersion: args.sourceVersion }),
+    provenance: buildBiProvenance({ metric, computedAt, freshnessSlaMs, inputHash, verificationStatus, sourceVersion: args.sourceVersion, ...(args.sourceLabel ? {dataSourceLabel: args.sourceLabel, source: 'live-ad-ingestion'} : {}) }),
     data,
   };
 }

@@ -289,3 +289,100 @@ test('BI Postgres store trims by company before listing and persists watermarks'
   assert.equal((await store.getWatermark('attributed_revenue','org-a'))?.artifactId,'art-1');
   assert.equal(await store.getWatermark('attributed_revenue','org-b'),null);
 });
+
+// --- Live activation gates (credential-gated, mocked clients) ---
+// Appended here so CI's existing provider-observability run covers
+// them. No real Meta, Shop Pay, or advertising credential is used:
+// HMAC secrets below are test-only strings, and the ad client is
+// a mock returning supplied events.
+import {createHmac} from 'node:crypto';
+import {
+  ingestMetaAdEvents,
+  parseGenericAdapterConfig,
+  resolveLiveActivationConfig,
+  validateMetaVerificationRecording,
+  validateReelEntry,
+  verifyHmacSha256Signature,
+} from '../dist/live-activation.js';
+
+const hmacFor=(secret:string,raw:Buffer)=>`sha256=${createHmac('sha256',secret).update(raw).digest('hex')}`;
+const validMetaPayload=()=>Buffer.from(JSON.stringify({
+  companyId:'org-a', origin:'meta', metaBusinessVerified:true,
+  metaVerification:{verified:true,verifiedAt:'2026-10-20T00:00:00Z',evidenceRef:'meta-ev-1',issuer:'Meta',source:'meta-verification-webhook'},
+}));
+
+test('Live activation config reports presence only, never secret values',()=>{
+  const config=resolveLiveActivationConfig({
+    SHOP_PAY_EXECUTION_ENABLED:'true', SHOP_PAY_API_KEY:'test-key-not-real', SHOP_PAY_CHECKOUT_CLIENT:'operator-client-1',
+    META_VERIFICATION_WEBHOOK_SECRET:'test-secret', META_ADS_ACCESS_TOKEN:'test-token', META_ADS_ACCOUNT_ID:'act_1',
+    META_REEL_CALLBACK_SIGNING_SECRET:'test-secret', MUSE_GENERIC_ADAPTER_CONFIG_JSON:'{"org-a":"adapter-1"}',
+  } as any);
+  assert.equal(config.shopPay.ready,true);
+  assert.equal(config.metaVerificationRecording.secretConfigured,true);
+  assert.equal(config.metaAds.ready,true);
+  assert.equal(config.reelEntry.secretConfigured,true);
+  assert.deepEqual(config.genericAdapters.companyIds,['org-a']);
+  assert.equal(JSON.stringify(config).includes('test-key-not-real'),false);
+  assert.equal(JSON.stringify(config).includes('test-secret'),false);
+  const empty=resolveLiveActivationConfig({} as any);
+  assert.equal(empty.shopPay.ready,false);
+  assert.equal(empty.metaAds.ready,false);
+  assert.equal(empty.reelEntry.secretConfigured,false);
+});
+
+test('Meta verification recording rejects absent secret, bad signature, placeholder and expired evidence',()=>{
+  const raw=validMetaPayload();
+  assert.throws(()=>validateMetaVerificationRecording({secret:'',rawBody:raw,signatureHeader:hmacFor('s',raw)}),/meta_verification_recording_disabled/);
+  assert.throws(()=>validateMetaVerificationRecording({secret:'s',rawBody:raw,signatureHeader:'sha256=00'}),/meta_verification_signature_invalid/);
+  assert.deepEqual(validateMetaVerificationRecording({secret:'s',rawBody:raw,signatureHeader:hmacFor('s',raw)}).companyId,'org-a');
+  const placeholder=Buffer.from(JSON.stringify({companyId:'org-a',metaVerification:{verified:true,verifiedAt:'2026-10-20T00:00:00Z',evidenceRef:'placeholder',issuer:'Meta',source:'meta-verification-webhook'}}));
+  assert.throws(()=>validateMetaVerificationRecording({secret:'s',rawBody:placeholder,signatureHeader:hmacFor('s',placeholder)}),/meta_verification_evidence_ref_placeholder/);
+  const expired=Buffer.from(JSON.stringify({companyId:'org-a',metaVerification:{verified:true,verifiedAt:'2026-10-20T00:00:00Z',evidenceRef:'meta-ev-1',issuer:'Meta',source:'meta-verification-webhook',expiresAt:'2020-01-01T00:00:00Z'}}));
+  assert.throws(()=>validateMetaVerificationRecording({secret:'s',rawBody:expired,signatureHeader:hmacFor('s',expired)}),/meta_verification_expired/);
+  const flagMismatch=Buffer.from(JSON.stringify({companyId:'org-a',metaBusinessVerified:false,metaVerification:{verified:true,verifiedAt:'2026-10-20T00:00:00Z',evidenceRef:'meta-ev-1',issuer:'Meta',source:'meta-verification-webhook'}}));
+  assert.throws(()=>validateMetaVerificationRecording({secret:'s',rawBody:flagMismatch,signatureHeader:hmacFor('s',flagMismatch)}),/meta_verification_flag_evidence_mismatch/);
+  const selfAttested=Buffer.from(JSON.stringify({companyId:'org-a',metaVerification:{verified:true,verifiedAt:'2026-10-20T00:00:00Z',evidenceRef:'meta-ev-1',issuer:'self',source:'meta-verification-webhook'}}));
+  assert.throws(()=>validateMetaVerificationRecording({secret:'s',rawBody:selfAttested,signatureHeader:hmacFor('s',selfAttested)}),/meta_verification_issuer_not_accepted/);
+});
+
+test('Reel entry validates a signed intent and fails closed without a secret or with a bad signature',()=>{
+  const raw=Buffer.from(JSON.stringify({reelId:'reel-9',companyId:'org-a',offerId:'offer-1'}));
+  assert.throws(()=>validateReelEntry({secret:'',rawBody:raw,signatureHeader:hmacFor('s',raw)}),/reel_entry_not_configured/);
+  assert.throws(()=>validateReelEntry({secret:'s',rawBody:raw,signatureHeader:'sha256=00'}),/reel_entry_signature_invalid/);
+  const intent=validateReelEntry({secret:'s',rawBody:raw,signatureHeader:hmacFor('s',raw)});
+  assert.equal(intent.reelId,'reel-9');
+  assert.equal(intent.companyId,'org-a');
+  assert.equal(verifyHmacSha256Signature({secret:'s',rawBody:raw,signatureHeader:hmacFor('s',raw)}),true);
+});
+
+test('Generic adapter config rejects the synthetic fixture and invalid JSON',()=>{
+  assert.deepEqual(parseGenericAdapterConfig(undefined),{});
+  assert.deepEqual(parseGenericAdapterConfig('{"org-a":"adapter-1"}'),{'org-a':'adapter-1'});
+  assert.throws(()=>parseGenericAdapterConfig('{"synthetic-fixture-demo-only":"adapter-1"}'),/live_activation_generic_adapter_config_invalid/);
+  assert.throws(()=>parseGenericAdapterConfig('not-json'),/live_activation_generic_adapter_config_invalid/);
+});
+
+test('Live ad ingestion trims tenants, advances the watermark on success, and does not advance it on failure',async()=>{
+  const store=new InMemoryBiEventStore();
+  const ok=await ingestMetaAdEvents({
+    client:{async fetchEvents(){return [
+      {companyId:'org-a',draftId:'draft-1',campaignId:'camp-1',stage:'intent',occurredAt:'2026-10-20T00:00:00Z'},
+      {companyId:'org-a',draftId:'draft-1',campaignId:'camp-1',stage:'verified_outcome',occurredAt:'2026-10-21T00:00:00Z',amount:50,currency:'USD'},
+      {companyId:'org-b',draftId:'draft-9',campaignId:'camp-9',stage:'intent',occurredAt:'2026-10-20T00:00:00Z'},
+    ];}},
+    companyId:'org-a', store, watermarkStore:store, computedAt:'2026-10-26T00:00:00Z',
+  });
+  assert.equal(ok.ok,true);
+  assert.equal(ok.recorded,2);
+  assert.equal(ok.droppedOtherTenant,1);
+  assert.equal(ok.status,'verified');
+  assert.equal((await store.list('org-a')).length,2);
+  assert.equal(store.getWatermark('funnel_counts','org-a')?.artifactId,'meta-ads:org-a:2026-10-26T00:00:00Z');
+  const failed=await ingestMetaAdEvents({
+    client:{async fetchEvents(){throw new Error('ads_api_down');}},
+    companyId:'org-a', store, watermarkStore:store, computedAt:'2026-10-27T00:00:00Z',
+  });
+  assert.equal(failed.ok,false);
+  assert.equal(failed.status,'stale');
+  assert.equal(store.getWatermark('funnel_counts','org-a')?.artifactId,'meta-ads:org-a:2026-10-26T00:00:00Z');
+});
