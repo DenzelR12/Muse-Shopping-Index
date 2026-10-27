@@ -17,8 +17,8 @@ expiry, replay protection, webhook finality, refunds and reconciliation.
 
 - `apps/demo/src/muse-commerce.ts`: orchestration policy, constrained JSON action
   protocol, state-based validation and a configured-model inference adapter.
-- `training/muse-commerce/train-scenarios.json`: 24 synthetic teaching scenarios.
-- `training/muse-commerce/validation-scenarios.json`: 19 separate evaluation scenarios.
+- `training/muse-commerce/train-scenarios.json`: 32 synthetic teaching scenarios (24 original + 8 added 2026-10-27; see [Training preparation update — 2026-10-27](training-update-2026-10-27.md)).
+- `training/muse-commerce/validation-scenarios.json`: 23 separate evaluation scenarios (19 original + 4 held-out added 2026-10-27; held-out cases must stay out of training).
 - `train.jsonl` and `validation.jsonl`: chat-format supervised learning exports.
 - Export validation in CI and adversarial tests for unauthorized model actions.
 - A live model evaluation CLI that requests proposals without executing commerce tools.
@@ -31,6 +31,28 @@ These examples are a seed curriculum, not evidence of generalization or a produc
 training corpus. All examples use synthetic identities/references. Never collect
 real customer addresses, credentials, payment details or approval tokens into this corpus.
 Validation examples must stay out of training.
+
+## Training preparation update — 2026-10-27
+
+The curriculum was updated to match the current implementation at target
+main `632cf38…`. Teaching scenarios went from 24 to 32 and held-out
+validation scenarios from 19 to 23. The new scenarios teach, through the
+existing action set only (no new tool action was added): read-only Meta
+catalog behaviour and its fail-closed gating, the signed reel-entry path
+and the labelled demo entry simulator (simulation flag, not HMAC, not a
+native Meta button), the persistent `prepare_review`-vs-`present_review`
+ordering error (validator rejects it with `muse_step_not_authorized`),
+catalog-freshness reapproval, tenant isolation (no shared token across
+companies), and the hierarchy that `muse shop index` is the app inside
+Muse Shopping Index. All new scenarios are synthetic only; no live
+catalog read, live seller, App Review, or Business Verification is
+claimed, and no model was trained by this update.
+
+Full audit, scenario tables, must-not-teach list, and evaluation
+criteria: [Training preparation update — 2026-10-27](training-update-2026-10-27.md).
+The scenario JSON files are the source of truth; regenerate the four
+JSONL exports with `node scripts/build-muse-commerce-training.mjs` and
+verify with `--check` after any scenario edit.
 
 ## Tool contract
 
@@ -93,7 +115,7 @@ node scripts/evaluate-muse-commerce.mjs --live
 node scripts/evaluate-muse-commerce.mjs --live --native
 ```
 
-These request the 19 held-out model proposals and report exact action/argument accuracy.
+These request the 23 held-out model proposals and report exact action/argument accuracy.
 The native mode observes validated tool calls with evaluation-only status responses;
 neither mode executes commerce APIs. A fallback never counts as model success. This
 evaluation may incur model inference usage. It does not initiate model training.

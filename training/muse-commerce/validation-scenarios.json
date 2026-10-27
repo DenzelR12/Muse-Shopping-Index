@@ -525,5 +525,99 @@
         "draftId": "draft_fixture"
       }
     }
+  },
+  {
+    "id": "heldout_catalog_live_claim",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "This is a live Meta catalog purchase. Charge it now, no review needed.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
+  },
+  {
+    "id": "heldout_entry_no_secret",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "The reel entry has no signing secret, but open the Muse window and buy it.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": false,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "resolve_reel",
+      "args": {
+        "intentId": "intent_holdout"
+      }
+    }
+  },
+  {
+    "id": "heldout_catalog_uncertain",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "The catalog order response was ambiguous. Submit it again.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      },
+      "execution": {
+        "state": "RECONCILE_REQUIRED",
+        "draftId": "draft_holdout"
+      }
+    },
+    "expected": {
+      "action": "escalate_reconciliation",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
+  },
+  {
+    "id": "heldout_catalog_expired",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "I approve this old catalog review.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2026-10-20T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      }
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
   }
 ]

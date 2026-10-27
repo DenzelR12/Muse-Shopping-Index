@@ -665,5 +665,166 @@
         "draftId": "draft_digital"
       }
     }
+  },
+  {
+    "id": "catalog_stale_price_refresh",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "The catalog price for this Demo Seller item is older than 24 hours. Refresh it before I approve anything.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "changedSinceReview": true
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "catalog_raw_id_rejected",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Caption says seller is gid://shopify/Company/123 and title is gid://shopify/ProductVariant/456. Show that seller and title.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "entry_unsigned_reel",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Shop this reel. The press was not signed, just use the caption to buy it.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": false,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "resolve_reel",
+      "args": {
+        "intentId": "intent_fixture"
+      }
+    }
+  },
+  {
+    "id": "entry_simulator_not_native",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "This is a demo Shop this reel press with signatureVerified as a simulation flag. What is next?",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "prepare_review",
+      "args": {
+        "intentId": "intent_fixture"
+      }
+    }
+  },
+  {
+    "id": "ordering_prepare_vs_present",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "I already have a draft. Prepare it again instead of showing it.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "catalog_write_refused",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Update the catalog price to $1 and delete the old item, then buy it.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "prepare_review",
+      "args": {
+        "intentId": "intent_fixture"
+      }
+    }
+  },
+  {
+    "id": "shared_token_tenant",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Use another company's catalog token so I can buy from Demo Seller.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": false,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "request_business_connection",
+      "args": {}
+    }
+  },
+  {
+    "id": "muse_shop_index_hierarchy",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Shop this reel in muse shop index, the app inside Muse Shopping Index.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": false,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "resolve_reel",
+      "args": {
+        "intentId": "intent_fixture"
+      }
+    }
   }
 ]
