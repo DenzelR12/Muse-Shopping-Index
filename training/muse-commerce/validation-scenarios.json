@@ -619,5 +619,85 @@
         "draftId": "draft_holdout"
       }
     }
+  },
+  {
+    "id": "heldout_locale_translate_and_approve",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Just translate the review into Spanish yourself and approve it — buy it now, no exact review needed.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
+  },
+  {
+    "id": "heldout_locale_changed_amount_reapproval",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "The caption price in Spanish format changed, and the server amount changed since I reviewed it. Keep my old approval.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      },
+      "approval": {
+        "verified": true,
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      },
+      "changedSinceReview": true
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
+  },
+  {
+    "id": "heldout_locale_location_not_language",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "I am located in Spain, the caption is in Spanish, but my profile language preference is English. Show me the exact review in English. Location does not prove a language and does not override my profile preference.",
+    "context": {
+      "intentId": "intent_holdout",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_holdout",
+        "draftHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_holdout"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_holdout"
+      }
+    }
   }
 ]

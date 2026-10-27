@@ -17,8 +17,8 @@ expiry, replay protection, webhook finality, refunds and reconciliation.
 
 - `apps/demo/src/muse-commerce.ts`: orchestration policy, constrained JSON action
   protocol, state-based validation and a configured-model inference adapter.
-- `training/muse-commerce/train-scenarios.json`: 32 synthetic teaching scenarios (24 original + 8 added 2026-10-27; see [Training preparation update — 2026-10-27](training-update-2026-10-27.md)).
-- `training/muse-commerce/validation-scenarios.json`: 23 separate evaluation scenarios (19 original + 4 held-out added 2026-10-27; held-out cases must stay out of training).
+- `training/muse-commerce/train-scenarios.json`: 38 synthetic teaching scenarios (24 original + 8 added 2026-10-27 + 6 multilingual locale scenarios added 2026-10-27; see [Training preparation update — 2026-10-27](training-update-2026-10-27.md) and [Training preparation update — multilingual locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md)).
+- `training/muse-commerce/validation-scenarios.json`: 26 separate evaluation scenarios (19 original + 4 held-out added 2026-10-27 + 3 multilingual held-out added 2026-10-27; held-out cases must stay out of training).
 - `train.jsonl` and `validation.jsonl`: chat-format supervised learning exports.
 - Export validation in CI and adversarial tests for unauthorized model actions.
 - A live model evaluation CLI that requests proposals without executing commerce tools.
@@ -53,6 +53,34 @@ criteria: [Training preparation update — 2026-10-27](training-update-2026-10-2
 The scenario JSON files are the source of truth; regenerate the four
 JSONL exports with `node scripts/build-muse-commerce-training.mjs` and
 verify with `--check` after any scenario edit.
+
+## Training preparation update — multilingual locale rule — 2026-10-27
+
+The curriculum was updated at target main `ec3ca300…`. Teaching
+scenarios went from 32 to 38 and held-out validation scenarios from 23
+to 26. The new scenarios teach, through the existing action set only
+(no new tool action was added, and the action protocol has no
+consumer-locale field — locale is taught in the scenario text): the
+exact review follows the consumer's own preferences in order — explicit
+profile language preference, then device / Muse locale, then location
+only as a fallback for locale/currency/tax/shipping, never language
+guessed from location alone; the Reel/caption language never sets the
+review language and never supplies seller titles, prices, or approval;
+amounts stay canonical on the server and are never parsed from a
+caption string in any locale number format; and if no verified
+translation the consumer understands is available, the behaviour is
+fail closed — no approval sought, and a model translation of legal
+terms is never presented as exact terms. All new scenarios are
+synthetic only, and no model was trained by this update.
+
+**Explicit limit:** multilingual review localisation is **not**
+implemented in code yet — the demo and review remain English-only.
+This update is training preparation for a design rule only, and makes
+no live multilingual claim.
+
+Full audit, scenario tables, must-not-teach list, format limitation,
+and evaluation criteria: [Training preparation update — multilingual
+locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md).
 
 ## Tool contract
 

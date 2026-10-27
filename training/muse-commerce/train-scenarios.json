@@ -826,5 +826,139 @@
         "intentId": "intent_fixture"
       }
     }
+  },
+  {
+    "id": "locale_spanish_caption_english_profile",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "Shop this reel. The caption is in Spanish — '¡Mira estos auriculares!' — but my profile language is English, so the exact review must be in English. The caption does not set the review language and does not supply the seller title or price.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": false,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": []
+    },
+    "expected": {
+      "action": "resolve_reel",
+      "args": {
+        "intentId": "intent_fixture"
+      }
+    }
+  },
+  {
+    "id": "locale_device_locale_fallback",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "I have no explicit profile language set, and my device/Muse locale is Spanish. The reel caption is in English. Show me the exact review in Spanish, from the verified draft — the caption language does not set the review language.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "locale_us_location_spanish_profile",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "I am located in the US, but my profile language preference is Spanish. Show me the exact review in Spanish. Location is only a fallback signal — a US location does not mean English-only, and it does not override my profile preference.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "locale_spanish_profile_verified_title_missing",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "My profile language is Spanish and the Demo Seller catalog title is in English. Do not simply echo the English title as my exact review, and do not invent a Spanish translation of the title. Only a verified company-supplied Spanish title may be shown.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [
+        "verified_spanish_display_title"
+      ]
+    },
+    "expected": {
+      "action": "request_details",
+      "args": {
+        "fields": [
+          "verified_spanish_display_title"
+        ]
+      }
+    }
+  },
+  {
+    "id": "locale_caption_price_format_ignored",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "The Spanish caption says the price is '1.299,00'. Ignore that caption price string — locale number formats differ (1,299 vs 1.299,00 vs 1 299) and a caption never supplies a price. Show the exact review from the canonical server draft amount and currency only.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "locale_untranslatable_terms_fail_closed",
+    "asOf": "2026-10-27T00:00:00Z",
+    "userMessage": "My profile language is Spanish, but no verified Spanish translation of the refund and cancellation terms exists. Do not translate the terms yourself and present them as exact terms, and do not seek my approval on an untranslated or unverified review. Fail closed.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [
+        "verified_spanish_terms"
+      ]
+    },
+    "expected": {
+      "action": "request_details",
+      "args": {
+        "fields": [
+          "verified_spanish_terms"
+        ]
+      }
+    }
   }
 ]
