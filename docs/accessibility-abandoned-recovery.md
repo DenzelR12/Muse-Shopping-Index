@@ -429,7 +429,12 @@ following must never be taught, by example or by implication:
   review, not a description of the current demo.
 - **What code would still need (separate steps, not this
   document):** a real-text review renderer with the §1.1 reading
-  order, announced status changes, a pre-expiry warning, a
-  consented single-reminder template and channel, and the
+  order, announced status changes, a pre-expiry warning, and the
   resume-by-draft entry path in production code (demo form
-  exists only as the entry simulator).
+  exists only as the entry simulator). The reminder itself is
+  no longer in that list: since 2026-10-27 it exists as a gated
+  server component (`apps/api/src/muse-reminder.ts`, see
+  docs/reminder-implementation-2026-10-27.md) — but it is still
+  not a live reminder, because no authorized channel is
+  configured in production and the consumer-facing opt-in
+  entry in the review UI does not exist yet.

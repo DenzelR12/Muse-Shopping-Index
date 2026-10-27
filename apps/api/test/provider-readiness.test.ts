@@ -295,3 +295,40 @@ test('Meta catalog client exposes GET only, by construction', async () => {
   assert.deepEqual(methods, ['GET', 'GET']);
   assert.equal(result.source, 'META CATALOG');
 });
+
+// Muse reminder gates (full suite is apps/api/test/muse-reminder.test.ts,
+// mocked channel transport only); these gates mirror its fail-closed
+// cases and must stay in agreement with it.
+import {
+  MemoryMuseReminderStore,
+  optInToReminder,
+  sendMuseReminder,
+} from '../src/muse-reminder.js';
+
+test('Muse reminder sends nothing without opt-in, and is blocked without a registered channel', async () => {
+  const store = new MemoryMuseReminderStore();
+  const calls: unknown[] = [];
+  const channel = {send: async (payload: unknown) => { calls.push(payload); }};
+  const draft = {draftId: 'draft-1', consumerSubject: 'consumer-1', companyId: 'company-1', expiresAt: '2026-10-28T12:00:00.000Z', approved: false, executed: false};
+  await assert.rejects(
+    sendMuseReminder({store, channel, principalSubject: 'consumer-1', principalCompanyId: 'company-1', draft, now: '2026-10-27T12:00:00.000Z'}),
+    /muse_reminder_not_opted_in/,
+  );
+  await optInToReminder({store, principalSubject: 'consumer-1', principalCompanyId: 'company-1', companyId: 'company-1', draftId: 'draft-1', now: '2026-10-27T12:00:00.000Z'});
+  await assert.rejects(
+    sendMuseReminder({store, channel: null, principalSubject: 'consumer-1', principalCompanyId: 'company-1', draft, now: '2026-10-27T12:00:00.000Z'}),
+    /muse_reminder_channel_not_registered/,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test('Muse reminder refuses a tenant mismatch with no send', async () => {
+  const store = new MemoryMuseReminderStore();
+  const calls: unknown[] = [];
+  const channel = {send: async (payload: unknown) => { calls.push(payload); }};
+  await assert.rejects(
+    optInToReminder({store, principalSubject: 'consumer-1', principalCompanyId: 'company-1', companyId: 'company-2', draftId: 'draft-1', now: '2026-10-27T12:00:00.000Z'}),
+    /provider_readiness_company_mismatch/,
+  );
+  assert.equal(calls.length, 0);
+});
