@@ -543,3 +543,79 @@ test('Muse panel routes fail closed without a principal, on tenant mismatch, and
   assert.deepEqual(wrongDraft.body, { error: 'muse_panel_route_draft_mismatch' });
   assert.equal(calls, 0, 'no refused request may reach a handler');
 });
+
+// Multi-company TEST gates (full suites are
+// apps/api/test/muse-multi-company.test.ts and
+// apps/demo/test/muse-multi-company-demo.test.ts); these gates mirror
+// the isolation cases that must stay in agreement with them. Both
+// tenants use Muse Shopping Index as the platform — THEENRG.COM via
+// Shopify Storefront read-only, ClutchAgent via Meta catalog read-only
+// / Reel entry — and neither tenant's data may reach the other.
+// All fixtures are TEST only; no live store, catalog, token, seller,
+// or order is claimed here.
+import {
+  aggregateTenantBi,
+  checkTenantDraftAccess,
+  createClutchAgentMetaTestTenant,
+  createTheenrgShopifyTestTenant,
+  driftCheck,
+  getTenantCatalog,
+  otherTenantReviewUnchanged,
+} from '../src/muse-multi-company.js';
+
+test('Multi-company TEST gates: cross-tenant reads rejected, drift affects only its own tenant, BI is tenant-trimmed', () => {
+  const now = '2026-10-27T12:00:00.000Z';
+  const theenrg = createTheenrgShopifyTestTenant(now);
+  const clutch = createClutchAgentMetaTestTenant(now);
+  assert.equal(theenrg.catalogSource, 'shopify');
+  assert.equal(clutch.catalogSource, 'meta');
+  const own = getTenantCatalog({ companyId: theenrg.companyId }, theenrg, now);
+  assert.ok(!('error' in own) && own.products.length === 1);
+  assert.deepEqual(getTenantCatalog({ companyId: clutch.companyId }, theenrg, now), { error: 'provider_readiness_company_mismatch' });
+  assert.deepEqual(checkTenantDraftAccess({ companyId: theenrg.companyId }, clutch.companyId), { error: 'provider_readiness_company_mismatch' });
+  const drift = driftCheck(theenrg, 72, 78);
+  assert.equal(drift.requiresReapproval, true);
+  assert.equal(otherTenantReviewUnchanged(49, 49), true, 'ClutchAgent Meta total must be unchanged by THEENRG drift');
+  const bi = aggregateTenantBi({ companyId: theenrg.companyId }, theenrg, [
+    { draftId: 'd1', companyId: theenrg.companyId, verified: true, amount: 72, refunded: false },
+    { draftId: 'd1', companyId: theenrg.companyId, verified: true, amount: 72, refunded: false },
+    { draftId: 'd2', companyId: clutch.companyId, verified: true, amount: 49, refunded: false },
+    { draftId: 'd3', companyId: theenrg.companyId, verified: false, amount: 100, refunded: false },
+  ]);
+  assert.ok(!('error' in bi));
+  assert.equal(bi.verifiedOrderCount, 1, 'one outcome per draftId, verified only, other tenant trimmed');
+  assert.equal(bi.netAmount, 72);
+});
+
+// Muse feature panel mount adapter gate (full suite is
+// apps/api/test/muse-panel-mount.test.ts); this gate mirrors its
+// fail-closed mount cases. The adapter is pure mount logic, NOT
+// mounted in apps/api/src/index.ts: there is no live panel-to-API
+// route, no live HTTP traffic, and no native Muse window claimed.
+// See docs/live-panel-routes-design.md §5 for the exact mount
+// blocker (no panel session token store in index.ts).
+import { handleMusePanelMount } from '../src/muse-panel-mount.js';
+
+test('Muse panel mount adapter gate: no principal, missing draft, and draft-company mismatch call no handler', async () => {
+  let calls = 0;
+  const mountDeps = {
+    resolveDraft: async () => ({ draftId: 'draft-1', companyId: 'company-1' }),
+    resolveApprovalToken: async () => 'approval-token-from-session',
+    hostDeps: {
+      approveDraft: async () => { calls += 1; },
+      resumeDraft: async () => { calls += 1; return { kind: 'present_review' }; },
+      optInReminder: async () => { calls += 1; return { consumerSubject: 'consumer-1', companyId: 'company-1', draftId: 'draft-1', status: 'PENDING', sentCount: 0, createdAt: '2026-10-27T12:00:00.000Z', updatedAt: '2026-10-27T12:00:00.000Z', sentAt: null }; },
+      optOutReminder: async () => { calls += 1; return null; },
+    },
+    now: '2026-10-27T12:00:00.000Z',
+  };
+  const principal = { subject: 'consumer-1', companyId: 'company-1' };
+  const noPrincipal = await handleMusePanelMount({ principal: null, draftId: 'draft-1', action: 'approve', deps: mountDeps });
+  assert.equal(noPrincipal.status, 401);
+  const missing = await handleMusePanelMount({ principal, draftId: 'draft-9', action: 'approve', deps: { ...mountDeps, resolveDraft: async () => null } });
+  assert.equal(missing.status, 404);
+  assert.deepEqual(missing.body, { error: 'muse_panel_mount_draft_not_found' });
+  const wrongCompany = await handleMusePanelMount({ principal, draftId: 'draft-1', action: 'approve', deps: { ...mountDeps, resolveDraft: async () => ({ draftId: 'draft-1', companyId: 'company-2' }) } });
+  assert.equal(wrongCompany.status, 403);
+  assert.equal(calls, 0, 'no refused mount request may reach a handler');
+});

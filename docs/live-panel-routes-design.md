@@ -100,3 +100,32 @@ success case delegating exactly once, and (4) a real-browser
 confirmation run (see the technical verification checklist). Until
 all four are recorded, the mount is code, not a live route — and it
 must be described that way.
+
+## 5. Mount adapter (new in the 100% batch) and the precise mount blocker
+
+`apps/api/src/muse-panel-mount.ts` (`handleMusePanelMount`) is now
+the mount layer, with tests in `apps/api/test/muse-panel-mount.test.ts`
+and a provider-readiness gate. It is pure and injectable: it takes an
+authenticated principal, a body `{ draftId, action }` only, a
+draft resolver, a session-token resolver, and existing host
+dependencies, and it enforces, before any handler is built or called:
+principal required (401), draft found (404
+`muse_panel_mount_draft_not_found`), draft company = principal
+company (403), body draftId = resolved draftId (400), unknown action
+(400), and approval with no session token (403
+`approval_token_required`, approval flow never reached).
+
+**Precise mount blocker — why index.ts is still not wired:**
+index.ts has no store mapping an authenticated panel session to an
+approval token per draft, and the /v1/muse/agent host is a per-request
+model host, not a panel session. There is also no reminder store
+wired into a panel path in index.ts. Wiring the adapter into index.ts
+therefore requires, first, a server-owned panel session token store
+(draftId → approval token, scoped to the authenticated session and
+principal, expiring with the draft, never readable from the panel).
+Until that store exists and is wired, panel routes stay code-ready,
+not mounted — and that is the correct fail-closed state. A mount
+that reads a token from the body, invents one, or reuses another
+session's token must not exist. Mounting the adapter does not create
+live traffic, a native Muse window, a live reminder channel, a live
+seller, or a live catalog read; those remain separately gated.
