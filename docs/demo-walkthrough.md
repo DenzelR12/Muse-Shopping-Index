@@ -469,3 +469,20 @@ unless they block the demo above:
   evidence table. A generic profile without an
   operator-registered adapter also stays blocked at
   submit time, by design.
+
+## Live-readiness note (does not change the demo above)
+
+The demo above still runs with NO live credentials: every gated
+path fails closed (Shop Pay blocked, Meta recording 410, Reel
+entry 410, live BI 503) and the demo labels stay intact. The
+credential-gated activation points are implemented in
+`apps/api/src/live-activation.ts` (Shop Pay client interface, Meta
+verification recording, Reel entry, live ad ingestion, generic
+adapter config) and wired in `apps/api/src/index.ts`; the full
+activation checklist — every env var, where it goes, what fails
+closed without it, what a mocked test proves, and what can only be
+proven after real credentials — is in `docs/live-readiness.md`.
+Read that document before claiming any path is live: credentials
+alone do not grant Meta distribution approval, Shop partnership, or
+a live payment, and a mocked client test is never proof of a live
+service.

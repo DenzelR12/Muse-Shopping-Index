@@ -60,26 +60,42 @@ available. Stripe drafts never consult that flag.
 
 ## What remains blocked, and why
 
-Live Shop Pay execution is blocked with the named error
-`shop_pay_execution_blocked`:
+Live Shop Pay execution is credential-gated (see
+`docs/live-readiness.md` §2b). With no credentials/config or no
+startup-registered client it is blocked with the named error
+`shop_pay_execution_blocked` (config missing) or
+`shop_pay_execution_client_not_registered` (config present, no
+client):
 
 - A codebase search before this step found NO Shop Pay API client, NO
   authorized Shop Pay credentials, and NO Shop Pay checkout endpoint
-  in code. `services/payments` contains only a Stripe client.
-- `executeShopPaySavedAuthorization()` in `shop-pay-vehicle.ts` always
-  throws that error. It is called in `submitMuseConfirmation` AFTER
-  drift revalidation and AFTER exact approval verification, but
-  BEFORE the execution service — so a blocked attempt does not consume
-  the one-time approval JTI and commits no intent or payment.
+  in code. `services/payments` contains only a Stripe client, and no
+  Shop Pay API endpoint was invented — the live path is a client
+  interface (`ShopPayExecutionClient` in `shop-pay-vehicle.ts`)
+  that the operator's authorized checkout client must implement
+  and register at server startup.
+- `executeShopPaySavedAuthorization()` in `shop-pay-vehicle.ts` still
+  always throws the blocked error. It is called in
+  `submitMuseConfirmation` AFTER drift revalidation and AFTER exact
+  approval verification, but BEFORE the execution service — so a
+  blocked attempt does not consume the one-time approval JTI and
+  commits no intent or payment. With a mocked ready client and
+  ready config, `submitMuseConfirmation` instead executes through
+  that client and consumes the approval exactly once on success;
+  a client throw consumes nothing.
 - `ProviderTransactionExecutionService.createCheckout` repeats the
   same block defensively for direct callers, before any
-  connection/policy/intent lookup or approval consumption.
+  connection/policy/intent lookup or approval consumption: it never
+  receives the saved Shop Pay authorization reference, so it cannot
+  execute a Shop Pay payment correctly, and Shop Pay execution
+  lives only in the confirmation-submit path.
 - No Shop Pay API call, fake credential, or fake success path was
-  invented. Unblocking live execution requires, at minimum: authorized
-  Shop Pay credentials through an approved connection, a real Shop Pay
-  checkout client, and wiring that keeps the exact approval binding,
-  consume-once JTI, drift revalidation, and reconciliation behaviour
-  of the Stripe path.
+  invented. Enabling live execution requires, at minimum:
+  `SHOP_PAY_EXECUTION_ENABLED=true`, `SHOP_PAY_API_KEY`, and
+  `SHOP_PAY_CHECKOUT_CLIENT` in the secret manager, plus the
+  operator's startup-registered checkout client — and the exact
+  approval binding, consume-once JTI, drift revalidation, and
+  reconciliation behaviour of the Stripe path are kept.
 
 The company API route `/v1/provider-checkout/:provider/:account`
 remains Stripe-only (other providers return `unknown_provider`); the
