@@ -12,6 +12,8 @@ A person taps **Shop this reel** in Muse, or expresses a conversational shopping
 
 - Read: [System architecture](system-architecture.md)
 - Demo intent code: `apps/demo/src/reel-commerce.ts`
+- Read: [Muse/Meta entry contract](../muse-entry-contract.md)
+- Demo entry code: `apps/demo/src/muse-entry-simulator.ts` (labelled simulator)
 - Limit, stated plainly: native Meta/Reels entry, account linking, and a trusted confirmation callback are integration work. A labeled demonstration harness is not native Meta distribution.
 
 ### 2. Resolve authorized offerings
@@ -24,8 +26,8 @@ Muse resolves offerings only through authorized company adapters and server-owne
 #### 2a. Meta catalog read — where it fits in the chain
 
 In the full chain — Reel intent (step 1) → **catalog read (this step)**
-→ signed draft (step 4) → exact review (step 5) → approval (step 6)
-→ execution (step 7) — a Meta catalog read is one way an authorized
+→ collect missing details (step 3) → signed draft (step 4)
+→ exact review (step 5) → approval (step 6) → execution (step 7) — a Meta catalog read is one way an authorized
 offering can be resolved, for one company's own catalog only. It does
 not replace the company adapter, and it does not create an offering on
 its own: catalog data still has to pass the signed-draft, exact-review,
@@ -143,6 +145,7 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Cross-company network | [Universal commerce network](../universal-ai-commerce-network.md), [agentic network](../universal-agentic-commerce-network.md) |
 | Connector background | [Muse commerce connectors](../muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
 | Meta catalog client (read-only, gated) | [Meta catalog client](../meta-catalog-client.md) |
+| Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../muse-entry-contract.md) |
 | Intelligence and operations | [Company intelligence](../company-intelligence-reports.md), [owner absence](../owner-absence-operations.md) |
 | Production planning | [Readiness](../competition-readiness.md), [production checklist](../production-checklist.md), [zero trust](../zero-trust-production.md) |
 | Demo presentation | [Competition demo](../competition-demo.md), [build notes](../competition-build.md) |

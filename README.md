@@ -33,12 +33,13 @@ Start with the [technical documentation index](docs/technical/README.md). It is 
 
 1. Shop this reel / intent → [System architecture](docs/technical/system-architecture.md)
 2. Resolve authorized offerings → [Company adapter contract](docs/company-adapter-contract.md)
-3. Prepare a signed draft → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-4. Present the exact review → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-5. Explicit human approval → [Transaction lifecycle](docs/technical/transaction-lifecycle.md) and [Security and data](docs/technical/security-and-data.md)
-6. Server execution → [API and tool reference](docs/technical/api-reference.md)
-7. Verified owned status, tracking, refunds, reconciliation → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-8. Run and operate it → [Development and validation](docs/technical/development.md) and [Operations](docs/technical/operations.md)
+3. Collect missing details in one batch → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
+4. Prepare a signed draft → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
+5. Present the exact review → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
+6. Explicit human approval → [Transaction lifecycle](docs/technical/transaction-lifecycle.md) and [Security and data](docs/technical/security-and-data.md)
+7. Server execution → [API and tool reference](docs/technical/api-reference.md)
+8. Verified owned status, tracking, refunds, reconciliation → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
+9. Run and operate it → [Development and validation](docs/technical/development.md) and [Operations](docs/technical/operations.md)
 
 Other guides:
 
@@ -61,7 +62,9 @@ Other guides:
 | Universal company orchestration | Typed company adapters, connection grants, signed drafts, live revalidation and replay controls exist. Each company still needs an authorized implementation. |
 | Muse integration | Native tool runner and authenticated signed-draft continuation exist. Native Meta/Reels entry, account linking and trusted confirmation callback remain integration work, and are labeled as such where they appear. |
 | Transaction reference implementation | Subject-bound enrollment, exact saved-payment approval, direct payment, trusted authentication fallback, reference fulfillment, buyer-owned status, refunds and reconciliation are implemented and tested with mocked transports. |
-| Training preparation | Synthetic teaching and held-out evaluation sets, JSONL exports and evaluation scripts exist. Export generation is not model training; no weight update or live model result is established by the repository. |
+| Meta catalog client | Read-only GET client for one company's own catalog (`apps/api/src/meta-catalog.ts`, [Meta catalog client](docs/meta-catalog-client.md)), gated and TEST-labelled. No live catalog read, live seller, App Review, or Business Verification is claimed. |
+| Muse/Meta entry | Signed reel-entry intent only ([Muse/Meta entry contract](docs/muse-entry-contract.md)), with 410 without a signing secret and 401 on a bad HMAC; it creates nothing. The demo simulator (`apps/demo/src/muse-entry-simulator.ts`) is NOT a native Meta button, Meta distribution, or a Meta callback. |
+| Training preparation | 32 teaching and 23 held-out synthetic scenarios ([Muse model training](docs/muse-model-training.md), [training update 2026-10-27](docs/training-update-2026-10-27.md)), with scenario JSON source files and generated JSONL exports and evaluation scripts. Export generation is not model training; no weight update or live model result is established by the repository. |
 | Production readiness | Green CI does not establish external credentials, webhook delivery, live transaction success, native connector approval, receipt delivery or Shop-app visibility. |
 
 Reference adapters are not mandatory infrastructure for every company. Other companies can retain their own catalogs, payment rails, booking systems and fulfillment APIs. The current authenticated Muse transaction host and API production readiness gate are still tied to the reference profile; replacing those dependencies requires actual adapter integration, not simply changing a configuration flag.
@@ -107,9 +110,10 @@ For configuration checks, use `node scripts/hackathon-preflight.mjs`. Keep `MUSE
 - `apps/business` and `apps/storefront`: business and consumer presentation modules.
 - `services/mcp-gateway`: company connectors, zero-trust runtime, provider adapters, OAuth, credential vault and audit.
 - `services/payments`: payment contracts and reference implementation.
-- Other `services/`: recommendations, bundles, policy, fulfillment, gifting, links, telemetry and operations.
+- Other `services/`: bundle orchestration, fulfillment, gift intelligence, group gifting, link authority, operations, Shopify adapter and webhooks, signal shield, and telemetry store.
 - `packages/`: shopping index, commerce network, domain schemas, gift graph, policy, audit, telemetry and zero-trust primitives.
-- `training/muse-commerce`: synthetic curriculum and generated exports.
+- `training/muse-commerce`: synthetic curriculum — scenario JSON source files and generated JSONL exports.
+- `docs/`: technical workflow index (`docs/technical/`), Meta catalog client, Muse/Meta entry contract, training preparation, live readiness and Render deployment guides, and specialist guides.
 - `infra`, `scripts`, `tests`: infrastructure, operational tooling and cross-module validation.
 
 See [SECURITY.md](SECURITY.md) for security guidance. This repository does not currently declare an open-source license; access to the source does not itself grant a license.
