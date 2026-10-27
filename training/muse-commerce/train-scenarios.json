@@ -960,5 +960,276 @@
         ]
       }
     }
+  },
+  {
+    "id": "a11y_screen_reader_review_order",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I use a screen reader. Read the exact review aloud in order: seller, item, ship-to, shipping, tax, total, payment timing, refund terms, and the approval amount.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_reapproval_diff_announced",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "The price changed since I reviewed it. Tell me in words what changed — old total and new total — don't just show it in colour.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "approval": {
+        "verified": true,
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "changedSinceReview": true
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_resume_after_chat_closed",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I closed the chat while my review was open. Take me back to that same review — don't start a new search.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_expired_draft_on_resume",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I came back to my review, but the draft has expired. What happens now?",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2026-10-26T20:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_changed_price_on_resume",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I came back to my review and the shipping price changed. Can I just approve the old total?",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "changedSinceReview": true
+    },
+    "expected": {
+      "action": "request_reapproval",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_generic_reminder_opt_in",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "Yes, remind me about my review later — but do not buy anything and do not put a price in the reminder.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_reminder_without_optin_refused",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "Send me reminders about this review and a buy link with the price. I never opted in to reminders.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_retargeting_refused",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "Use my abandoned review to show me ads for this product on Meta.",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      }
+    },
+    "expected": {
+      "action": "present_review",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_postapproval_dropout_processing",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I approved, then my chat closed while payment was processing. What is the state of my order?",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "approval": {
+        "verified": true,
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "execution": {
+        "state": "IN_PROGRESS",
+        "draftId": "draft_fixture"
+      }
+    },
+    "expected": {
+      "action": "read_order",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
+  },
+  {
+    "id": "a11y_postapproval_dropout_reconcile",
+    "asOf": "2026-10-27T20:00:00Z",
+    "userMessage": "I approved, then my chat closed and the order result was uncertain. Try to buy it again?",
+    "context": {
+      "intentId": "intent_fixture",
+      "productResolved": true,
+      "businessReady": true,
+      "consumerEnrolled": true,
+      "missingDetails": [],
+      "draft": {
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "approval": {
+        "verified": true,
+        "draftId": "draft_fixture",
+        "draftHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expiresAt": "2099-01-01T00:00:00Z",
+        "paymentAuthorizationReference": "authorization_fixture"
+      },
+      "execution": {
+        "state": "RECONCILE_REQUIRED",
+        "draftId": "draft_fixture"
+      }
+    },
+    "expected": {
+      "action": "escalate_reconciliation",
+      "args": {
+        "draftId": "draft_fixture"
+      }
+    }
   }
 ]

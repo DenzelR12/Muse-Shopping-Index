@@ -17,8 +17,8 @@ expiry, replay protection, webhook finality, refunds and reconciliation.
 
 - `apps/demo/src/muse-commerce.ts`: orchestration policy, constrained JSON action
   protocol, state-based validation and a configured-model inference adapter.
-- `training/muse-commerce/train-scenarios.json`: 38 synthetic teaching scenarios (24 original + 8 added 2026-10-27 + 6 multilingual locale scenarios added 2026-10-27; see [Training preparation update — 2026-10-27](training-update-2026-10-27.md) and [Training preparation update — multilingual locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md)).
-- `training/muse-commerce/validation-scenarios.json`: 26 separate evaluation scenarios (19 original + 4 held-out added 2026-10-27 + 3 multilingual held-out added 2026-10-27; held-out cases must stay out of training).
+- `training/muse-commerce/train-scenarios.json`: 48 synthetic teaching scenarios (24 original + 8 added 2026-10-27 + 6 multilingual locale scenarios added 2026-10-27 + 10 accessibility and abandoned-chat recovery scenarios added 2026-10-27; see [Training preparation update — 2026-10-27](training-update-2026-10-27.md), [Training preparation update — multilingual locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md), and [Accessibility and abandoned-chat recovery](accessibility-abandoned-recovery.md)).
+- `training/muse-commerce/validation-scenarios.json`: 30 separate evaluation scenarios (19 original + 4 held-out added 2026-10-27 + 3 multilingual held-out added 2026-10-27 + 4 accessibility and abandoned-chat recovery held-out added 2026-10-27; held-out cases must stay out of training).
 - `train.jsonl` and `validation.jsonl`: chat-format supervised learning exports.
 - Export validation in CI and adversarial tests for unauthorized model actions.
 - A live model evaluation CLI that requests proposals without executing commerce tools.
@@ -81,6 +81,39 @@ no live multilingual claim.
 Full audit, scenario tables, must-not-teach list, format limitation,
 and evaluation criteria: [Training preparation update — multilingual
 locale rule — 2026-10-27](training-update-multilingual-2026-10-27.md).
+
+## Training preparation update — accessibility and abandoned-chat recovery — 2026-10-27
+
+The curriculum was updated at target main `02cb70e5…`. Teaching
+scenarios went from 38 to 48 and held-out validation scenarios from
+26 to 30. The new scenarios teach, through the existing action set
+only (no new tool action was added, and no reminder, retargeting, or
+accessibility action exists in the protocol — those behaviours are
+taught as server-side rules in the scenario text, with existing
+actions as teaching proxies where noted): the exact review as real
+text in screen-reader order, a reapproval diff announced in words
+("was $277, now $285, shipping changed"), resume after a closed chat
+to the existing owned draft (`present_review`, never a new search
+or a fresh Buy), expired or changed drafts on resume (revalidate,
+new review, fresh approval — an old unapproved review is never
+carried over), a single generic reminder only with explicit opt-in
+(no price, no buy pitch, and no reminder at all without opt-in),
+refusal of retargeting (an abandoned draft is never used for ads),
+and post-approval dropout resume by draft state (processing →
+`read_order`, reconciliation → `escalate_reconciliation`, never a
+fresh Buy or a second charge). All new scenarios are synthetic only,
+and no model was trained by this update.
+
+**Explicit limit:** this is a **design document and training
+preparation only** — no API, storefront, host, or policy code was
+changed, no accessibility standard is claimed or audited, no live
+recovery or reminder is claimed, and the demo and review remain
+English-only. Captions for the current 90-second submission cut are
+a stated gap, not a claim.
+
+Full design, abandonment-point table, must-not-teach list, and
+proposed (not run) evaluation: [Accessibility and abandoned-chat
+recovery](accessibility-abandoned-recovery.md).
 
 ## Tool contract
 
