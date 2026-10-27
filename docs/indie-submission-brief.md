@@ -83,6 +83,36 @@ CATALOG_VERIFIED are evidence-recording gates, not live Meta checks.
 Until steps 1–5 are done, every catalog claim in this project is
 "supplied events / supplied items only," and must stay labelled that way.
 
+### Shopify catalog client — code only, same honesty rule (added after HEAD 11b51a3)
+
+A read-only Shopify catalog client now exists in code
+(`apps/api/src/shopify-catalog.ts`, [Shopify catalog client](shopify-catalog.md)),
+mirroring the Meta catalog client: Storefront API product query
+only, gated, TEST-labelled, with title/price/currency validation,
+24-hour freshness, and raw IDs stripped. It has **no cart,
+checkout, write, order, or customer endpoint**, and Shopify is a
+provider behind the server, never the frontend — this is a Muse
+feature, not a storefront. Its endpoint/version shape is **not
+live-verified against a real store**, no live Shopify read, store,
+token, or seller is verified, and a store-owner call about a real
+store is pending. Until a real read is verified against a real
+store, every Shopify catalog claim stays labelled the same way
+as the Meta ones above: code only, not a live connection.
+
+### Panel host wiring — done in code, not live traffic (added after HEAD 11b51a3)
+
+The Muse feature panel's callbacks are now mapped to existing
+server methods by a host-side adapter
+(`apps/api/src/muse-panel-host.ts`, [Panel host wiring](panel-host-wiring.md)):
+approve → existing signed-draft approval flow (consume-once,
+host-supplied token only), resume → host `resumeDraft()`
+(revalidates first), reminder opt-in/opt-out → existing reminder
+functions (principal only). No new public route was added, and
+no live HTTP traffic or native Muse window integration is
+claimed: wiring here means callback → server-method mapping
+plus tests, and live routes plus the native renderer remain
+separate steps.
+
 ## 3. Meta surface feature framing
 
 Muse is the surface where Reel intent becomes an exact, server-verified
@@ -228,7 +258,11 @@ and not "an AI chatbot with a buy button."
   Headphones in the $58 test draft, and the source's four invented demo
   companies (Atlas, Nomad, and two Orlando travel packages, dated
   2026-10-24). The first real seller and its product are open decisions
-  for the user, not answers in the source.
+  for the user, not answers in the source. Update after HEAD 11b51a3:
+  a read-only Shopify catalog adapter now exists in code so a
+  store-owner call can be answered with ready code, but no store,
+  token, or seller is verified yet — the first real seller is
+  still open, and a store-owner call is pending.
 - **Business model:** none found. No fee, commission, subscription
   price, or revenue model exists in the source or target. Who pays, and
   for what, is an open decision for the user.
@@ -247,6 +281,10 @@ and not "an AI chatbot with a buy button."
    and database configuration missing, not a completed live API.
 3. One real company end to end in test mode: profile, adapter,
    authorized provider connection, manifest → TRANSACTION_READY.
+   The Shopify catalog adapter for that company's store is now
+   code-ready (read-only, TEST-labelled); what is still missing
+   is the store owner's authorization and a verified read
+   against a real store, which is pending a call.
 4. A measured clicks/time number: time or clicks from Reel tap to
    approval, before versus after, measured on a real run.
 5. A 90-second demo video with a failure/reapproval case, ending on the
@@ -267,7 +305,11 @@ See also: `docs/demo-walkthrough.md` (no-money demo),
 checklist), `docs/real-model-agent-test.md` (real-model agent-host test,
 mock host, no live agent),
 `docs/meta-catalog-client.md` (read-only Meta catalog client code, gated,
-no live read verified — not a live catalog connection).
+no live read verified — not a live catalog connection),
+`docs/shopify-catalog.md` (read-only Shopify catalog client code, gated,
+no live read verified — not a live Shopify connection),
+`docs/panel-host-wiring.md` (panel callbacks → existing server methods;
+no new public route, no live HTTP traffic or native Muse window claimed).
 
 ## Muse entry contract — the aim (pointer only)
 

@@ -382,3 +382,126 @@ test('Muse abandoned resume never re-buys after approval and warns only in the f
     ['d1'],
   );
 });
+
+// Shopify read-only catalog gates (full suite is
+// apps/api/test/shopify-catalog.test.ts); these gates mirror
+// its fail-closed cases and must stay in agreement with it.
+// Storefront API query only: no cart, checkout, write, order,
+// or customer endpoint is reachable through this client, and
+// no live Shopify read, store, token, or seller is claimed.
+import {
+  readShopifyCatalog,
+  resolveShopifyStoreDomain,
+  type ShopifyCatalogClient,
+  type ShopifyCatalogConfig,
+} from '../src/shopify-catalog.js';
+
+test('Shopify catalog read fails closed without token, client, tenant match, or store domain', async () => {
+  const calls: string[] = [];
+  const mockClient: ShopifyCatalogClient = {
+    fetchProducts: async () => { calls.push('products'); return {products: {edges: []}}; },
+    fetchProduct: async () => { calls.push('product'); return {productByHandle: null}; },
+  };
+  const config: ShopifyCatalogConfig = {storeDomain: 'test-store.myshopify.com', version: '2025-07', tokenConfigured: true};
+  await assert.rejects(
+    readShopifyCatalog({config: {...config, tokenConfigured: false}, client: mockClient, companyId: 'company-1', principalCompanyId: 'company-1', now: '2026-10-27T12:00:00.000Z'}),
+    /muse_shopify_catalog_not_configured/,
+  );
+  await assert.rejects(
+    readShopifyCatalog({config, client: null, companyId: 'company-1', principalCompanyId: 'company-1', now: '2026-10-27T12:00:00.000Z'}),
+    /muse_shopify_catalog_client_not_registered/,
+  );
+  await assert.rejects(
+    readShopifyCatalog({config, client: mockClient, companyId: 'company-1', principalCompanyId: 'company-2', now: '2026-10-27T12:00:00.000Z'}),
+    /provider_readiness_company_mismatch/,
+  );
+  await assert.rejects(
+    readShopifyCatalog({config: {...config, storeDomain: null}, client: mockClient, companyId: 'company-1', principalCompanyId: 'company-1', envStoreDomain: null, manifestStoreDomain: null, now: '2026-10-27T12:00:00.000Z'}),
+    /muse_shopify_store_not_configured/,
+  );
+  assert.equal(calls.length, 0);
+  assert.equal(resolveShopifyStoreDomain({}), null);
+  assert.equal(resolveShopifyStoreDomain({envStoreDomain: 'env-store.myshopify.com', manifestStoreDomain: 'manifest-store.myshopify.com'}), 'manifest-store.myshopify.com');
+});
+
+test('Shopify catalog read validates a mocked product and strips raw Shopify IDs from consumer output', async () => {
+  const mockClient: ShopifyCatalogClient = {
+    fetchProducts: async () => ({
+      products: {
+        edges: [
+          {node: {id: 'gid://shopify/Product/222', title: 'Aurora Headphones', handle: 'aurora-headphones', updatedAt: '2026-10-27T10:00:00.000Z', status: 'ACTIVE', variants: {edges: [{node: {id: 'gid://shopify/ProductVariant/111', price: {amount: '249.00', currencyCode: 'USD'}, availableForSale: true}}]}}},
+        ],
+      },
+    }),
+    fetchProduct: async () => ({productByHandle: null}),
+  };
+  const result = await readShopifyCatalog({config: {storeDomain: 'test-store.myshopify.com', version: '2025-07', tokenConfigured: true}, client: mockClient, companyId: 'company-1', principalCompanyId: 'company-1', now: '2026-10-27T12:00:00.000Z'});
+  assert.equal(result.source, 'SHOPIFY');
+  assert.match(result.label, /TEST/);
+  assert.equal(result.verified.length, 1);
+  assert.equal(result.verified[0].title, 'Aurora Headphones');
+  assert.equal(result.verified[0].priceAmount, 249);
+  const rendered = JSON.stringify(result);
+  assert.ok(!rendered.includes('gid://shopify/'), 'consumer output must not contain raw Shopify IDs');
+  assert.ok(!rendered.includes('aurora-headphones'), 'consumer output must not contain the product handle');
+});
+
+// Muse feature panel host wiring gate (full suite is
+// apps/api/test/muse-panel-host.test.ts); this gate mirrors
+// its fail-closed approval and resume cases and must stay in
+// agreement with it. Wiring means panel callback -> existing
+// server method only: no new public route, no live HTTP
+// traffic, and no native Muse window integration is claimed.
+import {
+  createMusePanelHostHandlers,
+} from '../src/muse-panel-host.js';
+
+test('Muse panel host wiring requires a host-supplied token for approval and routes resume to resumeDraft', async () => {
+  const calls: {approve: number; resume: number} = {approve: 0, resume: 0};
+  const handlers = createMusePanelHostHandlers({
+    principal: {subject: 'consumer-1', companyId: 'company-1'},
+    companyId: 'company-1',
+    draft: {draftId: 'draft-1', approvalToken: 'approval-token-from-session'},
+    deps: {
+      approveDraft: async () => { calls.approve += 1; return {status: 'payment_processing'}; },
+      resumeDraft: async () => { calls.resume += 1; return {kind: 'present_review', draftId: 'draft-1', approvalRequired: true, approvalCarried: false, executeAgain: false, freshBuy: false}; },
+      optInReminder: async () => { throw new Error('not_used_in_gate'); },
+      optOutReminder: async () => { throw new Error('not_used_in_gate'); },
+    },
+    now: '2026-10-27T12:00:00.000Z',
+  });
+  await handlers.onApprove();
+  const decision = await handlers.onResume();
+  assert.equal(calls.approve, 1);
+  assert.equal(calls.resume, 1);
+  assert.equal(decision.kind, 'present_review');
+  const noToken = createMusePanelHostHandlers({
+    principal: {subject: 'consumer-1', companyId: 'company-1'},
+    companyId: 'company-1',
+    draft: {draftId: 'draft-1'},
+    deps: {
+      approveDraft: async () => { calls.approve += 1; return {}; },
+      resumeDraft: async () => { throw new Error('not_used_in_gate'); },
+      optInReminder: async () => { throw new Error('not_used_in_gate'); },
+      optOutReminder: async () => { throw new Error('not_used_in_gate'); },
+    },
+    now: '2026-10-27T12:00:00.000Z',
+  });
+  await assert.rejects(noToken.onApprove(), /approval_token_required/);
+  assert.equal(calls.approve, 1, 'an approval without a token must not reach the approval flow');
+  assert.throws(
+    () => createMusePanelHostHandlers({
+      principal: {subject: 'consumer-1', companyId: 'company-1'},
+      companyId: 'company-2',
+      draft: {draftId: 'draft-1'},
+      deps: {
+        approveDraft: async () => { throw new Error('not_used_in_gate'); },
+        resumeDraft: async () => { throw new Error('not_used_in_gate'); },
+        optInReminder: async () => { throw new Error('not_used_in_gate'); },
+        optOutReminder: async () => { throw new Error('not_used_in_gate'); },
+      },
+      now: '2026-10-27T12:00:00.000Z',
+    }),
+    /provider_readiness_company_mismatch/,
+  );
+});

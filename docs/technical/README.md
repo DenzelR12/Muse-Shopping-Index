@@ -38,6 +38,18 @@ the read itself.
 - Client code: `apps/api/src/meta-catalog.ts` (internal helper
   `readMetaCatalog`; deliberately no new public route and no public
   purchase route)
+
+A Shopify catalog read fits the same slot in the chain — one
+company's own store, read-only, validated before any draft — and
+is documented the same way, with the same limits:
+[Shopify catalog client](../shopify-catalog.md) (`apps/api/src/shopify-catalog.ts`,
+internal helper `readShopifyCatalog`; Storefront query only, no
+cart, checkout, write, order, or customer endpoint, no live read
+verified). The panel that presents the resulting review is wired
+to the host by [Panel host wiring](../panel-host-wiring.md)
+(`apps/api/src/muse-panel-host.ts`): panel callbacks map to
+existing server methods only, with no new public route and no
+live HTTP traffic or native Muse window integration claimed.
 - Read-only, by construction: the transport has exactly one method,
   GET, against versioned Graph API endpoints for one catalog's details
   and its products. There is no write method and no write endpoint,
@@ -147,6 +159,8 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Cross-company network | [Universal commerce network](../universal-ai-commerce-network.md), [agentic network](../universal-agentic-commerce-network.md) |
 | Connector background | [Muse commerce connectors](../muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
 | Meta catalog client (read-only, gated) | [Meta catalog client](../meta-catalog-client.md) |
+| Shopify catalog client (read-only, gated, Storefront query only) | [Shopify catalog client](../shopify-catalog.md) — no cart, checkout, write, order, or customer endpoint; no live Shopify read, store, token, or seller verified yet; endpoint/version shape not live-verified against a real store. |
+| Muse feature panel host wiring (callback → server method only) | [Panel host wiring](../panel-host-wiring.md) — no new public route, no live HTTP traffic, no native Muse window integration claimed; live routes and the native renderer remain separate steps. |
 | Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../muse-entry-contract.md) |
 | Locale as code (trusted context field, fail-closed review gate) | [Locale implementation](../locale-implementation-2026-10-27.md) |
 | Opt-in reminder server component (gated, generic, one-only) | [Reminder implementation](../reminder-implementation-2026-10-27.md) |
