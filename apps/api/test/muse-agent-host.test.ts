@@ -411,3 +411,23 @@ test('generic submit without a runtime fails closed without consuming anything, 
   runtime.execute=async()=>{throw new Error('unknown_company_connector');};
   await assert.rejects(submit({subjectId:'buyer',companyId:'co-1',connectionId:'c',draftId:'d',approvalToken:'tok'}),/muse_generic_connector_not_registered/);
 });
+
+import {buildGenericProfileNextSteps,createGenericSubmit} from '../dist/muse-generic-profile.js';
+test('generic profile next steps order adapter/manifest/connection after registration, and adapter-config gate is distinct from adapter-not-registered',async()=>{
+  const steps=buildGenericProfileNextSteps({profileRegistered:true,adapterConfigured:false,manifestPresent:false});
+  assert.deepEqual(steps.map(s=>s.step),['profile','adapter','manifest','provider_connection_and_readiness']);
+  assert.equal(steps[0].status,'done');
+  assert.equal(steps[1].status,'pending');
+  assert.match(steps[1].action,/MUSE_GENERIC_ADAPTER_CONFIG_JSON/);
+  const done=buildGenericProfileNextSteps({profileRegistered:true,adapterConfigured:true,manifestPresent:true});
+  assert.equal(done[1].status,'done');
+  assert.equal(done[2].status,'done');
+  // Adapter-config gate: company absent from config fails before the runtime is even called.
+  let runtimeCalls=0;
+  const submit=createGenericSubmit({execute:async()=>{runtimeCalls++;return {status:'CONFIRMED'} as any;}}, {'other-co':'adapter-1'});
+  await assert.rejects(submit({subjectId:'buyer',companyId:'my-co',connectionId:'c',draftId:'d',approvalToken:'t'}),/muse_generic_adapter_not_configured/);
+  assert.equal(runtimeCalls,0);
+  // Company in config but no runtime adapter still fails closed, with the original error.
+  const noRuntime=createGenericSubmit(null, {'my-co':'adapter-1'});
+  await assert.rejects(noRuntime({subjectId:'buyer',companyId:'my-co',connectionId:'c',draftId:'d',approvalToken:'t'}),/muse_generic_connector_not_registered/);
+});

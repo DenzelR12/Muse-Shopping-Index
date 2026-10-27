@@ -6,7 +6,7 @@ function fakePool(){
   const rows=new Map();
   return {
     async query(sql,params=[]){
-      if(sql.includes('CREATE TABLE')||sql.includes('ALTER TABLE')) return {rows:[],rowCount:0};
+      if(sql.includes('CREATE TABLE')||sql.includes('ALTER TABLE')||sql.includes('CREATE INDEX')) return {rows:[],rowCount:0};
       if(sql.includes('INSERT INTO provider_transaction_intents')){
         const [companyId,draftId,paymentProvider,paymentExternalAccountId,consumerSubjectId,fulfillmentProvider,fulfillmentExternalAccountId,payload,amount,currency]=params;
         const key=companyId+'|'+draftId;

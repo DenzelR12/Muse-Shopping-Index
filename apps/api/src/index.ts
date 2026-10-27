@@ -36,7 +36,7 @@ import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
 import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
-import {PostgresCompanyGenericProfileStore,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration,SYNTHETIC_FIXTURE_COMPANY_ID} from './muse-generic-profile.js';
+import {PostgresCompanyGenericProfileStore,buildGenericProfileNextSteps,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration,SYNTHETIC_FIXTURE_COMPANY_ID} from './muse-generic-profile.js';
 import {buildBiCsv,buildBiDashboardHtml,InMemoryBiEventStore,parseBiDemoEventsEnv,queryBiReport,type BiEventStore,type BiWatermarkStore} from './muse-bi.js';
 import {PostgresBiEventStore} from './muse-bi-store.js';
 import {getMetaAdsClient,getShopPayExecutionClient,ingestMetaAdEvents,parseGenericAdapterConfig,resolveLiveActivationConfig,validateMetaVerificationRecording,validateReelEntry} from './live-activation.js';
@@ -390,7 +390,7 @@ createServer(async(req,res)=>{
         // fixture is never registered as an adapter here.
         resolveExecutionProfile:createGenericProfileResolver(companyGenericProfiles),
         genericReadiness:createGenericReadiness(companyGenericProfiles),
-        submitGeneric:createGenericSubmit(genericConnectorRuntime),
+        submitGeneric:createGenericSubmit(genericConnectorRuntime,genericAdapterConfig),
         genericDraft:createGenericDraftResolver(providerZeroTrustAuthority,process.env.DRAFT_SIGNING_SECRET??''),
         businessReady:async(companyId,shopDomain)=>{
           try{return (await providerReadiness.evaluate({companyId,provider:'shopify',externalAccountId:shopDomain})).readiness==='AUTONOMOUS_READY';}
@@ -640,7 +640,12 @@ createServer(async(req,res)=>{
           principalOrgId:principal.orgId,
         });
         const profile=await companyGenericProfiles.register(validated);
-        return send(res,201,{profile,note:'profile_registered_adapter_still_required_for_execution'},principal.requestId);
+        // Next steps are status only (see buildGenericProfileNextSteps):
+        // they do not register an adapter, a manifest, or a connection.
+        // The manifest check is best-effort and never fails registration.
+        let manifestPresent=false;
+        try{manifestPresent=Boolean(companySellerManifests&&await companySellerManifests.get(principal.orgId));}catch{manifestPresent=false;}
+        return send(res,201,{profile,note:'profile_registered_adapter_still_required_for_execution',nextSteps:buildGenericProfileNextSteps({profileRegistered:true,adapterConfigured:principal.orgId in genericAdapterConfig,manifestPresent})},principal.requestId);
       }catch(error){
         const message=error instanceof Error?error.message:'generic_profile_registration_failed';
         const status=/not_configured/.test(message)?503:/mismatch|synthetic|invalid/.test(message)?400:500;
@@ -651,7 +656,9 @@ createServer(async(req,res)=>{
       if(!companyGenericProfiles) return send(res,503,{error:'generic_profile_store_not_configured'},principal.requestId);
       const profile=await companyGenericProfiles.get(principal.orgId);
       if(!profile) return send(res,404,{error:'generic_profile_not_found'},principal.requestId);
-      return send(res,200,{profile},principal.requestId);
+      let manifestPresent=false;
+      try{manifestPresent=Boolean(companySellerManifests&&await companySellerManifests.get(principal.orgId));}catch{manifestPresent=false;}
+      return send(res,200,{profile,nextSteps:buildGenericProfileNextSteps({profileRegistered:true,adapterConfigured:principal.orgId in genericAdapterConfig,manifestPresent})},principal.requestId);
     }
     if(req.method==='DELETE'&&req.url==='/v1/muse/generic-profiles/me'){
       if(!requireCapability(principal,'manage_provider_connections')) return send(res,403,{error:'forbidden'},principal.requestId);

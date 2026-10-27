@@ -76,6 +76,70 @@ const SHOP_BACKEND_NOTE =
   'applies only where the merchant is authorized on Shop. This demonstration ' +
   'does not claim live Shop integration, live payment, or live shipping.';
 
+const RAW_ID_PATTERN = /gid:\/\/|myshopify\.com|acct_/;
+
+/**
+ * Bottleneck fix: the bridge → signed-draft step was a manual presenter
+ * mapping (docs/demo-walkthrough.md Step 1 → Step 2), so a demo seller
+ * name, a title mismatch, or a raw ID was only caught later by draft
+ * validation or by a fail-closed review. This pure preflight validates
+ * the handoff BEFORE an authenticated company caller submits a draft.
+ * It creates nothing, signs nothing, issues no approval, and does not
+ * substitute for server-side draft validation: the draft service must
+ * still validate sellerDisplayName, itemTitles, terms, timing, and
+ * arrival itself. It only fails fast, with a named next action, on
+ * the mismatches a presenter can fix before submitting.
+ *
+ * sellerDisplayName must be the company's real, server-registered name:
+ * the bridge's 'Demo Seller' is a demo label and is rejected here, as
+ * is any name containing a raw-ID pattern or equal to the companyId
+ * (a raw account/domain fallback in disguise).
+ * expectedTitle, when supplied, must equal the bridge review title:
+ * a draft whose item title differs from the reviewed title would
+ * require reapproval anyway, so catching it here saves a round-trip.
+ */
+export function validateReelDemoBridgeDraftHandoff(args: {
+  bridge: ReelDemoBridgeResult;
+  sellerDisplayName: unknown;
+  expectedTitle?: unknown;
+}): {
+  ready: true;
+  next: 'SUBMIT_DRAFT_AS_AUTHENTICATED_COMPANY_CALLER';
+  sellerDisplayName: string;
+  title: string;
+} {
+  const {bridge} = args;
+  if (!bridge || bridge.next !== 'FINAL_REVIEW' || !bridge.review) {
+    throw new Error('reel_demo_handoff_not_final_review');
+  }
+  const sellerDisplayName =
+    typeof args.sellerDisplayName === 'string' ? args.sellerDisplayName.trim() : '';
+  if (!sellerDisplayName) throw new Error('reel_demo_handoff_seller_display_required');
+  if (sellerDisplayName === 'Demo Seller') {
+    throw new Error('reel_demo_handoff_demo_seller_not_a_display_name');
+  }
+  if (RAW_ID_PATTERN.test(sellerDisplayName)) {
+    throw new Error('reel_demo_handoff_raw_id_display_name');
+  }
+  if (bridge.review.companyId && sellerDisplayName === bridge.review.companyId) {
+    throw new Error('reel_demo_handoff_raw_id_display_name');
+  }
+  if (args.expectedTitle !== undefined) {
+    if (typeof args.expectedTitle !== 'string' || args.expectedTitle.trim() !== bridge.review.title) {
+      throw new Error('reel_demo_handoff_title_mismatch');
+    }
+  }
+  if (RAW_ID_PATTERN.test(bridge.review.title)) {
+    throw new Error('reel_demo_handoff_raw_id_title');
+  }
+  return {
+    ready: true,
+    next: 'SUBMIT_DRAFT_AS_AUTHENTICATED_COMPANY_CALLER',
+    sellerDisplayName,
+    title: bridge.review.title,
+  };
+}
+
 export function buildReelDemoBridge(args:{
   intent:ReelCommerceIntent;
   selectedOfferId:string;

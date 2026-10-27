@@ -79,6 +79,13 @@ export class PostgresBiEventStore implements BiEventStore {
     await this.pool.query(
       'CREATE INDEX IF NOT EXISTS idx_muse_bi_events_company_draft ON muse_bi_events(company_id, draft_id, occurred_at)'
     );
+    // Bottleneck fix: list(companyId) filters by company_id and orders by
+    // occurred_at, id. The company/draft index does not order that way, so
+    // every BI report sorted the full company set. This index serves that
+    // exact query shape; it changes no query, gate, or result.
+    await this.pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_muse_bi_events_company_occurred ON muse_bi_events(company_id, occurred_at, id)'
+    );
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS muse_bi_watermarks (
         metric TEXT NOT NULL,

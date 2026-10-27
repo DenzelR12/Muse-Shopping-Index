@@ -65,6 +65,15 @@ export class PostgresProviderTransactionIntentStore {
     await this.pool.query(`ALTER TABLE provider_transaction_intents ADD COLUMN IF NOT EXISTS approval_jti TEXT`);
     await this.pool.query(`ALTER TABLE provider_transaction_intents ADD COLUMN IF NOT EXISTS reconciliation_note TEXT`);
     await this.pool.query(`ALTER TABLE provider_transaction_intents ADD COLUMN IF NOT EXISTS refund_id TEXT`);
+    // Bottleneck fix: hot non-PK paths had no index. getForConsumer
+    // (owned-status, every order read) filters by consumer_subject_id +
+    // draft_id, and reconcile/refund listings + the observability summary
+    // filter by company_id + state and order by updated_at, while the PK
+    // is (company_id, draft_id). payment_reference and checkout_session_id
+    // are already UNIQUE, so they are deliberately not re-indexed here.
+    // These statements change no query, gate, or result.
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_transaction_intents_consumer ON provider_transaction_intents(consumer_subject_id, draft_id)`);
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_transaction_intents_company_state_updated ON provider_transaction_intents(company_id, state, updated_at)`);
     this.initialized=true;
   }
 

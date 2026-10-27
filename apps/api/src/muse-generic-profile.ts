@@ -290,12 +290,72 @@ export function createGenericDraftResolver(
   };
 }
 
+/**
+ * Bottleneck fix: ordered next steps after profile registration, so a
+ * company does not have to discover separately that an adapter, a
+ * manifest, a provider connection, and readiness are still pending.
+ * This is status only: it grants nothing, registers nothing, and does
+ * not change any gate. adapterConfigured comes from the server's
+ * startup adapter config (MUSE_GENERIC_ADAPTER_CONFIG_JSON); it is
+ * never taken from a request body.
+ */
+export interface GenericProfileNextStep {
+  step: string;
+  status: 'done' | 'pending';
+  action: string;
+}
+export function buildGenericProfileNextSteps(args: {
+  profileRegistered: boolean;
+  adapterConfigured: boolean;
+  manifestPresent: boolean;
+}): GenericProfileNextStep[] {
+  return [
+    {
+      step: 'profile',
+      status: args.profileRegistered ? 'done' : 'pending',
+      action: args.profileRegistered
+        ? 'Generic profile registered for this company only.'
+        : 'Register this company\'s generic profile via POST /v1/muse/generic-profiles.',
+    },
+    {
+      step: 'adapter',
+      status: args.adapterConfigured ? 'done' : 'pending',
+      action: args.adapterConfigured
+        ? 'This company is declared in MUSE_GENERIC_ADAPTER_CONFIG_JSON at server startup.'
+        : 'Operator: declare this company in MUSE_GENERIC_ADAPTER_CONFIG_JSON AND register its provider adapter in-process at server startup. Adapters are never registered over HTTP, and the synthetic fixture is never an adapter.',
+    },
+    {
+      step: 'manifest',
+      status: args.manifestPresent ? 'done' : 'pending',
+      action: args.manifestPresent
+        ? 'Seller manifest present for this company.'
+        : 'Supply sellerDisplayName and item titles from the authenticated company caller at draft creation; they are upserted into the persisted seller-manifest store.',
+    },
+    {
+      step: 'provider_connection_and_readiness',
+      status: 'pending',
+      action: 'Authorise the provider connection for this company, then confirm readiness evaluates to TRANSACTION_READY (or AUTONOMOUS_READY) before presenting execution as available.',
+    },
+  ];
+}
+
 /** Host submitGeneric: delegates to ZeroTrustConnectorRuntime; maps its result, never retries. */
 export function createGenericSubmit(
   runtime: Pick<
     ZeroTrustConnectorRuntime,
     'execute'
-  > | null
+  > | null,
+  // Bottleneck fix: previously MUSE_GENERIC_ADAPTER_CONFIG_JSON was
+  // parsed and logged in index.ts but never consulted here, so a
+  // company absent from the config and a company in the config whose
+  // runtime adapter was never registered failed identically with
+  // muse_generic_connector_not_registered. Now the config is a gate
+  // with its own actionable error: not in config ->
+  // muse_generic_adapter_not_configured (operator must declare it);
+  // in config but no runtime adapter -> muse_generic_connector_not_registered
+  // (operator must register it). No approval is consumed in either case,
+  // and the config never creates an adapter by itself.
+  adapterConfig?: Record<string, string> | null
 ): (args: {
   subjectId: string;
   consumerEmail?: string;
@@ -306,6 +366,9 @@ export function createGenericSubmit(
 }) => Promise<MuseGenericExecutionResult> {
   return async (args) => {
     if (!runtime) throw new Error('muse_generic_connector_not_registered');
+    if (adapterConfig && !(args.companyId in adapterConfig)) {
+      throw new Error('muse_generic_adapter_not_configured');
+    }
     let execution: Awaited<ReturnType<ZeroTrustConnectorRuntime['execute']>>;
     try {
       execution = await runtime.execute(args.companyId, args.connectionId, {
