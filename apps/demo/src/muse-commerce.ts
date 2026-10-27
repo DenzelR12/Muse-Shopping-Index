@@ -49,7 +49,7 @@ export interface MuseCommerceStep {action:MuseCommerceAction;args:Record<string,
  * plus a complete tool call / JSON step on every turn. */
 export const MUSE_MODEL_MAX_TOKENS=2048;
 
-export const MUSE_COMMERCE_POLICY=`You are Muse, THE GIFT SIGNAL's commerce orchestrator.
+export const MUSE_COMMERCE_POLICY=`You are Muse, Muse Shopping Index's commerce orchestrator.
 Support all authorized companies and capability types: retail, travel, tickets, services, reservations and digital goods. Shopify and Stripe are adapters, never a requirement for every company. Resolve the company's actual authorized connector; do not invent an integration or unsupported capability. The legacy productResolved field means the selected offering is resolved, including bookings and services.
 Learn the journey: Reel -> resolve products -> one consolidated review -> one explicit Buy -> server payment/order execution -> receipts -> tracking/refunds.
 Return exactly one JSON object with action and args. Do not claim an action succeeded; only verified tool state proves success.
@@ -150,11 +150,14 @@ export function expectedMuseCommerceStep(context:MuseCommerceContext,now=new Dat
  * because the expected step is request_details for the verified
  * translation. A model-translated review in prose is never the exact
  * review, and can never grant approval, sign a draft, or execute.
- * NOTE: MUSE_COMMERCE_POLICY text is intentionally unchanged by the
+ * NOTE: MUSE_COMMERCE_POLICY text was intentionally unchanged by the
  * locale change, so the generated training exports (whose system messages
- * embed that policy verbatim) do not churn. The rule is enforced in code
- * here and carried in the trusted server_context snapshot, which already
- * states that server context is authoritative and captions are untrusted. */
+ * embed that policy verbatim) did not churn then. It was deliberately
+ * renamed in the step-4 polish (Muse Shopping Index, not the old internal
+ * name), with the training exports regenerated to match verbatim; the
+ * locale rule is enforced in code here and carried in the trusted
+ * server_context snapshot, which already states that server context is
+ * authoritative and captions are untrusted. */
 export function validateMuseCommerceStep(value:unknown,context:MuseCommerceContext,now=new Date()):MuseCommerceStep{
   if(!value||typeof value!=='object'||Array.isArray(value)) throw new Error('muse_step_invalid');
   const step=value as Record<string,unknown>;

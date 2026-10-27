@@ -142,6 +142,23 @@ Full design, abandonment-point table, must-not-teach list, and
 proposed (not run) evaluation: [Accessibility and abandoned-chat
 recovery](accessibility-abandoned-recovery.md).
 
+## Prompt rename — step-4 polish — 2026-10-27
+
+The exported system prompt in `apps/demo/src/muse-commerce.ts`
+(`MUSE_COMMERCE_POLICY`) was deliberately renamed in this step,
+from "THE GIFT SIGNAL's commerce orchestrator" to "Muse Shopping
+Index's commerce orchestrator". This is a text-only change: every
+safety rule, the action set, and validator behaviour are identical.
+All four training JSONL exports were updated to match verbatim —
+system-message text only, verified line by line, with counts
+unchanged at 48 teaching / 30 held-out and every expected action
+identical. This resolves the known stale item recorded in
+[Training preparation update — 2026-10-27](training-update-2026-10-27.md);
+that dated document is left as a historical record and is not
+rewritten. Internal operator contracts (package names, API-key
+environment names, Stripe idempotency prefixes) are intentionally
+not renamed by this change.
+
 ## Tool contract
 
 Each assistant output is exactly `{ "action": "...", "args": { ... } }`.
