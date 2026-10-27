@@ -29,8 +29,12 @@ Does NOT prove, and must never be presented as proving:
 - Live Shop handling of notifications, verification, email, or shipping
   for any real merchant
 - A real payment, a real order, a real shipment, or a live Shop Pay
-  execution (Shop Pay execution is blocked by design:
-  `shop_pay_execution_blocked`)
+  execution (Shop Pay execution is credential-gated since the
+  live-activation work: blocked with `shop_pay_execution_blocked`
+  without Shop Pay credentials and a startup-registered checkout
+  client, and no approval is consumed while blocked — see
+  `docs/live-readiness.md` §2b. It is still not live in this demo,
+  which runs with no credentials.)
 - Live Meta ad ingestion (BI is supplied/demo events only)
 - Real Postgres behaviour (manifest/BI stores were tested with a
   fake Pool; real `CREATE TABLE` was not live-verified in this walkthrough)
@@ -140,7 +144,16 @@ or model input):
     it is never invented or guessed.
 
 Mapping from Step 1 to Step 2 (the presenter does this mapping;
-the bridge does not do it automatically):
+the bridge does not do it automatically, and it must never be
+automated into a draft creation: only an authenticated company
+caller may submit a draft). Before submitting, run the handoff
+preflight `validateReelDemoBridgeDraftHandoff()` in
+`apps/demo/src/reel-demo-bridge.ts`: it fails fast if the bridge
+is not at FINAL_REVIEW, if the display name is the demo label
+`'Demo Seller'` or a raw ID, or if the expected title differs
+from the reviewed title — all without creating, signing, or
+approving anything. Server-side draft validation still applies
+after it.
 
 | Bridge review field | Draft creation field |
 |---|---|
@@ -148,7 +161,7 @@ the bridge does not do it automatically):
 | title per offer | `itemTitles[ variantId ]` |
 | quantity, price, currency | pricing/landed quote from the provider runtime (`quoteVariants` + `quoteLandedTotal`); the draft amount is the landed total, not the bridge subtotal |
 | shipping address (one batch) | `fulfillment.shippingAddress` |
-| `paymentLabel: 'Saved payment'` | `payment.provider` (`stripe` default, or `shop_pay` with the blocked-execution stub) |
+| `paymentLabel: 'Saved payment'` | `payment.provider` (`stripe` default, or `shop_pay` with the credential-gated execution client — blocked without Shop Pay credentials/client, see `docs/live-readiness.md` §2b) |
 
 Expected: `201` with the signed draft state and approval
 envelope carrying `sellerDisplayName`, item titles, terms,
@@ -165,8 +178,10 @@ Blocked here, by design, not a demo bug:
   provider connection and runtime; without it, draft creation
   returns 502/404/409 from the pricing step, not a fake quote.
 - Shop Pay execution is blocked (`shop_pay_execution_blocked`)
-  after drift/approval verification, before execution, and
-  does not consume the approval JTI.
+  without Shop Pay credentials and a startup-registered checkout
+  client, after drift/approval verification, before execution, and
+  does not consume the approval JTI. With a mocked client in tests
+  the gated path runs; in this no-credentials demo it stays blocked.
 
 ## Step 3 — Host review + storefront sheet
 
@@ -207,7 +222,30 @@ How to present it:
   `mountMuseConfirmationPage()` on a container element,
   supplying the signed approval envelope server-side.
   The envelope is never parsed from browser JSON,
-  localStorage, or a query string.
+  localStorage, or a query string. Copy-paste embed shape
+  (the host fills the envelope server-side; the placeholders
+  below are never replaced from a query string or storage):
+
+  ```html
+  <div id="muse-confirmation"></div>
+  <script type="module">
+    import { mountMuseConfirmationPage } from '@gift-signal/storefront';
+    // envelope + approvalToken: the signed approval envelope and
+    // token, rendered server-side into this page by the host.
+    // Never read either from location, localStorage, or a fetch
+    // of browser-supplied JSON.
+    mountMuseConfirmationPage(
+      document.getElementById('muse-confirmation'),
+      HOST_RENDERED_SIGNED_ENVELOPE,
+      { apiBase: HOST_API_BASE_URL, approvalToken: HOST_RENDERED_APPROVAL_TOKEN },
+    );
+  </script>
+  ```
+
+  The page is deliberately not wired into `main.ts` (a separate
+  gifting-concierge surface): wiring it there would mix surfaces
+  and invite an envelope parsed from browser input, which this
+  page must never do.
 - The sheet is built from the signed envelope only and
   fails closed on a missing seller/title, a
   vehicle–provider mismatch, or a raw ID. Exactly one
@@ -345,8 +383,12 @@ Blocked here, by design:
 
 - Without `MUSE_BI_DEMO_EVENTS_JSON`, routes return
   503 `muse_bi_demo_events_not_configured`.
-- There is no live Meta ad ingestion path. Do not
-  present BI as live Meta reporting.
+- Live Meta ad ingestion is a credential-gated, read-only client
+  interface (see `docs/live-readiness.md` §2e), not an enabled path
+  in this demo: without an authorized advertising token and a
+  startup-registered client it returns 503, and this demo's BI is
+  supplied/demo events only. Do not present BI as live Meta
+  reporting.
 
 Live-verified against a locally running API server
 (2026-10-26, no deployment, supplied events only):

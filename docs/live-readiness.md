@@ -181,7 +181,8 @@ Code: `apps/api/src/muse-generic-profile.ts` (registry),
 | Env var | Absent behaviour |
 |---|---|
 | `MUSE_GENERIC_ADAPTER_CONFIG_JSON` — JSON object mapping `companyId` → `adapterId` | No config; a registered profile without an adapter still fails closed |
-| Startup-registered adapter for that company absent | `muse_generic_connector_not_registered` at submit, no approval consumed |
+| Company absent from `MUSE_GENERIC_ADAPTER_CONFIG_JSON` | `muse_generic_adapter_not_configured` at submit, no approval consumed — operator must declare the company in the startup config |
+| Company in the config, startup-registered adapter absent | `muse_generic_connector_not_registered` at submit, no approval consumed — operator must register the adapter in-process at startup |
 
 The config declares **which** operator adapter serves **which**
 company; it does not create an adapter, and adapters are never
