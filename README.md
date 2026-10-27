@@ -1,126 +1,77 @@
 # Muse Shopping Index
 
-**Commerce intelligence and transaction authority for Muse and authorized company connectors.**
+Tap **Shop this reel** in Muse, review exactly once, approve once, and let the server execute — fewer clicks from a Reel to the door.
 
-Muse Shopping Index lets a conversational agent discover actionable offers, prepare an exact purchase or booking, obtain explicit human approval, and coordinate execution and recovery — with fewer clicks from intent to delivery.
+`muse shop index` is the Meta app inside this project — not a separate product, and not a new name for the project.
 
-Muse interprets intent and selects tools. Deterministic server code owns identity, permissions, pricing evidence, approval, payment authorization, replay protection and transaction state. A model prediction never grants transaction authority.
+- **Reel → Muse window → exact review → one explicit approval → server execution.** Shop handles the post-approval backend where authorized: notifications, verification, email, and shipping updates.
+- **Approval is consume-once and bound to exact terms.** A changed price, tax, shipping, configuration, terms, or payment authorization needs fresh approval (reapproval). Uncertain completion goes to reconciliation, never a blind retry or a second charge.
+- **Resume by draft, plus one generic opt-in reminder.** Return to an existing owned draft, revalidated first; expired or changed drafts get a new review, a diff, and fresh approval. A reminder is explicit opt-in only, generic, one only, with no price, seller, or pitch.
+- **Read-only catalog reads, TEST-labelled.** Meta and Shopify catalog clients are gated, tenant-scoped, and strip raw provider IDs; a read consumes no approval.
+- **The model proposes; the deterministic server authorizes.** Model, caption, or browser text never grants approval, signs a draft, or supplies seller facts. Company and consumer data stay tenant-scoped to their authenticated identity.
 
-This project is being prepared for the Meta AI developer hackathon. Its primary integration is model-facing orchestration. The product surface is a Muse feature panel mounted by a Muse host inside a Muse window/surface — not a storefront, shop site, cart page, or checkout page. There is no storefront product surface: `apps/storefront` is legacy demo code from the source copy, marked LEGACY — NOT THE PRODUCT SURFACE, and is not the documented presentation path. Shop is the post-approval backend story (notifications, verification, email, shipping where authorized), not a store to browse and buy from.
+## Start
 
-## Shop this reel, fewer clicks to the door
-
-The intended experience is:
-
-1. A person sees a Reel and taps **Shop this reel**.
-2. Muse resolves the relevant, authorized offerings.
-3. Muse collects any missing details in one consolidated batch — size, quantity, dates, guests, or delivery choice — not a drip of questions.
-4. Muse presents one exact review: seller, offering and exact configuration, quantity, ship-to or pickup/service location, shipping and other fees, tax, total and currency, payment timing, and refund/cancellation terms.
-5. The person explicitly approves once, for those exact terms.
-6. The server executes once, with duplicate protection.
-7. Shop handles the backend after that point where it is the authorized channel: order notifications, verification, email, and shipping updates.
-8. Muse presents verified owned status, tracking where applicable, and refund or reconciliation options where needed.
-
-Changed price, tax, shipping, configuration, terms, or payment authorization requires fresh approval. Uncertain external completion leads to status and reconciliation, not a blind retry or a second charge.
-
-Shop is the consumer backend story here, not a claim that every merchant is live on Shop. Each company still needs actual authorization, supported capabilities, credentials, implementation, and validation. A catalog name is not a live integration.
-
-Fewer clicks, in plain terms: intent → one batch of details → one exact review → one approval → server execution → Shop backend notifications, verification, email, and shipping where authorized. That is the intended backend story: Shop handles the post-approval backend where the merchant is authorized on Shop, while Muse presents verified owned status and recovery. This paragraph describes the intended flow; it does not claim a live Shop integration, live payment, or live shipping for any specific merchant.
-
-## Documentation — start here, follow the workflow
-
-Start with the [technical documentation index](docs/technical/README.md). It is organized as a readable workflow, in the order a reader should follow it:
-
-1. Shop this reel / intent → [System architecture](docs/technical/system-architecture.md)
-2. Resolve authorized offerings → [Company adapter contract](docs/company-adapter-contract.md)
-3. Collect missing details in one batch → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-4. Prepare a signed draft → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-5. Present the exact review → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-6. Explicit human approval → [Transaction lifecycle](docs/technical/transaction-lifecycle.md) and [Security and data](docs/technical/security-and-data.md)
-7. Server execution → [API and tool reference](docs/technical/api-reference.md)
-8. Verified owned status, tracking, refunds, reconciliation → [Transaction lifecycle](docs/technical/transaction-lifecycle.md)
-9. Run and operate it → [Development and validation](docs/technical/development.md) and [Operations](docs/technical/operations.md)
-
-Other guides:
-
-| Guide | Contents |
-| --- | --- |
-| [System architecture](docs/technical/system-architecture.md) | Boundaries, workspaces, trust model and company integrations |
-| [Transaction lifecycle](docs/technical/transaction-lifecycle.md) | Enrollment, exact approval, payment, orders, refunds and reconciliation |
-| [API and tool reference](docs/technical/api-reference.md) | HTTP surfaces, authentication, payloads, errors and MCP tools |
-| [Security and data](docs/technical/security-and-data.md) | Tenant isolation, persistence, credentials, audit and threat controls |
-| [Development and validation](docs/technical/development.md) | Local setup, commands, CI and evidence standards |
-| [Operations](docs/technical/operations.md) | Configuration, deployment, monitoring, recovery and launch gates |
-| [Muse model integration](docs/muse-model-training.md) | Tool protocol, synthetic curriculum, native loop and evaluation |
-| [Company adapter contract](docs/company-adapter-contract.md) | Requirements for integrating any authorized company |
-| [Hackathon runbook](docs/hackathon-launch-runbook.md) | No-money rehearsal, model access and controlled sandbox validation |
-
-## Current implementation
-
-| Area | Repository evidence and limits |
-| --- | --- |
-| Universal company orchestration | Typed company adapters, connection grants, signed drafts, live revalidation and replay controls exist. Each company still needs an authorized implementation. |
-| Muse integration | Native tool runner and authenticated signed-draft continuation exist. Native Meta/Reels entry, account linking and trusted confirmation callback remain integration work, and are labeled as such where they appear. |
-| Transaction reference implementation | Subject-bound enrollment, exact saved-payment approval, direct payment, trusted authentication fallback, reference fulfillment, buyer-owned status, refunds and reconciliation are implemented and tested with mocked transports. |
-| Meta catalog client | Read-only GET client for one company's own catalog (`apps/api/src/meta-catalog.ts`, [Meta catalog client](docs/meta-catalog-client.md)), gated and TEST-labelled. No live catalog read, live seller, App Review, or Business Verification is claimed. |
-| Shopify catalog client | Read-only Storefront API product-query client for one company's own Shopify store (`apps/api/src/shopify-catalog.ts`, [Shopify catalog client](docs/shopify-catalog.md)), gated and TEST-labelled, query operations only — no cart, checkout, write, order, or customer endpoint. Shopify is a provider behind the server, never the frontend, and this is not a storefront. No live Shopify read, live store, token, or seller is verified yet; a store-owner call is pending, and the endpoint/version shape is not live-verified against a real store. |
-| Muse/Meta entry | Signed reel-entry intent only ([Muse/Meta entry contract](docs/muse-entry-contract.md)), with 410 without a signing secret and 401 on a bad HMAC; it creates nothing. The demo simulator (`apps/demo/src/muse-entry-simulator.ts`) is NOT a native Meta button, Meta distribution, or a Meta callback. |
-| Training preparation | 48 teaching and 30 held-out synthetic scenarios ([Muse model training](docs/muse-model-training.md), [training update 2026-10-27](docs/training-update-2026-10-27.md), [multilingual training update 2026-10-27](docs/training-update-multilingual-2026-10-27.md)), with scenario JSON source files and generated JSONL exports and evaluation scripts. Export generation is not model training; no weight update or live model result is established by the repository. |
-| Locale as code | Consumer-locale field (`consumerLocale`) and fail-closed review gate in the demo step machine (`apps/demo/src/muse-commerce.ts`, [Locale implementation](docs/locale-implementation-2026-10-27.md)): profile language preference first, device/Muse locale second, location never consulted as a language, caption language never sets the review language. If no verified review in the consumer's language is available, the step machine collects the verified version first and never presents an unverified or model-translated review, and never seeks approval or execution. Demo review rendering is still English-only in presentation, and production host wiring to supply the locale from authenticated profile/device data is not done. No live multilingual review or multilingual UI is claimed. |
-| Opt-in reminder | Server component for a single generic reminder (`apps/api/src/muse-reminder.ts`, [Reminder implementation](docs/reminder-implementation-2026-10-27.md)): an explicit consumer opt-in per consumer, company, and draft only; one reminder only, with a frozen generic message and no price, title, term, token, or ID; fail-closed without a startup-registered authorized channel; opt-out/dismiss permanently prevents that draft's reminder. The consumer-facing opt-in entry now exists in the Muse feature panel below (default OFF, explicit choice only). No live channel is configured and no live reminder is claimed. |
-| Muse feature panel | Host-mounted DOM panel for the Muse window/surface (`apps/demo/src/muse-feature-panel.ts`, `mountMuseFeaturePanel(container, state, handlers)`): exact review as real DOM in reading order with an amount-labelled approval button, reapproval diff struck through and in words, owned status timeline in words, aria-live announced status, factual pre-expiry warning banner, "Your review is waiting" resume prompt that revalidates first, reminder opt-in default OFF with one-tap dismiss, and a buy guard that disables on click and never offers a fresh Buy after approval. The panel renders server state and dispatches host callbacks only; it never grants approval, signs a draft, or executes. Native Muse distribution / window integration remains a separate, Meta-approval-gated step and is not claimed as live. |
-| Muse feature panel host wiring | Host-side adapter mapping panel callbacks to existing server methods only (`apps/api/src/muse-panel-host.ts`, [Panel host wiring](docs/panel-host-wiring.md)): approve → existing signed-draft approval flow (consume-once, host-supplied token only), resume → host `resumeDraft()` (revalidates first), reminder opt-in/opt-out → existing reminder functions (principal only). No new public route, no live HTTP traffic, and no native Muse window integration is claimed: wiring here means callback → server-method mapping plus tests, and live routes plus the native window renderer remain separate steps. |
-| Accessibility and abandoned-chat recovery | Design, training, and now code ([Accessibility and abandoned-chat recovery](docs/accessibility-abandoned-recovery.md)): exact review as real text in screen-reader order with the approval labelled with the amount, diffs announced in words, generous expiry with a pre-expiry warning, and resume by existing owned draft with revalidation — expired or changed drafts get a new review, diff, and fresh approval — implemented in the Muse feature panel, the host `resumeDraft()` path, the API resume-decision module, and now the panel host wiring adapter above. One generic opt-in reminder only, no dark patterns, and abandoned drafts are never fed into ad retargeting. No accessibility standard is claimed or audited, and no live recovery is claimed; what remains is the native Muse window renderer, live panel-to-API routes, and a live reminder channel (see that document's §8, which predates the wiring adapter and still lists host wiring as remaining). |
-| Production readiness | Green CI does not establish external credentials, webhook delivery, live transaction success, native connector approval, receipt delivery or Shop-app visibility. |
-
-Reference adapters are not mandatory infrastructure for every company. Other companies can retain their own catalogs, payment rails, booking systems and fulfillment APIs. The current authenticated Muse transaction host and API production readiness gate are still tied to the reference profile; replacing those dependencies requires actual adapter integration, not simply changing a configuration flag.
-
-## Intended consumer experience
-
-Reel or conversational intent → actionable options → one batch of missing details → exact review → one explicit Buy → server execution → verified order or booking status and recovery.
-
-The review must disclose seller, offering, quantity/configuration, delivery or service details, shipping, tax, total, currency and applicable terms. Changed terms require fresh approval. Merchant checkout handoffs are blocked in the reference flow; trusted payment-rail authentication is the supported exception.
-
-Consumer-facing reviews must use safe labels such as **Saved payment** and a resolved company display name — never a raw provider account identifier or a raw variant identifier.
-
-## Quick start
-
-Use Node.js 22 and pnpm 9.12.0, matching CI.
-
-```bash
+```
+git clone https://github.com/DenzelR12/Muse-Shopping-Index.git
+cd Muse-Shopping-Index
 corepack enable
 pnpm install --frozen-lockfile
 pnpm build
 pnpm demo
 ```
 
-Open `http://localhost:3100`. The demonstration can run without provider credentials; label synthetic/demo results accordingly. Live model interpretation requires an account-enabled model and the `META_MODEL_API_KEY`, `META_MODEL_API_BASE_URL` and `META_MUSE_MODEL` variables. See [development setup](docs/technical/development.md) before starting the API or local database.
+Open `http://localhost:3100` (`PORT` or `DEMO_PORT` overrides the default). Use Node.js 22 and pnpm 9.12.0, matching CI. The demo runs without provider credentials; label demo and synthetic results accordingly.
 
-## Validate
+Live model interpretation needs `META_MODEL_API_KEY`, `META_MODEL_API_BASE_URL`, and `META_MUSE_MODEL` — see [development setup](docs/technical/development.md). Do not start from this block expecting a live API; a live start needs Postgres and environment configuration, stated separately under [What is NOT live yet](#what-is-not-live-yet).
 
-```bash
-pnpm typecheck
-pnpm build
-node scripts/build-muse-commerce-training.mjs --check
-node scripts/rehearse-muse.mjs
-```
+## Start Muse
 
-The offline rehearsal blocks default network fetch and clears transaction/model credentials in its child process. PostgreSQL integration runs separately in CI; an offline skip is not a passing database test. The full required suite is defined in [CI](.github/workflows/ci.yml).
+First run, in the demo:
 
-For configuration checks, use `node scripts/hackathon-preflight.mjs`. Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is complete. Never use live money without explicit transaction approval.
+1. Reel intent resolves authorized offerings, then collects any missing details in one batch — size, quantity, dates, guests, or delivery choice — not a drip of questions.
+2. Read one exact review: seller, offering and exact configuration, quantity, ship-to or pickup/service location, shipping and other fees, tax, total and currency, payment timing, and refund/cancellation terms. Payment labels are **Saved payment** and **Shop Pay · Saved payment** only — never a raw provider account or variant identifier.
+3. Approve once, for those exact terms. The approval button is labelled with the amount; it disables on click and a second in-flight click is ignored.
+4. If you leave, return to the same owned draft: a resume prompt revalidates first. Unexpired and unchanged returns to the review; expired or changed gets a new review, a diff in words, and fresh approval; approved or executing shows its execution state — never a fresh Buy.
+5. A reminder is an explicit "Remind me" choice at review stage, default OFF. One generic reminder only, through an authorized channel only.
 
-## Repository map
+The exact review is rendered by the Muse feature panel (`apps/demo/src/muse-feature-panel.ts`), a host-mounted DOM panel for a Muse window/surface — not a storefront, shop site, cart page, or checkout page. The panel renders server state and dispatches host callbacks only; it never grants approval, signs a draft, or executes.
 
-- `apps/api`: authentication, enrollment, approvals, provider control, Muse continuation and transaction persistence.
-- `apps/demo`: competition demonstration, Reel intent, model policy, native tools and inference adapters — and the Muse feature panel (`apps/demo/src/muse-feature-panel.ts`), the product surface for the exact review, approval, resume, and reminder flows.
-- `apps/business`: business presentation modules for companies/providers.
-- `apps/storefront`: LEGACY — NOT THE PRODUCT SURFACE. Legacy demo code from the source copy; kept with its tests, not the documented presentation path for any Muse feature flow.
-- `services/mcp-gateway`: company connectors, zero-trust runtime, provider adapters, OAuth, credential vault and audit.
-- `services/payments`: payment contracts and reference implementation.
-- Other `services/`: bundle orchestration, fulfillment, gift intelligence, group gifting, link authority, operations, Shopify adapter and webhooks, signal shield, and telemetry store.
-- `packages/`: shopping index, commerce network, domain schemas, gift graph, policy, audit, telemetry and zero-trust primitives.
-- `training/muse-commerce`: synthetic curriculum — scenario JSON source files and generated JSONL exports.
-- `docs/`: technical workflow index (`docs/technical/`), Meta catalog client, Shopify catalog client, panel host wiring, Muse/Meta entry contract, training preparation, live readiness and Render deployment guides, and specialist guides.
-- `infra`, `scripts`, `tests`: infrastructure, operational tooling and cross-module validation.
+## Structure
+
+- `apps/api/` — authentication, enrollment, approvals, provider control, Muse continuation, and transaction persistence; Meta and Shopify catalog clients, panel host wiring, the reminder, and abandoned-chat recovery.
+- `apps/demo/` — competition demo, Reel intent, model policy, step machine (including the consumer-locale fail-closed gate), entry simulator, and the Muse feature panel — the product surface for the exact review, approval, resume, and reminder flows.
+- `apps/business/` — business presentation modules for companies and providers.
+- `apps/storefront/` — LEGACY — NOT THE PRODUCT SURFACE. Legacy demo code from the source copy, kept with its tests, not the documented presentation path for any Muse feature flow.
+- `services/mcp-gateway/` — company connectors, zero-trust runtime, provider adapters, OAuth, credential vault, and audit.
+- `services/` (other) — payments, bundle orchestration, fulfillment, gift intelligence, group gifting, link authority, operations, Shopify adapter and webhooks, signal shield, and telemetry store.
+- `packages/` — shopping index, commerce network, domain schemas, gift graph, policy, audit, telemetry, and zero-trust primitives.
+- `training/muse-commerce/` — synthetic curriculum: scenario JSON source files and generated JSONL exports (48 teaching, 30 held-out). Preparation only — no model has been trained.
+- `docs/` — the specialist docs, linked not duplicated here: [technical workflow index](docs/technical/README.md), [indie submission brief](docs/indie-submission-brief.md), [Muse/Meta entry contract](docs/muse-entry-contract.md), [Meta catalog client](docs/meta-catalog-client.md), [Shopify catalog client](docs/shopify-catalog.md), [panel host wiring](docs/panel-host-wiring.md), [locale implementation](docs/locale-implementation-2026-10-27.md), [accessibility and abandoned-chat recovery](docs/accessibility-abandoned-recovery.md), [model training](docs/muse-model-training.md), [live readiness](docs/live-readiness.md), and [Render deployment](docs/render-deployment.md).
+- `infra/`, `scripts/`, `tests/` — infrastructure, operational tooling, and cross-module validation.
 
 See [SECURITY.md](SECURITY.md) for security guidance. This repository does not currently declare an open-source license; access to the source does not itself grant a license.
+
+## Commands
+
+```
+pnpm demo            # run the competition demo (localhost:3100 by default)
+pnpm typecheck       # typecheck the workspace
+pnpm build           # build the workspace
+pnpm test            # run the workspace test suite
+node scripts/build-muse-commerce-training.mjs --check   # verify training exports match scenarios
+node scripts/rehearse-muse.mjs   # offline no-money rehearsal (blocks network fetch, clears credentials in child)
+node scripts/hackathon-preflight.mjs   # configuration checks
+```
+
+Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is complete. Never use live money without explicit approval of that exact transaction. The full required suite is defined in [CI](.github/workflows/ci.yml).
+
+## What is NOT live yet
+
+- No live seller, no live payment, no live Shop handling, and no live Meta or Shopify catalog read.
+- No native Muse window. The panel is host-agnostic DOM a Muse host mounts; native Muse integration needs Meta approval and is not claimed.
+- No live panel-to-API routes yet. Panel host wiring maps callbacks to existing server methods; a production host passing bound methods is still a separate step.
+- No live reminder channel. Opt-in entry and wiring exist, but no authorized channel is configured, so no live reminder is claimed.
+- No live hosted API yet. The Render service still has no Postgres and no `DATABASE_URL`; its root still returns `persistent_rate_limit_not_configured`. See [live readiness](docs/live-readiness.md) and [Render deployment](docs/render-deployment.md).
+- Training is synthetic preparation only: 48 teaching and 30 held-out scenarios, no weight update, no live model result established by the repository.
+- Green CI does not establish external credentials, webhook delivery, live transaction success, native connector approval, receipt delivery, or Shop-app visibility.
