@@ -1,6 +1,6 @@
 # Bundle Orchestrator
 
-Coordinates budget-aware Muse Shopping Index bundle generation across storefront, Business, API, and MCP surfaces.
+Coordinates budget-aware Muse Shopping Index bundle generation across Business, API, and MCP surfaces. ("Storefront" appears in this service only as a legacy bundle-source telemetry label, retained as an internal identifier — it is not a product surface. The product surface is a Muse feature panel mounted by a Muse host inside a Muse window/surface.)
 
 Responsibilities:
 - accept recipient, occasion, budget, deadline, and candidate-product context;

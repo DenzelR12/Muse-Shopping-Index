@@ -150,6 +150,7 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../muse-entry-contract.md) |
 | Locale as code (trusted context field, fail-closed review gate) | [Locale implementation](../locale-implementation-2026-10-27.md) |
 | Opt-in reminder server component (gated, generic, one-only) | [Reminder implementation](../reminder-implementation-2026-10-27.md) |
+| Muse feature panel (host-mounted DOM panel, not a storefront) | [Accessibility and abandoned-chat recovery](../accessibility-abandoned-recovery.md) — panel code: `apps/demo/src/muse-feature-panel.ts` (`mountMuseFeaturePanel`), host resume: `apps/api/src/muse-agent-host.ts` (`resumeDraft`), resume decisions: `apps/api/src/muse-abandoned-recovery.ts` |
 | Accessibility and abandoned-chat recovery design | [Accessibility and abandoned-chat recovery](../accessibility-abandoned-recovery.md) |
 | Multilingual locale training scenarios | [Multilingual training update](../training-update-multilingual-2026-10-27.md) |
 | Intelligence and operations | [Company intelligence](../company-intelligence-reports.md), [owner absence](../owner-absence-operations.md) |

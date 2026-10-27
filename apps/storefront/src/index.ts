@@ -1,3 +1,14 @@
+// LEGACY — NOT THE PRODUCT SURFACE. This app is legacy demo code
+// carried over from the source copy. It is NOT the product surface
+// for Muse Shopping Index: the product surface is the Muse feature
+// panel (apps/demo/src/muse-feature-panel.ts), mounted by a Muse
+// host inside a Muse window/surface. Nothing in this app is the
+// documented presentation path for the exact review, approval,
+// resume, or reminder flows; those live in the panel and the host.
+// This file is kept, with its tests, so the legacy app still builds
+// and its existing tests still pass — it is isolated, not deleted,
+// because its test files are CI-listed and the workflow file is not
+// touched by this change.
 export const brand={name:'THE GIFT SIGNAL',tagline:'Smart gifts. Right now.',colors:{black:'#060606',ivory:'#F3EFE6',gold:'#D4AF37',amber:'#FF5A1F',mint:'#65C7A6',stone:'#92908A'}};
 export const giftingFlow=['recipient','occasion','interests','budget','deadline'];
 export const resultLabels=['BEST SIGNAL','SMARTER VALUE','LET THEM CHOOSE'];

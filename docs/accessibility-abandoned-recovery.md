@@ -415,10 +415,63 @@ following must never be taught, by example or by implication:
 
 ## 8. Explicit limits of this document
 
-- **Design and training preparation only.** No API, storefront,
-  host, or policy code was changed by the update that added this
-  document, and no live recovery, reminder, or accessible review
-  is claimed.
+- **This is a Muse feature, not a storefront.** The product
+  surface for everything in this document is the Muse feature
+  panel (`apps/demo/src/muse-feature-panel.ts`), mounted by a
+  Muse host inside a Muse window/surface. There is no
+  storefront, shop site, cart page, or checkout page product
+  surface; the abandoned "cart" is a Muse draft in a Muse
+  window, and `apps/storefront` is legacy demo code marked
+  LEGACY — NOT THE PRODUCT SURFACE. Nothing in this
+  document is presented as a storefront flow.
+- **What is now code (abandoned-chat recovery change,
+  2026-10-27):**
+  - Real-text exact review renderer with the §1.1 reading
+    order, amount-labelled approval, and raw-ID rejection —
+    `renderMuseFeatureReviewText` in the panel.
+  - Announced status changes in words (aria-live region,
+    polite, assertive only for reapproval/reconciliation) —
+    `announceMuseFeatureStatus` in the panel.
+  - Pre-expiry warning, final 2 minutes of a draft's
+    10-minute life, factual expiry time and total, no
+    countdown, no "hurry" — `museFeatureDraftExpiryWarning`
+    in the panel and `draftExpiryWarning` in the API module.
+  - Production resume-by-draft — host `resumeDraft()` in
+    `apps/api/src/muse-agent-host.ts` plus
+    `resumeDraftDecision` / `revalidateAndResume` in
+    `apps/api/src/muse-abandoned-recovery.ts`: owned draft
+    → review again; expired/changed → new draft + diff +
+    fresh approval; approved/executing → execution state,
+    never a fresh Buy, never a second execution.
+  - Reminder UI opt-in entry — explicit "Remind me"
+    checkbox in the panel at review stage, default OFF,
+    never pre-checked, calling the host handler that calls
+    `optInToReminder` with the authenticated principal
+    only, plus one-tap dismiss/opt-out; retention
+    eligibility (`purgeEligibleReminderRecords`: expired
+    draft → record dead, eligible for deletion; no
+    retention job is added).
+  - Tests: `apps/demo/test/muse-feature-panel.test.ts`
+    (DOM-stub based, no browser), `apps/api/test/muse-abandoned-recovery.test.ts`,
+    host resume gates in `apps/api/test/muse-agent-host.test.ts`,
+    API gates in `apps/api/test/provider-readiness.test.ts`.
+- **What remains code-needed, stated plainly:**
+  - A native Muse window renderer. The panel is
+    host-agnostic DOM for the web surface; rendering
+    these same lines inside a native Muse window is a
+    separate integration step, gated by Meta approval.
+    No Meta API, Muse deep-link scheme, Muse app URL, or
+    native Muse integration contract is invented here,
+    and native Muse distribution is not claimed as live.
+  - A live reminder channel. The server component and
+    the panel opt-in entry exist, but no authorized
+    channel is configured, so no live reminder is
+    claimed and no real consumer has received one.
+  - Production host wiring that connects the panel's
+    host callbacks to the live API routes (the panel
+    itself makes no network call; the host supplies the
+    callbacks). Until that wiring lands, the panel is a
+    tested presentation module, not a live product flow.
 - **No standard claimed.** No WCAG, Section 508, EN 301 549, or
   other accessibility conformance is claimed or audited.
 - **Captions gap.** The current 90-second submission cut has
@@ -427,14 +480,7 @@ following must never be taught, by example or by implication:
 - **Demo remains English-only.** The multilingual locale rule
   taught in training preparation is a design rule for the future
   review, not a description of the current demo.
-- **What code would still need (separate steps, not this
-  document):** a real-text review renderer with the §1.1 reading
-  order, announced status changes, a pre-expiry warning, and the
-  resume-by-draft entry path in production code (demo form
-  exists only as the entry simulator). The reminder itself is
-  no longer in that list: since 2026-10-27 it exists as a gated
-  server component (`apps/api/src/muse-reminder.ts`, see
-  docs/reminder-implementation-2026-10-27.md) — but it is still
-  not a live reminder, because no authorized channel is
-  configured in production and the consumer-facing opt-in
-  entry in the review UI does not exist yet.
+- **No live recovery, reminder, or accessible review is
+  claimed.** The code above is tested with mocked
+  providers and a DOM stub; it is not a live seller, live
+  payment, live Shop handling, or live Meta integration.

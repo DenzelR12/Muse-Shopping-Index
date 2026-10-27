@@ -15,9 +15,9 @@ not account linking, not a live payment, and not live shipping.**
 Proves, with mocked/offline transports or supplied demo events only:
 
 - Reel intent → one batch of missing details → one exact review preview
-- Signed draft → approval envelope → host review → storefront sheet
-- Live confirmation page with a guarded Buy button and owned-status
-  resume on reconnect
+- Signed draft → approval envelope → host review → Muse feature panel sheet
+- Muse feature panel with a guarded approval button and owned-status
+  resume on reconnect (not a storefront page)
 - Offline rehearsal with mocked transports
 - Read-only BI reporting over supplied demo events, with verification
   gates, tenant trimming, and a 30-day attribution rule
@@ -183,13 +183,22 @@ Blocked here, by design, not a demo bug:
   does not consume the approval JTI. With a mocked client in tests
   the gated path runs; in this no-credentials demo it stays blocked.
 
-## Step 3 — Host review + storefront sheet
+## Step 3 — Host review + Muse feature panel sheet
 
 Files: `apps/api/src/muse-agent-host.ts` (`present_review`),
-`apps/storefront/src/muse-confirmation.ts`
-(`museConfirmationSheet`, `renderMuseConfirmation`)
+`apps/demo/src/muse-feature-panel.ts`
+(`renderMuseFeatureReviewText`, `mountMuseFeaturePanel`)
 
-Expected review, on both surfaces, consistently:
+The product surface is the Muse feature panel, mounted by a
+Muse host inside a Muse window/surface — not a storefront,
+shop site, cart page, or checkout page. The legacy
+`apps/storefront` confirmation modules remain in the tree as
+LEGACY — NOT THE PRODUCT SURFACE and are not the documented
+presentation path; the rules below are the panel's rules, and
+the panel tests (`apps/demo/test/muse-feature-panel.test.ts`)
+assert them.
+
+Expected review, on both the host event and the panel, consistently:
 
 - Seller: resolved display name only. Missing, equal to
   `externalAccountId`, or matching a raw-ID pattern →
@@ -206,84 +215,105 @@ Expected review, on both surfaces, consistently:
 - Terms, payment timing, estimated arrival: rendered when
   supplied in the draft; otherwise "not available".
   A raw-ID value in any of these throws
-  `muse_confirmation_unsafe_display` on the storefront.
+  `muse_feature_panel_unsafe_display` in the panel.
 
-## Step 4 — Live confirmation page + Buy guard + owned status
+## Step 4 — Muse feature panel + Buy guard + owned status
 
-Files: `apps/storefront/src/muse-confirmation-page.ts`
-(exported from `apps/storefront/src/index.ts`),
-`apps/storefront/src/muse-buy-guard.ts`,
-`apps/storefront/src/muse-confirmation-example.ts`
-(example only, NOT a live page, not imported by `main.ts`)
+Files: `apps/demo/src/muse-feature-panel.ts`
+(`mountMuseFeaturePanel`, `renderMuseFeatureReviewText`,
+`renderMuseFeatureReapprovalDiffText`,
+`announceMuseFeatureStatus`,
+`museFeatureDraftExpiryWarning`),
+`apps/api/src/muse-agent-host.ts` (`resumeDraft`),
+`apps/api/src/muse-abandoned-recovery.ts`
+(`resumeDraftDecision`, `revalidateAndResume`)
 
 How to present it:
 
-- The host embeds the page by calling
-  `mountMuseConfirmationPage()` on a container element,
-  supplying the signed approval envelope server-side.
-  The envelope is never parsed from browser JSON,
-  localStorage, or a query string. Copy-paste embed shape
-  (the host fills the envelope server-side; the placeholders
-  below are never replaced from a query string or storage):
+- The Muse host mounts the panel by calling
+  `mountMuseFeaturePanel()` on a container element in a
+  Muse window/surface, supplying the server-validated
+  review sheet and the host callbacks (approve, resume,
+  reminder opt-in, dismiss). The panel renders server
+  state and dispatches those callbacks; the server
+  re-validates everything. The panel itself never parses
+  a caption, a query string, localStorage, or model text
+  for facts, never grants approval, never signs a draft,
+  and never executes a payment. Native Muse distribution
+  / window integration remains a separate,
+  Meta-approval-gated step and is not claimed as live.
+  Copy-paste embed shape (the host fills the sheet and
+  callbacks server-side; the placeholders below are never
+  replaced from a query string or storage):
 
   ```html
-  <div id="muse-confirmation"></div>
+  <div id="muse-feature-panel"></div>
   <script type="module">
-    import { mountMuseConfirmationPage } from '@gift-signal/storefront';
-    // envelope + approvalToken: the signed approval envelope and
-    // token, rendered server-side into this page by the host.
-    // Never read either from location, localStorage, or a fetch
-    // of browser-supplied JSON.
-    mountMuseConfirmationPage(
-      document.getElementById('muse-confirmation'),
-      HOST_RENDERED_SIGNED_ENVELOPE,
-      { apiBase: HOST_API_BASE_URL, approvalToken: HOST_RENDERED_APPROVAL_TOKEN },
+    import { mountMuseFeaturePanel } from './muse-feature-panel.js';
+    // sheet: the server-validated review sheet, built by the
+    // host from a signed draft. Never read it from location,
+    // localStorage, or a fetch of browser-supplied JSON.
+    // handlers: host callbacks; the server re-validates
+    // approval (consume-once), resume (owned draft first,
+    // revalidate before any new review), and opt-in
+    // (authenticated principal only).
+    mountMuseFeaturePanel(
+      document.getElementById('muse-feature-panel'),
+      { view: 'review', sheet: HOST_RENDERED_SHEET },
+      HOST_HANDLERS,
     );
   </script>
   ```
 
-  The page is deliberately not wired into `main.ts` (a separate
-  gifting-concierge surface): wiring it there would mix surfaces
-  and invite an envelope parsed from browser input, which this
-  page must never do.
-- The sheet is built from the signed envelope only and
+  The panel is deliberately not wired into the legacy
+  `apps/storefront` app: wiring it there would present a
+  Muse feature as a storefront page, which it is not.
+- The sheet is built from the signed draft only and
   fails closed on a missing seller/title, a
   vehicle–provider mismatch, or a raw ID. Exactly one
-  `data-muse-buy` button may exist; mounting throws
-  otherwise, so exactly one guard attaches.
-- Buy guard (`attachMuseBuyGuard`): the button disables
-  immediately on first click with a progress label; a
-  second in-flight click is ignored; after submit it
-  stays disabled on "Checking status…" until owned
-  status resolves; on failure it re-enables without
+  amount-labelled approval button exists per review;
+  re-rendering never duplicates it, and a status view
+  never renders one at all — never a fresh Buy after
+  approval.
+- Buy guard (panel-internal, presentation only): the
+  approval button disables immediately on first click
+  with a "Processing…" label; a second in-flight click
+  is ignored; on failure it re-enables without
   auto-retry. The guard never grants approval —
   server consume-once approval, draft-hash
   revalidation, and provider idempotency remain
-  authoritative, and this page itself executes no payment.
-- Submit: `POST {apiBase}/v1/muse/confirm` with
-  `{connectionId, draftId, approvalToken}`. No `apiBase`
-  or no `approvalToken` → `muse_confirmation_server_not_configured`,
-  zero network calls, never a fake success.
-  Without a saved payment authorization for the buyer,
-  the server returns 409
+  authoritative, and the panel itself executes no payment.
+- Approval: the host's `onApprove` handler calls the
+  server confirm path with `{connectionId, draftId,
+  approvalToken}`. No handler, no approval token, or no
+  configured server → nothing executes, zero invented
+  success. Without a saved payment authorization for the
+  buyer, the server returns 409
   `consumer_commerce_enrollment_required`.
-- Owned status / reconnect: `GET /v1/muse/orders/{draftId}`
-  (buyer identity from verified server-side auth;
-  tracking `PENDING` / `AVAILABLE` / `UNAVAILABLE`).
-  A retrieved order/tracking record does not prove
-  delivery. On reconnect, `resume()` re-reads owned
-  status by draft ID: processing/fallback states resume
+- Owned status / reconnect: the host's `resumeDraft()`
+  re-reads the owned draft by authenticated principal
+  (never a body-supplied consumer ID); tracking
+  `PENDING` / `AVAILABLE` / `UNAVAILABLE` comes from the
+  server. A retrieved order/tracking record does not
+  prove delivery. On re-entry, the panel shows "Your
+  review is waiting"; the resume handler revalidates
+  first: unapproved, unexpired, unchanged → the exact
+  review again; processing/fallback states resume
   without a new approval; `RECONCILE_REQUIRED` goes to
   reconciliation, never blind retry; drift or expiry
-  → `reapproval_required`, and only then is a fresh
-  review presented.
+  → a new review with a diff in words and fresh approval
+  required, and only then is a fresh review presented.
+  A pre-expiry warning banner appears only in the final
+  2 minutes of a draft's life, with a factual expiry
+  time and total — never a countdown, never "hurry".
 
 Blocked here, by design, not a demo bug:
 
-- Without a configured live API server (`apiBase`,
-  approval token, identity, saved payment authorization,
-  provider runtime, approval signing secret, transaction
-  agent ID), submit fails closed with 503/409 as above.
+- Without a configured live API server (approval token,
+  identity, saved payment authorization, provider
+  runtime, approval signing secret, transaction agent
+  ID) and host handlers, the panel renders the review
+  or resume prompt only and executes nothing.
   That is the correct demo outcome for an unconfigured
   server, not a failure to fix by weakening a check.
 

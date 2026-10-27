@@ -8,6 +8,7 @@ import {validateSellerDisplayName,validateItemTitle} from './muse-seller-display
 import type {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
 import {paymentLabelForVehicle,resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import type {PostgresProviderTransactionIntentStore,ProviderTransactionIntent} from './provider-transaction-store.js';
+import {resumeDraftDecision,type MuseResumeDecision,type MuseResumeExecutionState} from './muse-abandoned-recovery.js';
 
 export interface MuseAgentRequest {connectionId:string;draftId:string;message:string;approvalToken?:string}
 export function parseMuseAgentRequest(value:unknown):MuseAgentRequest{
@@ -176,6 +177,81 @@ export class AuthenticatedMuseCommerceHost implements MuseToolAgentHost {
     }
     if(result.status==='CONFIRMED') return {status:'payment_processing'};
     throw Error('muse_generic_execution_not_confirmed');
+  }
+  /**
+   * Abandoned-chat resume, production host path
+   * (docs/accessibility-abandoned-recovery.md §2). This is the
+   * entry point a returning consumer hits with a draft they
+   * already own: it never starts a new search, never offers a
+   * fresh Buy, and never executes anything.
+   *
+   * - Owned transaction recorded -> its execution state
+   *   (processing / completed / reconciliation / authentication
+   *   required), via the same owned() tenant check as
+   *   readContext(). No new approval, no second execution.
+   * - No transaction, verified draft, unchanged and unexpired
+   *   -> present_review. Returning to the review is not
+   *   approval; dispatch(present_review) still builds the exact
+   *   review and approval must be given explicitly.
+   * - No transaction, draft expired (verifyForExecution throws
+   *   draft_expired) or caller-supplied changedSinceReview
+   *   (live revalidation found a change) -> reapproval_required.
+   *   This method does NOT build the new draft: the caller must
+   *   revalidate through the draft service and present a new
+   *   review with a diff (see revalidateAndResume in
+   *   muse-abandoned-recovery.ts). The old approval, if any,
+   *   is never carried over.
+   * - Any other verifyForExecution failure (not found,
+   *   tampered, bad signature, scope mismatch) is rethrown:
+   *   resume fails closed, it does not invent a review.
+   * Execution-gate behaviour is unchanged: readContext() and
+   * dispatch() still throw on an expired draft for execution
+   * purposes; only this resume entry point converts expiry
+   * into a reapproval decision, because a returning consumer
+   * must be told to re-review, not shown an error with no path.
+   */
+  async resumeDraft(args:{changedSinceReview?:boolean;now?:Date}={}):Promise<MuseResumeDecision>{
+    const {connection,transaction}=await this.owned();
+    if(transaction){
+      let executionState:MuseResumeExecutionState;
+      if(transaction.state==='ORDER_CREATED'||transaction.state==='REFUNDED') executionState='completed';
+      else if(transaction.state==='RECONCILE_REQUIRED') executionState='reconciliation';
+      else if(transaction.state==='CHECKOUT_CREATED'||transaction.state==='PAYMENT_FALLBACK_PENDING'){
+        let authenticationOpen=false;
+        if(this.deps.readPaymentAuthentication){
+          try{
+            const session=await this.deps.readPaymentAuthentication(transaction);
+            authenticationOpen=session.status==='open';
+          }catch{authenticationOpen=false;}
+        }
+        executionState=authenticationOpen?'authentication_required':'processing';
+      } else executionState='processing';
+      return {kind:'execution_state',draftId:this.request.draftId,executionState,requiresNewApproval:false,executeAgain:false,freshBuy:false};
+    }
+    let verified;
+    try{
+      verified=await this.deps.drafts.verifyForExecution({companyId:connection.companyId,connectionId:this.request.connectionId,draftId:this.request.draftId});
+    }catch(error){
+      if(error instanceof Error&&/draft_expired/.test(error.message)){
+        return {kind:'reapproval_required',draftId:this.request.draftId,reason:'expired',requiresNewApproval:true,approvalCarried:false,executeAgain:false,freshBuy:false};
+      }
+      throw error;
+    }
+    return resumeDraftDecision({
+      principal:{subject:this.identity.subjectId,companyId:connection.companyId},
+      draft:{
+        draftId:this.request.draftId,
+        companyId:connection.companyId,
+        consumerSubject:this.identity.subjectId,
+        connectionId:this.request.connectionId,
+        expiresAt:verified.draft.expiresAt,
+        total:String(verified.draft.total),
+        currency:verified.draft.currency,
+        changedSinceReview:args.changedSinceReview??false,
+        approved:false,
+      },
+      now:(args.now??new Date()).toISOString(),
+    });
   }
   async readContext():Promise<MuseCommerceContext>{
     const {connection,transaction}=await this.owned();

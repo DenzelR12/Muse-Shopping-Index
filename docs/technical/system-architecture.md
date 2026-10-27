@@ -38,7 +38,8 @@ flowchart TD
 | `apps/api` | Node HTTP entry point, OIDC approval/enrollment, API principals, provider connections, runtime controls, drafts, transaction store, webhook handling, status, recovery and readiness |
 | `apps/demo` | Credential-free competition experience, Reel context, model policy and inference, native function loop, synthetic model evaluation |
 | `apps/business` | Company/provider console and intelligence presentation modules |
-| `apps/storefront` | Consumer gifting/review modules; optional presentation surface, not the required Muse interface |
+| `apps/storefront` | LEGACY — NOT THE PRODUCT SURFACE: legacy consumer gifting/review modules from the source copy, kept with their tests. The product surface is the Muse feature panel (`apps/demo/src/muse-feature-panel.ts`), mounted by a Muse host inside a Muse window/surface — not this app, not a storefront, not a shop site. |
+| `apps/demo/src/muse-feature-panel.ts` | Muse feature panel: exact review, approval, reapproval diff, owned status timeline, announced status, pre-expiry warning, resume prompt, and reminder opt-in as host-mounted DOM in a Muse window/surface. Renders server state and dispatches host callbacks only; native Muse distribution / window integration remains a separate, Meta-approval-gated step. |
 | `services/mcp-gateway` | MCP tool registration, generic company connectors, zero-trust authority, OAuth state, provider adapters/refresh, vault and security audit |
 | `services/payments` | Payment state/contracts and Stripe adapter |
 | `services/shopify-adapter` | Shopify product normalization and Signal Verified derivation |

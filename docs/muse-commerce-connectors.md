@@ -49,7 +49,7 @@ Three default actions are deliberately separated by risk:
 
 > "Find my partner a premium carry-on under $400 and buy the best option."
 
-The agent can search the retailer's connector, compare live offers, prepare a cart draft, show the exact price/configuration, then request approval before the commit action.
+The agent can search the retailer's connector, compare live offers, prepare a signed draft, show the exact price/configuration, then request approval before the commit action. (The draft lives in a Muse window via the Muse feature panel — not a storefront cart.)
 
 ## Travel example
 

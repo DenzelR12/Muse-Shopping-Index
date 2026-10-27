@@ -1,5 +1,15 @@
 # Storefront and Business Bundle UI
 
+> LEGACY — NOT THE PRODUCT SURFACE. This document describes the
+> bundle UI of the legacy storefront app carried over from the
+> source copy. It is NOT the product surface for Muse Shopping
+> Index: the product surface is a Muse feature panel mounted by
+> a Muse host inside a Muse window/surface
+> (`apps/demo/src/muse-feature-panel.ts`), and the abandoned
+> "cart" is a Muse draft in a Muse window, not a storefront
+> cart. This document is kept as a record of the legacy bundle
+> UI; it does not describe the Muse feature.
+
 ## Storefront
 
 The customer flow is Recipient -> Occasion -> Interests -> Budget -> Deadline. Results present three bundle choices: BEST COMPLETE CART, SMARTER VALUE CART, and UPGRADE THE SIGNAL.

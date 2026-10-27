@@ -126,18 +126,28 @@ deletion itself is a separate operational step.
   production, so `sendMuseReminder` with no channel is blocked
   by design. No real consumer has received a reminder from
   this module, and no live sending is claimed.
-- **No consumer-facing opt-in entry.** The production host
-  wiring for an opt-in button/choice in the review UI does not
-  exist yet: the server component is ready, but the
-  consumer-facing opt-in entry is a separate UI step. Until
-  that step lands, no consumer can opt in through the product
-  at all — which is itself fail-closed.
+- **Consumer-facing opt-in entry now exists — in the Muse
+  feature panel, not a storefront.** Since the
+  abandoned-chat recovery change, the panel
+  (`apps/demo/src/muse-feature-panel.ts`) renders an
+  explicit "Remind me" checkbox at review stage, default
+  OFF and never pre-checked, which calls the host's
+  opt-in handler (which calls `optInToReminder` with the
+  authenticated principal only), plus a one-tap dismiss
+  for a pending reminder. What still does not exist is a
+  live channel: until an authorized channel is configured,
+  opting in records intent and sending stays blocked by
+  design — which is itself fail-closed.
 - **No dark patterns.** No countdown, no fake stock, no
   discount lure, no repeated nudges, no model-written
   persuasion text. The text is a fixed, reviewed constant.
 - The step-2 doc's other "code needed" items — a real-text
   review renderer, announced status changes, a pre-expiry
   warning, and the production resume-by-draft entry path —
-  remain code-needed and are untouched by this change.
+  are now also code, in the Muse feature panel, the host
+  `resumeDraft()` path, and `apps/api/src/muse-abandoned-recovery.ts`
+  (see docs/accessibility-abandoned-recovery.md §8). What
+  remains is the native Muse window renderer and a live
+  reminder channel.
 - No model was trained or fine-tuned by this change, and no
   live Meta, Shop, payment, or catalog claim is made by it.

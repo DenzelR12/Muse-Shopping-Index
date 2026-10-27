@@ -33,7 +33,10 @@ authorization, not a replacement and not a relabel of Stripe:
   `Shop Pay · Saved payment` ONLY when the vehicle is actually
   `shop_pay`. Raw provider/account IDs are never rendered
   (`apps/api/src/muse-agent-host.ts` review event,
-  `apps/storefront/src/muse-confirmation.ts` sheet).
+  Muse feature panel `apps/demo/src/muse-feature-panel.ts`
+  review text — the `apps/storefront` sheet is legacy demo
+  code, LEGACY — NOT THE PRODUCT SURFACE, and is not the
+  documented presentation path).
 
 ## Readiness gating
 
@@ -124,6 +127,10 @@ test files listed below for the coverage that was added.
   false without a vehicle flag.
 - `apps/storefront/src/muse-confirmation.test.ts` — `shop_pay` sheet
   label, Stripe sheet unchanged, vehicle/provider mismatch rejected.
+  (Legacy app tests; the product-surface coverage for the same
+  labels is `apps/demo/test/muse-feature-panel.test.ts`, which
+  asserts the panel's `Saved payment` / `Shop Pay · Saved payment`
+  labels and raw-ID rejection.)
 - `apps/api/src/shop-pay-vehicle.ts` is covered through the above;
   its readiness function is exercised via the submit/host tests.
   No new test file was added, so no workflow edit is needed for CI

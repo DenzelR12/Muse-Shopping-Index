@@ -1,6 +1,6 @@
 # Product discovery and holiday gifting
 
-The storefront is a draft preview, not a deployed store or live checkout. Two catalog examples use actual Shopify CDN photographs and source facts checked on September 13, 2026. They are explicitly separate from the illustrative planner bundles. Prices and stock must be refreshed before checkout. No Shopify records were changed.
+There is no storefront product surface. The legacy storefront app in this repo is a draft preview only (LEGACY — NOT THE PRODUCT SURFACE), not a deployed store or live checkout, and the product surface is a Muse feature panel mounted by a Muse host inside a Muse window/surface. Two catalog examples use actual Shopify CDN photographs and source facts checked on September 13, 2026. They are explicitly separate from the illustrative planner bundles. Prices and stock must be refreshed before checkout. No Shopify records were changed.
 
 The Gift Intelligence product contract now carries variant identity, photographs, inclusion details, brand, attributes and source timestamps. The Shopify adapter preserves the selected available variant and filters out images explicitly assigned to a different variant. Business exposes `productContextHealth` to identify missing context. Recommendations retain these fields and no longer invent delivery confidence when it is absent.
 

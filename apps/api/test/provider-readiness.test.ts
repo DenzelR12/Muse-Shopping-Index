@@ -332,3 +332,53 @@ test('Muse reminder refuses a tenant mismatch with no send', async () => {
   );
   assert.equal(calls.length, 0);
 });
+
+// Muse abandoned-recovery gates (full suite is
+// apps/api/test/muse-abandoned-recovery.test.ts); these gates
+// mirror its fail-closed resume cases and must stay in
+// agreement with it.
+import {
+  draftExpiryWarning,
+  purgeEligibleReminderRecords,
+  resumeDraftDecision,
+} from '../src/muse-abandoned-recovery.js';
+
+test('Muse abandoned resume presents an owned unapproved draft and fails closed on tenant mismatch', () => {
+  const principal = {subject: 'consumer-1', companyId: 'company-1'};
+  const draft = {draftId: 'draft-1', companyId: 'company-1', consumerSubject: 'consumer-1', connectionId: 'conn-1', expiresAt: '2026-10-27T12:09:00.000Z', total: '277', currency: 'USD', changedSinceReview: false, approved: false};
+  const decision = resumeDraftDecision({principal, draft, now: '2026-10-27T12:00:00.000Z'});
+  assert.equal(decision.kind, 'present_review');
+  if (decision.kind === 'present_review') {
+    assert.equal(decision.approvalRequired, true);
+    assert.equal(decision.executeAgain, false);
+    assert.equal(decision.freshBuy, false);
+  }
+  assert.throws(
+    () => resumeDraftDecision({principal, draft: {...draft, companyId: 'company-2'}, now: '2026-10-27T12:00:00.000Z'}),
+    /provider_readiness_company_mismatch/,
+  );
+  assert.throws(
+    () => resumeDraftDecision({principal, draft: {...draft, consumerSubject: 'consumer-2'}, now: '2026-10-27T12:00:00.000Z'}),
+    /consumer_agent_not_found/,
+  );
+});
+
+test('Muse abandoned resume never re-buys after approval and warns only in the final 2 minutes before expiry', () => {
+  const principal = {subject: 'consumer-1', companyId: 'company-1'};
+  const base = {draftId: 'draft-1', companyId: 'company-1', consumerSubject: 'consumer-1', connectionId: 'conn-1', expiresAt: '2026-10-27T12:09:00.000Z', total: '277', currency: 'USD', changedSinceReview: false, approved: false};
+  const executed = resumeDraftDecision({principal, draft: {...base, approved: true, executionState: 'processing' as const}, now: '2026-10-27T12:00:00.000Z'});
+  assert.equal(executed.kind, 'execution_state');
+  if (executed.kind === 'execution_state') {
+    assert.equal(executed.executeAgain, false);
+    assert.equal(executed.freshBuy, false);
+  }
+  assert.equal(draftExpiryWarning({draft: base, now: '2026-10-27T12:00:00.000Z'}), null);
+  const warning = draftExpiryWarning({draft: {...base, expiresAt: '2026-10-27T12:01:30.000Z'}, now: '2026-10-27T12:00:00.000Z'});
+  assert.ok(warning);
+  assert.match(warning?.text ?? '', /\$277 USD/);
+  assert.doesNotMatch(warning?.text ?? '', /hurry/i);
+  assert.deepEqual(
+    purgeEligibleReminderRecords({records: [{draftId: 'd1', draftExpiresAt: '2026-10-27T11:00:00.000Z'}, {draftId: 'd2', draftExpiresAt: '2026-10-27T12:09:00.000Z'}], now: '2026-10-27T12:00:00.000Z'}).map((record) => record.draftId),
+    ['d1'],
+  );
+});

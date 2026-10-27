@@ -431,3 +431,78 @@ test('generic profile next steps order adapter/manifest/connection after registr
   const noRuntime=createGenericSubmit(null, {'my-co':'adapter-1'});
   await assert.rejects(noRuntime({subjectId:'buyer',companyId:'my-co',connectionId:'c',draftId:'d',approvalToken:'t'}),/muse_generic_connector_not_registered/);
 });
+
+// --- Abandoned-chat resume (production host path) ---
+// These gates run in CI via this already-listed file. No live
+// call, no real consumer, no approval, and no execution happen
+// in any of them: resumeDraft() only decides, it never submits.
+test('abandoned resume returns to an existing unapproved draft as present_review, with no submit', async () => {
+  const f = fixture();
+  const decision = await f.host.resumeDraft();
+  assert.equal(decision.kind, 'present_review');
+  if (decision.kind === 'present_review') {
+    assert.equal(decision.draftId, 'draft');
+    assert.equal(decision.approvalRequired, true);
+    assert.equal(decision.approvalCarried, false);
+    assert.equal(decision.executeAgain, false);
+    assert.equal(decision.freshBuy, false);
+  }
+  assert.equal(f.calls.submits.length, 0);
+});
+test('abandoned resume with an expired draft requires reapproval, not a lost order or an error with no path', async () => {
+  const f = fixture();
+  f.deps.drafts.verifyForExecution = async () => { throw Error('draft_expired'); };
+  const decision = await f.host.resumeDraft();
+  assert.equal(decision.kind, 'reapproval_required');
+  if (decision.kind === 'reapproval_required') {
+    assert.equal(decision.requiresNewApproval, true);
+    assert.equal(decision.approvalCarried, false);
+  }
+  assert.equal(f.calls.submits.length, 0);
+});
+test('abandoned resume with a changed draft requires reapproval and never carries the old review', async () => {
+  const f = fixture();
+  const decision = await f.host.resumeDraft({changedSinceReview: true});
+  assert.equal(decision.kind, 'reapproval_required');
+  if (decision.kind === 'reapproval_required') {
+    assert.equal(decision.requiresNewApproval, true);
+    assert.equal(decision.approvalCarried, false);
+  }
+});
+test('abandoned resume after approval shows the execution state, never a fresh Buy or a second execution', async () => {
+  for (const [state, expected] of [
+    ['ORDER_CREATED', 'completed'],
+    ['REFUNDED', 'completed'],
+    ['RECONCILE_REQUIRED', 'reconciliation'],
+    ['CHECKOUT_CREATED', 'processing'],
+  ] as const) {
+    const f = fixture();
+    f.transaction = {consumerSubjectId: 'buyer', companyId: 'company', draftId: 'draft', state};
+    const decision = await f.host.resumeDraft();
+    assert.equal(decision.kind, 'execution_state');
+    if (decision.kind === 'execution_state') {
+      assert.equal(decision.executionState, expected);
+      assert.equal(decision.executeAgain, false);
+      assert.equal(decision.freshBuy, false);
+    }
+    assert.equal(f.calls.submits.length, 0);
+  }
+  // An open trusted Checkout session resumes as authentication required, not a new payment.
+  const f = fixture();
+  f.transaction = {consumerSubjectId: 'buyer', companyId: 'company', draftId: 'draft', state: 'CHECKOUT_CREATED', paymentReferenceKind: 'checkout_session', paymentReference: 'cs_test_existing'};
+  f.deps.readPaymentAuthentication = async () => ({status: 'open', checkoutUrl: 'https://checkout.stripe.com/c/pay/existing'});
+  const auth = await f.host.resumeDraft();
+  assert.equal(auth.kind, 'execution_state');
+  if (auth.kind === 'execution_state') assert.equal(auth.executionState, 'authentication_required');
+  assert.equal(f.calls.submits.length, 0);
+});
+test('abandoned resume fails closed on foreign ownership and on tampered drafts', async () => {
+  const f = fixture();
+  f.transaction = {consumerSubjectId: 'attacker', companyId: 'company', draftId: 'draft', state: 'ORDER_CREATED'};
+  await assert.rejects(f.host.resumeDraft(), /consumer_agent_not_found/);
+  assert.equal(f.calls.drafts, 0);
+  const tampered = fixture();
+  tampered.deps.drafts.verifyForExecution = async () => { throw Error('tampered_draft'); };
+  await assert.rejects(tampered.host.resumeDraft(), /tampered_draft/);
+  assert.equal(tampered.calls.submits.length, 0);
+});

@@ -1,4 +1,14 @@
 /**
+ * LEGACY — NOT THE PRODUCT SURFACE. This module is legacy demo code
+ * from the source copy. It is NOT the product surface for Muse
+ * Shopping Index and NOT a storefront checkout page: the product
+ * surface is the Muse feature panel
+ * (apps/demo/src/muse-feature-panel.ts), mounted by a Muse host
+ * inside a Muse window/surface. This module is kept, with its
+ * tests, so the legacy app still builds; the documented
+ * presentation path for review, approval, resume, and reminder
+ * is the panel, not this page.
+ *
  * LIVE Muse confirmation page (not an example).
  *
  * This is the real confirmation surface for the Muse checkout flow. It is

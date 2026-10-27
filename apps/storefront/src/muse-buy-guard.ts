@@ -1,4 +1,10 @@
 /**
+ * LEGACY — NOT THE PRODUCT SURFACE. This module is legacy demo code
+ * from the source copy. The product surface is the Muse feature
+ * panel (apps/demo/src/muse-feature-panel.ts), which carries its
+ * own buy guard; this guard is kept, with its tests, for the
+ * legacy app only.
+ *
  * One-click Buy guard for the Muse confirmation surface.
  *
  * This guard is for the HTML produced by renderMuseConfirmation()
