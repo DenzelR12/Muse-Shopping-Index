@@ -114,3 +114,25 @@ same tables. Per seller, record additionally:
 | 1 | — | — | — | Not done | Not done | Not done |
 | 2 | — | — | — | Not done | Not done | Not done |
 | 3 | — | — | — | Not done | Not done | Not done |
+
+## Multi-company TEST demo (pointer)
+
+Two TEST tenants now demonstrate the full effect in code, not live:
+Company 1 = THEENRG.COM (test, Shopify tenant — Storefront read-only,
+physical TEST product) and Company 2 = ClutchAgent (test, Muse Meta
+tenant/context — Meta catalog read-only, Reel entry, Muse panel).
+ClutchAgent is NOT a Shopify seller and NOT a service checkout product
+here, and no ClutchAgent service price, term, or entitlement is created.
+See `apps/demo/src/muse-multi-company-demo.ts` (pure demo scenario, no
+network, no real money, no real orders), its tests in
+`apps/demo/test/muse-multi-company-demo.test.ts`, and the full tenant
+record in `docs/multi-company-test-tenants.md`. The demo runs the
+Shopify flow, then the Meta flow, then a Company 1 drift to
+`reapproval_required` (old approval gone) with Company 2 unaffected,
+then per-company tenant-trimmed, verified-only BI. No third real
+company (company C) is in this batch, and Meta Business Verification
+entity work is explicitly NOT in this batch. For THEENRG.COM, the real
+store domain, product, and Storefront token are still unverified and
+must be supplied by the owner before any live read; for ClutchAgent
+Meta, the real catalog, System User, and token are still unverified,
+and App Review / Business Verification are not done.

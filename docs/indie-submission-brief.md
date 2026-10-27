@@ -346,6 +346,7 @@ when measured evidence is recorded under the protocols below.
   first, one test product each, tenant-scoped, revocable by uninstall,
   test-only. No sellers are verified yet; a store-owner call is
   pending later 2026-10-27.
+- **Multi-company TEST demo (two tenants, TEST only):** [Multi-company test tenants](multi-company-test-tenants.md) + `apps/demo/src/muse-multi-company-demo.ts` — Company 1 = THEENRG.COM (test, Shopify, Storefront read-only, physical TEST product); Company 2 = ClutchAgent (test, Muse Meta context, Meta catalog read-only, Reel entry, Muse panel — NOT a Shopify seller, NOT a service product). Shopify flow, then Meta flow, then Company 1 drift → reapproval with Company 2 unaffected, then tenant-trimmed verified-only BI. NOT live; no third real company (company C) in this batch; Meta Business Verification entity work NOT in this batch; THEENRG.COM real store/product/token and ClutchAgent Meta real catalog/System User/token still unverified.
 - **Accessibility / multilingual as market expansion:**
   [Accessibility and multilingual expansion](accessibility-multilingual-expansion.md) —
   real-text review, amount-labelled approval, diffs in words,
