@@ -265,7 +265,9 @@ See also: `docs/demo-walkthrough.md` (no-money demo),
 `docs/live-readiness.md` (credential-gated live activation points),
 `docs/render-deployment.md` (live Render deployment status and tomorrow
 checklist), `docs/real-model-agent-test.md` (real-model agent-host test,
-mock host, no live agent).
+mock host, no live agent),
+`docs/meta-catalog-client.md` (read-only Meta catalog client code, gated,
+no live read verified — not a live catalog connection).
 
 ## Muse entry contract — the aim (pointer only)
 

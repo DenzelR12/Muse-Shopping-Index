@@ -231,3 +231,67 @@ test('non-Meta-origin provider readiness ignores Meta verification entirely',()=
   assert.equal(manifest.metaBusinessRequired,false);
   assert.equal(manifest.capabilities.purchase,true);
 });
+
+// --- Meta catalog client gates (CI-listed copy) --------------------------
+// .github/workflows/ci.yml is frozen in the change that added the Meta
+// catalog client, so the fail-closed gates live here, in a file CI
+// already runs. The full suite is apps/api/test/meta-catalog.test.ts
+// (mocked Graph API transport only); these gates mirror its
+// fail-closed cases and must stay in agreement with it.
+import {
+  createMetaCatalogGraphTransport,
+  readMetaCatalog,
+  type MetaCatalogClient,
+} from '../src/meta-catalog.js';
+
+const metaCatalogConfigOn = {baseUrl: 'https://graph.facebook.com', version: 'v26.0', tokenConfigured: true};
+const metaCatalogConfigOff = {baseUrl: 'https://graph.facebook.com', version: 'v26.0', tokenConfigured: false};
+const metaCatalogMockClient: MetaCatalogClient = {
+  fetchCatalog: async () => ({name: 'Test Catalog'}),
+  fetchProducts: async () => ({data: []}),
+};
+
+test('Meta catalog read fails closed without a token, with no network call', async () => {
+  let calls = 0;
+  const counting: MetaCatalogClient = {
+    fetchCatalog: async () => { calls++; return {}; },
+    fetchProducts: async () => { calls++; return {data: []}; },
+  };
+  await assert.rejects(
+    readMetaCatalog({config: metaCatalogConfigOff, client: counting, companyId: 'org-a', principalCompanyId: 'org-a', catalogId: 'catalog-1', now: '2026-10-27T12:00:00.000Z'}),
+    /muse_catalog_not_configured/,
+  );
+  assert.equal(calls, 0);
+});
+
+test('Meta catalog read fails closed without a startup-registered client, and on tenant mismatch or missing catalog ID', async () => {
+  await assert.rejects(
+    readMetaCatalog({config: metaCatalogConfigOn, client: null, companyId: 'org-a', principalCompanyId: 'org-a', catalogId: 'catalog-1', now: '2026-10-27T12:00:00.000Z'}),
+    /muse_catalog_client_not_registered/,
+  );
+  await assert.rejects(
+    readMetaCatalog({config: metaCatalogConfigOn, client: metaCatalogMockClient, companyId: 'org-a', principalCompanyId: 'org-b', catalogId: 'catalog-1', now: '2026-10-27T12:00:00.000Z'}),
+    /provider_readiness_company_mismatch/,
+  );
+  await assert.rejects(
+    readMetaCatalog({config: metaCatalogConfigOn, client: metaCatalogMockClient, companyId: 'org-a', principalCompanyId: 'org-a', catalogId: null, now: '2026-10-27T12:00:00.000Z'}),
+    /muse_catalog_id_not_configured/,
+  );
+});
+
+test('Meta catalog client exposes GET only, by construction', async () => {
+  const methods: string[] = [];
+  const transport = createMetaCatalogGraphTransport({
+    baseUrl: 'https://graph.facebook.com',
+    version: 'v26.0',
+    token: 'test-token-not-real',
+    fetchImpl: async (url, init) => {
+      methods.push(init.method);
+      return {ok: true, status: 200, json: async () => (url.endsWith('/products') ? {data: []} : {name: 'Test Catalog'})};
+    },
+  });
+  assert.deepEqual(Object.keys(transport), ['get']);
+  const result = await readMetaCatalog({config: metaCatalogConfigOn, client: {fetchCatalog: async () => transport.get('https://graph.facebook.com/v26.0/catalog-1'), fetchProducts: async () => transport.get('https://graph.facebook.com/v26.0/catalog-1/products')}, companyId: 'org-a', principalCompanyId: 'org-a', catalogId: 'catalog-1', now: '2026-10-27T12:00:00.000Z'});
+  assert.deepEqual(methods, ['GET', 'GET']);
+  assert.equal(result.source, 'META CATALOG');
+});

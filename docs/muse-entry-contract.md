@@ -191,4 +191,6 @@ See also: `docs/indie-submission-brief.md` (track, catalogs,
 surface framing, failure cases, privacy, why Muse),
 `docs/live-readiness.md` (credential-gated live activation points),
 `docs/demo-walkthrough.md` (no-money demo),
-`docs/render-deployment.md` (live Render deployment status).
+`docs/render-deployment.md` (live Render deployment status),
+`docs/meta-catalog-client.md` (read-only Meta catalog client, gated,
+no live read verified).

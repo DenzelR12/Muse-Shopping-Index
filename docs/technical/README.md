@@ -21,6 +21,49 @@ Muse resolves offerings only through authorized company adapters and server-owne
 - Read: [Company adapter contract](../company-adapter-contract.md), then [System architecture](system-architecture.md)
 - Adapter code: `services/mcp-gateway/src/business-connectors.ts`
 
+#### 2a. Meta catalog read — where it fits in the chain
+
+In the full chain — Reel intent (step 1) → **catalog read (this step)**
+→ signed draft (step 4) → exact review (step 5) → approval (step 6)
+→ execution (step 7) — a Meta catalog read is one way an authorized
+offering can be resolved, for one company's own catalog only. It does
+not replace the company adapter, and it does not create an offering on
+its own: catalog data still has to pass the signed-draft, exact-review,
+and explicit-approval steps unchanged, and no purchase is executed by
+the read itself.
+
+- Read: [Meta catalog client](../meta-catalog-client.md)
+- Client code: `apps/api/src/meta-catalog.ts` (internal helper
+  `readMetaCatalog`; deliberately no new public route and no public
+  purchase route)
+- Read-only, by construction: the transport has exactly one method,
+  GET, against versioned Graph API endpoints for one catalog's details
+  and its products. There is no write method and no write endpoint,
+  even though Meta defines the `catalog_management` scope more broadly
+  (create/read/update/delete) — this client uses only the read part.
+- Fail-closed, in order, before any network call: missing token →
+  `muse_catalog_not_configured`; token present but no
+  startup-registered client → `muse_catalog_client_not_registered`;
+  requesting company different from the authenticated principal's
+  company → `provider_readiness_company_mismatch`; missing catalog ID
+  → `muse_catalog_id_not_configured` (never a default catalog, never
+  a catalog shared across companies). No approval is consumed by a
+  failed or successful read.
+- Validation on read: title, price, and currency are required and
+  validated; availability/stock is validated where returned;
+  price/stock older than 24 hours is unverifiable / refresh required,
+  never a guessed price; consumer output carries the resolved display
+  title only, with raw provider IDs stripped, and is labelled
+  `META CATALOG` / `TEST — Development Mode / test catalog`.
+- Limit, stated plainly: this is client code, gated and unproven
+  against a real catalog. No live catalog read, no live seller, no App
+  Review, and no Business Verification is claimed, and no other
+  business gains platform access from it — that would need Business
+  Verification + App Review + per-business OAuth, not a shared System
+  User token. Environment variable names only are documented in
+  [Meta catalog client](../meta-catalog-client.md); no token, catalog
+  ID, app ID, or secret value appears in any doc.
+
 ### 3. Collect missing details in one batch
 
 Size, quantity, dates, guests, seats, service options, and ship-to / pickup / venue details are collected in one consolidated batch, not as a drip of questions.
@@ -99,6 +142,7 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Normalized shopping and discovery | [Product discovery](../product-discovery.md), [semantic product contract](../semantic-product-contract.md) |
 | Cross-company network | [Universal commerce network](../universal-ai-commerce-network.md), [agentic network](../universal-agentic-commerce-network.md) |
 | Connector background | [Muse commerce connectors](../muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
+| Meta catalog client (read-only, gated) | [Meta catalog client](../meta-catalog-client.md) |
 | Intelligence and operations | [Company intelligence](../company-intelligence-reports.md), [owner absence](../owner-absence-operations.md) |
 | Production planning | [Readiness](../competition-readiness.md), [production checklist](../production-checklist.md), [zero trust](../zero-trust-production.md) |
 | Demo presentation | [Competition demo](../competition-demo.md), [build notes](../competition-build.md) |
