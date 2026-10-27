@@ -266,3 +266,15 @@ See also: `docs/demo-walkthrough.md` (no-money demo),
 `docs/render-deployment.md` (live Render deployment status and tomorrow
 checklist), `docs/real-model-agent-test.md` (real-model agent-host test,
 mock host, no live agent).
+
+## Muse entry contract — the aim (pointer only)
+
+The product aim is: pressing "Shop this reel" on Meta opens a Muse
+window to complete the purchase — exact review → one explicit
+approval → server execution. The complete contract, including the
+steps this project controls and the steps Meta must still provide,
+is in `docs/muse-entry-contract.md`. Nothing in this brief changes
+because of that pointer: the native Meta button, Reels distribution
+approval, and signed callback contract are still not obtained, and
+the demo entry in `apps/demo/src/muse-entry-simulator.ts` is a
+labelled DEMO SIMULATOR, not a native Meta button.
