@@ -124,6 +124,21 @@ test('HTTP model failures expose only safe status categories and never dispatch 
     assert.doesNotMatch(JSON.stringify(result),/private|test-only|secret-header/);
   }
 });
+test('model requests carry a generous token budget so reasoning does not truncate tool calls',async()=>{
+  let dispatches=0;let sentMaxTokens=0;
+  const result=await runMuseToolAgent({configuration,userMessage:'Review',host:{readContext:async()=>context,dispatch:async()=>{dispatches++;return {status:'review_required'};}},
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(String(init?.body));
+      sentMaxTokens=body.max_tokens;
+      // Reasoning-heavy payload: most of the completion budget is reasoning
+      // before the complete tool call, as observed with muse-spark-1.3. A
+      // small budget would truncate this to an empty reply (finish length).
+      return new Response(JSON.stringify({choices:[{finish_reason:'tool_calls',message:{content:null,tool_calls:[call('present_review',{draftId:'draft'})]},usage:{prompt_tokens:1941,completion_tokens:1900,completion_tokens_details:{reasoning_tokens:1700}}}]}));
+    }});
+  assert.ok(sentMaxTokens>=2048,`expected max_tokens >= 2048, got ${sentMaxTokens}`);
+  assert.equal(dispatches,1);assert.equal(result.stop,'WAITING');
+  assert.deepEqual(result.trace[0],{turn:0,action:'present_review',outcome:'TOOL_RESULT',status:'review_required'});
+});
 test('network and invalid response failures do not leak exception text or model content',async()=>{
   const cases:Array<[typeof fetch,string]>=[
     [async()=>{throw Error('Bearer secret-exception');},'NETWORK_ERROR'],

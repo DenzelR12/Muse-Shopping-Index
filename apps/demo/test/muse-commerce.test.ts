@@ -73,6 +73,26 @@ test('approval expiring during inference cannot authorize a purchase',async()=>{
 });
 
 
+test('model proposal requests carry a generous token budget for reasoning-heavy models',async()=>{
+  const keys=['META_MODEL_API_KEY','META_MODEL_API_BASE_URL','META_MUSE_MODEL'] as const;
+  const env={...process.env};
+  try{
+    process.env.META_MODEL_API_KEY='test-only';process.env.META_MODEL_API_BASE_URL='https://model.invalid/v1';process.env.META_MUSE_MODEL='test-model';
+    let sentMaxTokens=0;
+    const fetchImpl=(async(_url:any,init:any)=>{
+      const body=JSON.parse(init.body);
+      sentMaxTokens=body.max_tokens;
+      // Reasoning-heavy payload, as with muse-spark-1.3: the complete JSON
+      // step arrives only after substantial reasoning tokens.
+      return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({action:'present_review',args:{draftId:'draft'}})},usage:{completion_tokens:1900,completion_tokens_details:{reasoning_tokens:1700}}}]}));
+    }) as unknown as typeof fetch;
+    const result=await proposeMuseCommerceStep({context,userMessage:'Review',fetchImpl});
+    assert.ok(sentMaxTokens>=2048,`expected max_tokens >= 2048, got ${sentMaxTokens}`);
+    assert.equal(result.mode,'MUSE');assert.equal(result.step.action,'present_review');
+  }finally{
+    for(const key of keys){if(env[key]===undefined) delete process.env[key];else process.env[key]=env[key];}
+  }
+});
 test('confirmed bookings/services/digital transactions do not require shipping tracking',()=>{
   for(const fulfillmentMode of ['BOOKING','SERVICE','DIGITAL'] as const){
     const current={...context,execution:{state:'ORDER_CREATED' as const,draftId:'draft',fulfillmentMode}};

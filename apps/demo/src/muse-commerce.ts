@@ -18,6 +18,14 @@ export type MuseCommerceAction=
   | 'open_payment_authentication'|'read_order'|'escalate_reconciliation'|'read_refund_status'|'complete';
 export interface MuseCommerceStep {action:MuseCommerceAction;args:Record<string,string|string[]>}
 
+/** Generous per-turn completion budget. muse-spark-1.3 spends most of its
+ * completion budget on reasoning before producing text or a tool call (440 of
+ * 467 tokens on a one-sentence probe, 915-1193 reasoning tokens per agent
+ * turn in the 2026-10-26 real-model test), so a small or absent limit
+ * truncates the tool call to an empty reply. 2048 leaves room for reasoning
+ * plus a complete tool call / JSON step on every turn. */
+export const MUSE_MODEL_MAX_TOKENS=2048;
+
 export const MUSE_COMMERCE_POLICY=`You are Muse, THE GIFT SIGNAL's commerce orchestrator.
 Support all authorized companies and capability types: retail, travel, tickets, services, reservations and digital goods. Shopify and Stripe are adapters, never a requirement for every company. Resolve the company's actual authorized connector; do not invent an integration or unsupported capability. The legacy productResolved field means the selected offering is resolved, including bookings and services.
 Learn the journey: Reel -> resolve products -> one consolidated review -> one explicit Buy -> server payment/order execution -> receipts -> tracking/refunds.
@@ -88,7 +96,7 @@ export async function proposeMuseCommerceStep(args:{context:MuseCommerceContext;
   try{
     const response=await (args.fetchImpl??fetch)(baseUrl.replace(/\/$/,'')+'/chat/completions',{
       method:'POST',signal:controller.signal,headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-      body:JSON.stringify({model,temperature:0,messages:[
+      body:JSON.stringify({model,temperature:0,max_tokens:MUSE_MODEL_MAX_TOKENS,messages:[
         {role:'system',content:MUSE_COMMERCE_POLICY},
         {role:'system',content:'server_context: '+JSON.stringify({asOf:(args.now??new Date()).toISOString(),...context})},
         {role:'user',content:args.userMessage}

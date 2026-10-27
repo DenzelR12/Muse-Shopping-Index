@@ -1,4 +1,4 @@
-import {MUSE_COMMERCE_POLICY,validateMuseCommerceStep,type MuseCommerceContext,type MuseCommerceAction,type MuseCommerceStep} from './muse-commerce.js';
+import {MUSE_COMMERCE_POLICY,MUSE_MODEL_MAX_TOKENS,validateMuseCommerceStep,type MuseCommerceContext,type MuseCommerceAction,type MuseCommerceStep} from './muse-commerce.js';
 
 export const MUSE_TOOL_POLICY=MUSE_COMMERCE_POLICY.replace(
   'Return exactly one JSON object with action and args.',
@@ -76,7 +76,7 @@ export async function runMuseToolAgent(args:{
     try{
       const response=await (args.fetchImpl??fetch)(config.baseUrl.replace(/\/$/,'')+'/chat/completions',{
         method:'POST',signal:controller.signal,headers:{authorization:`Bearer ${config.apiKey}`,'content-type':'application/json'},
-        body:JSON.stringify({model:config.model,temperature:0,tools:MUSE_COMMERCE_TOOLS,tool_choice:'auto',messages})
+        body:JSON.stringify({model:config.model,temperature:0,max_tokens:MUSE_MODEL_MAX_TOKENS,tools:MUSE_COMMERCE_TOOLS,tool_choice:'auto',messages})
       });
       responseReceived=true;
       // Report only server-selected categories and numeric HTTP status. Never
