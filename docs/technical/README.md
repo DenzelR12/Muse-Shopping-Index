@@ -82,6 +82,8 @@ The server prepares an exact, signed draft: seller, offering and configuration, 
 
 The consumer sees one exact review before any payment. Consumer-facing labels must be safe: a resolved company display name and **Saved payment** — never a raw provider account identifier or a raw variant identifier. If a title or configuration cannot be resolved, fail closed instead of showing an internal ID.
 
+Note: locale is now a trusted context field, not just a training scenario — the step machine carries `consumerLocale` (profile language preference first, device/Muse locale second, location never consulted as a language) and a fail-closed review gate: if no verified review in the consumer's language is available, it collects the verified version first and never presents an unverified or model-translated review. Demo review rendering is still English-only in presentation, and production host wiring is not done.
+
 - Read: [Transaction lifecycle and invariants](transaction-lifecycle.md), [Security, identity and data](security-and-data.md)
 
 ### 6. Explicit human approval
@@ -146,6 +148,10 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Connector background | [Muse commerce connectors](../muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
 | Meta catalog client (read-only, gated) | [Meta catalog client](../meta-catalog-client.md) |
 | Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../muse-entry-contract.md) |
+| Locale as code (trusted context field, fail-closed review gate) | [Locale implementation](../locale-implementation-2026-10-27.md) |
+| Opt-in reminder server component (gated, generic, one-only) | [Reminder implementation](../reminder-implementation-2026-10-27.md) |
+| Accessibility and abandoned-chat recovery design | [Accessibility and abandoned-chat recovery](../accessibility-abandoned-recovery.md) |
+| Multilingual locale training scenarios | [Multilingual training update](../training-update-multilingual-2026-10-27.md) |
 | Intelligence and operations | [Company intelligence](../company-intelligence-reports.md), [owner absence](../owner-absence-operations.md) |
 | Production planning | [Readiness](../competition-readiness.md), [production checklist](../production-checklist.md), [zero trust](../zero-trust-production.md) |
 | Demo presentation | [Competition demo](../competition-demo.md), [build notes](../competition-build.md) |
