@@ -424,8 +424,8 @@ following must never be taught, by example or by implication:
   window, and `apps/storefront` is legacy demo code marked
   LEGACY — NOT THE PRODUCT SURFACE. Nothing in this
   document is presented as a storefront flow.
-- **What is now code (abandoned-chat recovery change,
-  2026-10-27):**
+- **What is now code (abandoned-chat recovery and panel
+  host wiring, 2026-10-27):**
   - Real-text exact review renderer with the §1.1 reading
     order, amount-labelled approval, and raw-ID rejection —
     `renderMuseFeatureReviewText` in the panel.
@@ -451,6 +451,21 @@ following must never be taught, by example or by implication:
     eligibility (`purgeEligibleReminderRecords`: expired
     draft → record dead, eligible for deletion; no
     retention job is added).
+  - Panel host wiring adapter — `createMusePanelHostHandlers`
+    in `apps/api/src/muse-panel-host.ts` (HEAD 026ffa3):
+    no-argument panel handlers built from authenticated
+    server state only (principal, draftId, session approval
+    token), mapping onApprove → the existing signed-draft
+    approval flow (host token required, tampered/expired/
+    changed failures propagate, a concurrent second approve
+    does not re-call), onResume → host `resumeDraft()`
+    unchanged, and onReminderOptIn/Out →
+    `optInToReminder` / `optOutOfReminder` (principal-only,
+    generic, one-only). Fail-closed at construction on no
+    principal, no draft, or company ≠ principal. No new
+    public route. Tests:
+    `apps/api/test/muse-panel-host.test.ts` (mocked server
+    methods only) plus a provider-readiness gate.
   - Tests: `apps/demo/test/muse-feature-panel.test.ts`
     (DOM-stub based, no browser), `apps/api/test/muse-abandoned-recovery.test.ts`,
     host resume gates in `apps/api/test/muse-agent-host.test.ts`,
@@ -467,11 +482,15 @@ following must never be taught, by example or by implication:
     the panel opt-in entry exist, but no authorized
     channel is configured, so no live reminder is
     claimed and no real consumer has received one.
-  - Production host wiring that connects the panel's
-    host callbacks to the live API routes (the panel
-    itself makes no network call; the host supplies the
-    callbacks). Until that wiring lands, the panel is a
-    tested presentation module, not a live product flow.
+  - Live panel-to-API routes. No new public route was
+    added in the wiring step; a future route, if one is
+    ever added, must pass the authenticated principal, or
+    it must not exist.
+  - A production host actually passing bound methods to
+    the panel. Until a host does, the wiring adapter above
+    is a tested callback → server-method mapping, not live
+    panel-to-API traffic, and the panel is a tested
+    presentation module, not a live product flow.
 - **No standard claimed.** No WCAG, Section 508, EN 301 549, or
   other accessibility conformance is claimed or audited.
 - **Captions gap.** The current 90-second submission cut has
