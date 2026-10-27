@@ -505,3 +505,41 @@ test('Muse panel host wiring requires a host-supplied token for approval and rou
     /provider_readiness_company_mismatch/,
   );
 });
+
+// Muse feature panel routes gate (full suite is
+// apps/api/test/muse-panel-routes.test.ts); this gate mirrors its
+// fail-closed checks and must stay in agreement with it. The routes
+// module is pure handler logic, NOT mounted in apps/api/src/index.ts:
+// there is no live panel-to-API route, no live HTTP traffic, and no
+// native Muse window integration claimed. See
+// docs/live-panel-routes-design.md for the mount contract.
+import {
+  handleMusePanelRoute,
+} from '../src/muse-panel-routes.js';
+
+test('Muse panel routes fail closed without a principal, on tenant mismatch, and on draft mismatch, calling no handler', async () => {
+  let calls = 0;
+  const handlers = {
+    onApprove: async () => { calls += 1; },
+    onResume: async () => { calls += 1; return { kind: 'present_review' }; },
+    onReminderOptIn: async () => { calls += 1; return {}; },
+    onReminderOptOut: async () => { calls += 1; return {}; },
+  };
+  const base = {
+    principal: { subject: 'consumer-1', companyId: 'company-1' },
+    companyId: 'company-1',
+    draftId: 'draft-1',
+    expectedDraftId: 'draft-1',
+    handlers,
+  };
+  const noPrincipal = await handleMusePanelRoute({ ...base, principal: null, action: 'approve' });
+  assert.equal(noPrincipal.status, 401);
+  assert.deepEqual(noPrincipal.body, { error: 'muse_panel_route_principal_required' });
+  const mismatch = await handleMusePanelRoute({ ...base, companyId: 'company-2', action: 'approve' });
+  assert.equal(mismatch.status, 403);
+  assert.deepEqual(mismatch.body, { error: 'provider_readiness_company_mismatch' });
+  const wrongDraft = await handleMusePanelRoute({ ...base, draftId: 'draft-9', action: 'approve' });
+  assert.equal(wrongDraft.status, 400);
+  assert.deepEqual(wrongDraft.body, { error: 'muse_panel_route_draft_mismatch' });
+  assert.equal(calls, 0, 'no refused request may reach a handler');
+});

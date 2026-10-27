@@ -322,3 +322,74 @@ because of that pointer: the native Meta button, Reels distribution
 approval, and signed callback contract are still not obtained, and
 the demo entry in `apps/demo/src/muse-entry-simulator.ts` is a
 labelled DEMO SIMULATOR, not a native Meta button.
+
+## Impact, Meta AI, and Technical — 2026-10-27 batch (code + protocol, not live)
+
+This section was added after HEAD 57cc2f8. It is code and protocol
+only. Nothing in it is a live seller, a live read, a live payment, a
+live reminder, a live panel route, or a native Muse window, and
+nothing in it changes a rubric score by itself — scores move only
+when measured evidence is recorded under the protocols below.
+
+- **Impact measurement:** [Impact measurement protocol](impact-measurement-protocol.md) —
+  A/B protocol (same seller, same product, Muse panel vs the seller's
+  existing checkout flow as a control), timestamp definitions
+  (tap → review, review → approval, approval → verified order,
+  verified order → delivered), verified-only revenue, abandoned
+  recovery counting rules from existing BI (tenant-trimmed, one
+  outcome per draftId, refunds subtract, watermark only on verified
+  success), consumer-protection rehearsal tables, and a no-dark-pattern
+  checklist. No measured numbers exist yet; the tables are empty
+  until a live test fills them.
+- **Multi-seller pilot:** [Multi-seller pilot plan](multi-seller-pilot-plan.md) —
+  three sellers, different categories and price points, read-only
+  first, one test product each, tenant-scoped, revocable by uninstall,
+  test-only. No sellers are verified yet; a store-owner call is
+  pending later 2026-10-27.
+- **Accessibility / multilingual as market expansion:**
+  [Accessibility and multilingual expansion](accessibility-multilingual-expansion.md) —
+  real-text review, amount-labelled approval, diffs in words,
+  pre-expiry warning, resume-by-draft, and verified review in profile
+  language (profile → device, location never language, model
+  translation never verified). No accessibility standard or audit is
+  claimed, and demo rendering is English-only today.
+- **Meta AI tooling:** [Meta AI tooling](meta-ai-tooling.md) — Spark
+  1.3 for interpretation, Muse Image for DEMO-labelled demo visuals
+  only (workspace files, not pushed to the repo, never seller product
+  photos, never a price claim, no official logo), Meta Catalog API
+  for verified reads (read-only client in code, no live read
+  verified), Reel entry contract + simulator (not a native button),
+  and a new multimodal intent candidate module
+  (`apps/demo/src/muse-multimodal-intent.ts`) that never supplies a
+  title, price, or stock level — the catalog record does, or the
+  candidate is unverifiable. SAM 3.1 is not forced, no fine-tuning,
+  Spark Open is not Spark 1.3, and no new paid Meta API probes were
+  run in this batch.
+- **Panel routes, code-ready not mounted:**
+  [Live panel routes design](live-panel-routes-design.md) —
+  `apps/api/src/muse-panel-routes.ts` (pure handler logic, fail-closed
+  principal / tenant / draft checks, approval returns 202 accepted
+  not executed) plus its tests and a provider-readiness gate. Nothing
+  is mounted in `apps/api/src/index.ts`, so there is no live
+  panel-to-API route yet; the design doc is the mount contract.
+- **Technical verification:** [Technical verification checklist](technical-verification-checklist.md) —
+  real Postgres (blocked: user-only card + database), real-browser
+  confirmation run, live Shopify read (blocked: store-owner call),
+  live Meta catalog read (blocked: test catalog not verified),
+  end-to-end test order in test mode, latency measurement, and an
+  adversarial evidence summary with standing caveats (CI-listed
+  gates vs standalone files, no pnpm/Docker in the VM, provider
+  gates need a full build and first run in CI).
+- **Business model, still undecided:**
+  [Business model options](business-model-options.md) — four options
+  (fee only on a verified order; seller subscription; platform / Shop
+  backend share only where authorized; hybrid) with pros, cons,
+  risks, and a decision-needed flag. No option is chosen, and no fee
+  or revenue figure is claimed anywhere. The "Still open decisions"
+  section above therefore remains true: business model undecided.
+
+Training is unchanged in this batch: 48 teaching / 30 held-out
+synthetic scenarios, no model trained or fine-tuned, no regeneration
+run. Demo work is deferred to last and untouched in this batch: no
+90-second cut re-assembly, no narration or mockup changes for the cut,
+no Render Starter change, and no live URL claim.
