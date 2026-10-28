@@ -18,8 +18,10 @@ can look a Reel up in seconds and resolve it to one exact, verified
 item before any approval. A caption never overrides a catalog entry:
 a stale, unverifiable, or out-of-stock entry is unavailable, and a
 price mismatch forces reapproval. Today that index exists as code and
-test data, not as a live populated index — no live seller catalog
-read has happened yet.
+test data, plus one verified live read: on 2026-10-28 a Graph API
+Explorer read returned the ClutchAgent TEST item ($1.00 USD) — see
+[docs/live-meta-catalog-proof.md](live-meta-catalog-proof.md). That read
+is not yet a read through the repo client or a Render route.
 
 ## Try it first (live demo, no sign-in, no backend)
 
@@ -78,7 +80,7 @@ read has happened yet.
 | Interactive demo (above) | **Live** on GitHub Pages, static, no backend. It proves the flow and the safety case; it is not a real purchase. |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **In code, fail-closed only.** The four dispatch branches exist, but every request refuses today (503 without a database, 400 without an authenticated panel session), because session issuance, a real draft lookup, and real host methods are not wired yet. No handler is ever called through them. |
-| Live panel route, live Postgres, live seller, live payment | **Not live.** No live panel-to-API traffic, no live Shopify or Meta catalog read, no live Shop Pay execution, no native Muse distribution. |
+| Live panel route, live Postgres, live seller, live payment | **Not live, except one Graph Explorer catalog read.** No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. First live Meta catalog read (ClutchAgent TEST item, $1.00 USD, 2026-10-28) is proved in [docs/live-meta-catalog-proof.md](live-meta-catalog-proof.md). |
 | Measured chat-to-door time | **Not measured.** No tap → approval → verified order → delivered timestamps exist yet, because no real seller test has run. No time is claimed. |
 | Business model | **Undecided.** Who pays, and for what, is not yet decided. This brief does not invent one. |
 | Reel-to-SKU match | **Not independently verified.** The ENRG Reel and the $44 tee match by the terms shown, but the exact SKU link has not been verified against a live catalog. |

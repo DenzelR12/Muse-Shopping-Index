@@ -113,7 +113,7 @@ Reel (Meta) ──► Muse window ──► Exact review ──► One approval 
 |---|---|
 | POST/GET/DELETE `/v1/muse/generic-profiles` | In code, Postgres + memory, company = authenticated principal |
 | POST `/v1/muse/panel/approve`, `/resume`, `/reminder-opt-in`, `/reminder-opt-out` | In code, **fail-closed only** — refuses every request until panel sessions, draft lookup, and host methods are wired |
-| Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — no live catalog read yet |
+| Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — **first live read verified 2026-10-28 via Graph Explorer** (see [live proof](docs/live-meta-catalog-proof.md)); not yet a read through this client or a Render route |
 | Shopify Storefront client | Product query only, tenant-gated, TEST-labelled — no live read yet |
 | BI (`muse-bi.ts`) | Tenant-trimmed, verified-only, watermark on verified success only — supplied/demo events until a live source is credential-gated |
 | Render API `muse-shopping-index-api` | Deployed, Postgres configured, root auth-gated (`unauthorized`, 2026-10-28) — no live seller/payment/panel traffic yet |
