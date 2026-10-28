@@ -4,6 +4,23 @@ Tap **Shop this reel** in Muse, review exactly once, approve once, and let the s
 
 `muse shop index` is the Meta app inside this project — not a separate product, and not a new name for the project.
 
+## In plain English — read this first, no technical words needed
+
+You see something you like in a Reel. You tap **Shop this reel**. A window opens inside Muse and shows you, in one clear list, exactly what you would be buying: who is selling it, what it is, how much it costs in total, where it would go, and how you could get your money back. You say yes once, for that exact list. If the price changes after that, your old yes does not count — you have to say yes again to the new price. Nothing is bought, charged, or shipped without that yes.
+
+**Words used in this README, in plain English:**
+
+- **Seller (tenant)** — one business, like THEENRG.COM or ClutchAgent. Each seller's information is kept separate from every other seller's, so one seller never sees another seller's data.
+- **Approval** — your one yes, tied to one exact list of terms. It can only be used once.
+- **Reapproval** — saying yes again, because something in the list changed (price, shipping, tax, or terms).
+- **Exact review** — that one clear list, shown before you approve, with no hidden fees or changed details.
+- **Catalog / index** — the checked list of items a seller offers, with verified prices. Muse looks the Reel up in this list instead of guessing from the video or caption.
+- **Fail closed** — if something is unclear, old, or unverified, the system stops and asks again instead of guessing or charging you.
+- **Demo / TEST** — a practice version with example numbers, not a real purchase. Real purchases are never claimed from a demo.
+
+Try the live demo first — no sign-in, no money: https://denzelr12.github.io/Muse-Shopping-Index/demo/
+
+
 - **Reel → Muse window → exact review → one explicit approval → server execution.** Shop handles the post-approval backend where authorized: notifications, verification, email, and shipping updates.
 - **Approval is consume-once and bound to exact terms.** A changed price, tax, shipping, configuration, terms, or payment authorization needs fresh approval (reapproval). Uncertain completion goes to reconciliation, never a blind retry or a second charge.
 - **Resume by draft, plus one generic opt-in reminder.** Return to an existing owned draft, revalidated first; expired or changed drafts get a new review, a diff, and fresh approval. A reminder is explicit opt-in only, generic, one only, with no price, seller, or pitch.
@@ -88,6 +105,19 @@ The exact review is rendered by the Muse feature panel (`apps/demo/src/muse-feat
 - `infra/`, `scripts/`, `tests/` — infrastructure, operational tooling, and cross-module validation.
 
 See [SECURITY.md](SECURITY.md) for security guidance. This repository does not currently declare an open-source license; access to the source does not itself grant a license.
+
+## Accessibility
+
+This project is built to be usable with a keyboard, a screen reader, and low vision, not just with a mouse and full sight. In the demo and in the Muse feature panel:
+
+- **Keyboard only:** every button and tab can be reached with Tab, and activated with Enter or Space. Focus is always visible with a clear outline, and moving to a new view moves focus to that view's heading so a screen reader does not get lost.
+- **Screen readers:** buttons and tabs carry labels and pressed states, product thumbnails carry alt text, dashboard numbers are labelled as numbers (not just pictures), and price changes are announced with an aria-live region instead of silently changing on screen.
+- **Seeing the text:** a text-size control and a high-contrast mode in the demo, plus a "Skip to Reels" link at the top so keyboard users do not have to tab through the whole header first.
+- **Motion:** the demo respects `prefers-reduced-motion` — animations and transitions are turned off for people who ask their device for less motion.
+- **Hearing and understanding:** each Reel has a short written transcript describing what is in the video, so the demo does not depend on hearing audio or seeing the video alone. The README itself follows the same rules: short sentences in the plain-English section, real headings in order, lists instead of long paragraphs, descriptive link text (never "click here"), and no meaning carried by colour alone.
+- **Language:** the consumer review language rule is explicit profile language first, device/Muse locale second, location only as a fallback for locale, currency, tax, and shipping — never language guessed from location alone. If a review cannot be shown in a verified language, it fails closed instead of showing a guessed translation.
+
+If you find a part of the demo or README that cannot be used with a keyboard, a screen reader, or large text, that is a bug in this project, not a limitation of the reader.
 
 ## Commands
 
