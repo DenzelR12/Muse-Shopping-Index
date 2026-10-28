@@ -13,7 +13,7 @@
 
 Catalog ID and product ID are blacked out in the query, in the returned item, and in the paging URLs. No access token appears in the screenshot (Explorer shows "Unavailable in session"). Pagination cursors remain visible; they are not IDs or tokens and cannot be used without a token.
 
-Note: this image is binary and cannot be pushed through this connector, so it must be added via direct git as `docs/live-meta-catalog-proof.jpg` for the embed above to render. The written record below is complete without it.
+
 
 ## What was returned (redacted)
 
