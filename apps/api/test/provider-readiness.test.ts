@@ -721,7 +721,7 @@ test('panel live wiring: registered draft, issued session, mount approve via liv
   let approveCalls = 0;
   const mount = createPanelSessionMount({
     store,
-    resolveDraft: panelDraftResolver(drafts),
+    resolveDraft: panelDraftResolver(drafts, '2026-10-27T12:00:00.000Z'),
     hostDeps: createPanelLiveHostDeps({
       approveDraft: async () => { approveCalls += 1; return { status: 'payment_processing' }; },
       resumeDraft: async () => ({ kind: 'present_review', draftId: 'draft-live-1', approvalRequired: true, approvalCarried: false, executeAgain: false, freshBuy: false } as never),

@@ -7,7 +7,7 @@
 **1. Server-owned draft lookup — `PanelDraftRegistry` (`muse-panel-live-wiring.ts`)**
 - Memory + Postgres (`muse_panel_drafts`, primary key `draft_id`). Postgres `INSERT ... ON CONFLICT DO NOTHING` keeps a draft's company stable; a re-register for a different company fails closed with tenant mismatch.
 - `registerDraft()` is server-internal only. There is no HTTP route for it, and a draft is never created from a body, caption, or model text.
-- `resolveDraft()` returns a draft only for its own company, only while unexpired. Expired or unknown drafts return null → mount 404, fail closed.
+- `resolveDraft()` returns a draft only for its own company, only while unexpired. `panelDraftResolver()` forwards an optional fixed `now` for tests (live callers pass none and get real time) — a stale test clock with an expired draft correctly returns null, which is what CI #110 caught and this fix addresses. Expired or unknown drafts return null → mount 404, fail closed.
 
 **2. Session issuance — `issuePanelSession()`**
 - Inputs, all server-supplied: authenticated principal, registered draft, approval token from the authenticated session only (never a body field, DOM field, caption, or model text).

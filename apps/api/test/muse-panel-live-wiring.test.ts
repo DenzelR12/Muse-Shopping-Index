@@ -27,7 +27,7 @@ async function wired() {
   const calls = { approve: 0, resume: 0, optIn: 0, optOut: 0 };
   const mount = createPanelSessionMount({
     store,
-    resolveDraft: panelDraftResolver(drafts),
+    resolveDraft: panelDraftResolver(drafts, NOW),
     hostDeps: createPanelLiveHostDeps({
       approveDraft: async () => { calls.approve += 1; return { status: 'payment_processing' }; },
       resumeDraft: async () => { calls.resume += 1; return { kind: 'present_review', draftId: 'draft-1', approvalRequired: true, approvalCarried: false, executeAgain: false, freshBuy: false } as never; },
@@ -101,7 +101,7 @@ test('unbound host methods fail closed, and a concurrent approve cannot double-c
     approvalToken: 'approval-token-from-session', now: NOW,
   });
   const unbound = createPanelSessionMount({
-    store, resolveDraft: panelDraftResolver(drafts), hostDeps: createPanelLiveHostDeps({}),
+    store, resolveDraft: panelDraftResolver(drafts, NOW), hostDeps: createPanelLiveHostDeps({}),
   });
   const refused = await unbound.handlePanelSessionRequest({
     principal: PRINCIPAL, sessionId: issued.sessionId, draftId: 'draft-1', action: 'approve', now: NOW,

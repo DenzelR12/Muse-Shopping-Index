@@ -197,9 +197,18 @@ export async function issuePanelSession(input: PanelSessionIssueInput): Promise<
 }
 
 /** Build the mount's draft resolver from a registry. Mount still checks company. */
-export function panelDraftResolver(registry: PanelDraftRegistry): (args: { principal: MusePanelSessionPrincipal; draftId: string }) => Promise<MusePanelMountDraft | null> {
+export function panelDraftResolver(
+  registry: PanelDraftRegistry,
+  now?: string | (() => string),
+): (args: { principal: MusePanelSessionPrincipal; draftId: string }) => Promise<MusePanelMountDraft | null> {
+  // The mount adapter's resolver signature carries no `now`, so a
+  // caller that needs a fixed test clock must pass it here. Live
+  // callers (index.ts) pass nothing and get real time. Passing a
+  // stale fixed clock with an expired draft is a test bug, not a
+  // wiring bug: the registry correctly returns null for expired drafts.
   return async ({ principal, draftId }) => {
-    const draft = await registry.resolveDraft({ principal, draftId });
+    const at = typeof now === 'function' ? now() : now;
+    const draft = await registry.resolveDraft({ principal, draftId, ...(at ? { now: at } : {}) });
     if (!draft) return null;
     return { draftId: draft.draftId, companyId: draft.companyId };
   };
