@@ -129,3 +129,30 @@ that reads a token from the body, invents one, or reuses another
 session's token must not exist. Mounting the adapter does not create
 live traffic, a native Muse window, a live reminder channel, a live
 seller, or a live catalog read; those remain separately gated.
+
+## 6. Session store now exists in code — mount still not applied (new)
+
+The blocker in §5 is now closed in code, not in a live route:
+
+- `apps/api/src/muse-panel-session-store.ts` — server-owned store
+  (memory for tests, Postgres table `muse_panel_session_tokens` for
+  the server), with issue / verify / resolve / consume /
+  purgeExpired, expiring with the draft, never panel-readable.
+- `apps/api/src/muse-panel-session-mount.ts` — binds that store to
+  `handleMusePanelMount`, failing closed with 503
+  `muse_panel_session_store_not_configured` when no store is
+  configured, and with distinct 403 / 400 / 410 / 403 errors for
+  missing / principal-mismatched / draft-mismatched / expired /
+  consumed (approve only) tokens.
+- Tests in `apps/api/test/muse-panel-session-store.test.ts`, with a
+  gate in the CI-listed `apps/api/test/provider-readiness.test.ts`.
+  Full design: `docs/muse-panel-session-store.md`.
+
+What has NOT changed: `apps/api/src/index.ts` is still not wired
+to these modules in this batch. The splice in the session-store doc
+is a small, auditable step that still needs a full server build,
+the panel-routes tests plus the provider-readiness gate in CI, a
+local full-server run showing each refusal case calling no handler,
+and a real-browser confirmation run (§4) before anyone may describe
+a panel route as live. Until then, panel routes are code-ready,
+not mounted, and no live panel-to-API traffic is claimed.

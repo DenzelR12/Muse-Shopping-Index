@@ -659,3 +659,48 @@ test('Meta lead webhook gate: missing secret and bad signature fail closed witho
   });
   assert.equal(badSignature.fetchCount(), 0, 'bad signature must never reach a fetch');
 });
+
+// Panel session token store gate (full suite is
+// apps/api/test/muse-panel-session-store.test.ts); this gate mirrors
+// its fail-closed mount cases. The session store is code-ready, NOT
+// mounted in apps/api/src/index.ts: there is no live panel-to-API
+// route, no live HTTP traffic, and no native Muse window claimed.
+// See docs/muse-panel-session-store.md for the mount contract and
+// the index.ts splice that still needs a full server build to verify.
+import { MemoryPanelSessionTokenStore } from '../src/muse-panel-session-store.js';
+import { createPanelSessionMount } from '../src/muse-panel-session-mount.js';
+
+test('Panel session store gate: no store fails closed with 503, and a missing session fails closed with 403, calling no handler', async () => {
+  let calls = 0;
+  const hostDeps = {
+    approveDraft: async () => { calls += 1; },
+    resumeDraft: async () => { calls += 1; return { kind: 'present_review' }; },
+    optInReminder: async () => { calls += 1; return { consumerSubject: 'consumer-1', companyId: 'company-1', draftId: 'draft-1', status: 'PENDING', sentCount: 0, createdAt: '2026-10-27T12:00:00.000Z', updatedAt: '2026-10-27T12:00:00.000Z', sentAt: null }; },
+    optOutReminder: async () => { calls += 1; return null; },
+  };
+  const principal = { subject: 'consumer-1', companyId: 'company-1' };
+  const noStore = createPanelSessionMount({
+    store: null,
+    resolveDraft: async () => ({ draftId: 'draft-1', companyId: 'company-1' }),
+    hostDeps,
+    now: '2026-10-27T12:00:00.000Z',
+  });
+  const notConfigured = await noStore.handlePanelSessionRequest({
+    principal, sessionId: 'session-1', draftId: 'draft-1', action: 'approve', now: '2026-10-27T12:00:00.000Z',
+  });
+  assert.equal(notConfigured.status, 503);
+  assert.deepEqual(notConfigured.body, { error: 'muse_panel_session_store_not_configured' });
+  const store = new MemoryPanelSessionTokenStore();
+  const withStore = createPanelSessionMount({
+    store,
+    resolveDraft: async () => ({ draftId: 'draft-1', companyId: 'company-1' }),
+    hostDeps,
+    now: '2026-10-27T12:00:00.000Z',
+  });
+  const missing = await withStore.handlePanelSessionRequest({
+    principal, sessionId: 'session-9', draftId: 'draft-1', action: 'approve', now: '2026-10-27T12:00:00.000Z',
+  });
+  assert.equal(missing.status, 403);
+  assert.deepEqual(missing.body, { error: 'muse_panel_session_token_not_found' });
+  assert.equal(calls, 0, 'no refused mount request may reach a handler');
+});
