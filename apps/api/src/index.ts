@@ -34,13 +34,14 @@ import {PostgresSecurityAuditSink} from '@gift-signal/mcp-gateway';
 import {submitMuseConfirmation} from './muse-confirmation-submit.js';
 import {resolvePaymentVehicle} from './shop-pay-vehicle.js';
 import {createServerCompanyDisplayResolver,registerServerCompanyDisplayName,validateSellerDisplayName,validateItemTitle,validateOptionalReviewFact} from './muse-seller-display.js';
-// Panel session mount (fail-closed wiring, see docs/muse-panel-session-store.md §4
-// and docs/live-panel-routes-design.md §6): the store + mount exist in code, but
-// this server has no panel-session issuance, no authenticated panel session, and
-// no server-owned draft store or panel host methods yet, so the branches below
-// always refuse (503 without a pool, 400/404 after) and never call a handler.
+// Panel live wiring (see docs/muse-panel-live-wiring.md): draft registry,
+// session issuance, and host adapter exist in code (muse-panel-live-wiring.ts).
+// This server has no authenticated panel session and no bound host methods
+// yet, so panel branches still refuse — now at session/host binding, not at
+// a null draft lookup. See the live-wiring doc for the one remaining gap.
 import {PostgresPanelSessionTokenStore} from './muse-panel-session-store.js';
 import {createPanelSessionMount} from './muse-panel-session-mount.js';
+import {MemoryPanelDraftRegistry,PostgresPanelDraftRegistry,panelDraftResolver,createPanelLiveHostDeps} from './muse-panel-live-wiring.js';
 import {PostgresCompanySellerManifestStore,createPersistedSellerDisplayResolver} from './muse-seller-display-store.js';
 import {AuthenticatedMuseCommerceHost,parseMuseAgentRequest} from './muse-agent-host.js';
 import {PostgresCompanyGenericProfileStore,buildGenericProfileNextSteps,createGenericProfileResolver,createGenericReadiness,createGenericDraftResolver,createGenericSubmit,validateGenericProfileRegistration,SYNTHETIC_FIXTURE_COMPANY_ID} from './muse-generic-profile.js';
@@ -108,27 +109,28 @@ const providerObservability=dbPool?new PostgresProviderObservabilityStore(dbPool
 const providerAlertState=dbPool?new PostgresProviderAlertStateStore(dbPool):null;
 const providerZeroTrustAuthority=dbPool?new PostgresZeroTrustAuthority(dbPool):null;
 const companyGenericProfiles=dbPool?new PostgresCompanyGenericProfileStore(dbPool):null;
-// Panel session store + mount, built from server state only (Postgres when a
-// pool exists, null otherwise — null means every panel request refuses with
-// 503 muse_panel_session_store_not_configured, never a fallback token).
-// resolveDraft returns null because index.ts has no server-owned draft store:
-// a draft lookup that invents a draft would be worse than refusing, and the
-// mount adapter returns 404 muse_panel_mount_draft_not_found for a null draft
-// if it is ever reached. hostDeps are defensive stubs that throw if ever
-// called: they are unreachable while no session token can exist (no issuance
-// path in this server), and they must be replaced with real server methods
-// before any panel success path is possible. Do not replace them with a
-// body-derived token, a guessed draft, or another session's token.
+// Panel session store + mount + live wiring (see docs/muse-panel-live-wiring.md):
+// draft lookup is now live via PanelDraftRegistry (Postgres when a pool
+// exists, memory otherwise — memory is single-process only and is
+// populated server-internally, never from HTTP), session issuance is
+// available via issuePanelSession() (server-internal, never HTTP, token
+// from the authenticated session only), and host methods go through
+// createPanelLiveHostDeps() (tenant checks + approve in-flight guard).
+// No host methods are bound at startup in this branch: panel branches
+// authenticate a company principal (orgId) and have no consumer
+// identity, connectionId, or approval token from an authenticated panel
+// session, and the approval flow needs all three. Binding a fake
+// consumer, a guessed connectionId, or a body-derived token would
+// violate the safety model, so unbound host methods fail closed with
+// muse_panel_host_not_configured. That production host binding is the
+// one remaining panel gap — see the live-wiring doc.
 const panelSessionStore=dbPool?new PostgresPanelSessionTokenStore(dbPool):null;
+const panelDraftRegistry=dbPool?new PostgresPanelDraftRegistry(dbPool):new MemoryPanelDraftRegistry();
+const panelLiveHostDeps=createPanelLiveHostDeps({});
 const panelSessionMount=createPanelSessionMount({
   store:panelSessionStore,
-  resolveDraft:async()=>null,
-  hostDeps:{
-    approveDraft:async()=>{throw new Error('muse_panel_host_not_configured');},
-    resumeDraft:async()=>{throw new Error('muse_panel_host_not_configured');},
-    optInReminder:async()=>{throw new Error('muse_panel_host_not_configured');},
-    optOutReminder:async()=>{throw new Error('muse_panel_host_not_configured');},
-  },
+  resolveDraft:panelDraftResolver(panelDraftRegistry),
+  hostDeps:panelLiveHostDeps,
 });
 // Server-operator connector registry for the generic profile. It
 // starts empty and is populated only by server startup code, never
@@ -570,17 +572,19 @@ createServer(async(req,res)=>{
     : authenticateRequest(req);
   if(!principal) return send(res,401,{error:'unauthorized'});
   try {
-    // Muse feature panel routes (mounted in code, fail-closed only — NOT a live
-    // panel route). Principal comes from server authentication above
-    // (principal.orgId = companyId, never a body field). The body carries
-    // only { draftId }; a token, price, title, payment method, or company ID
-    // in the body is ignored, never read. Session ID: index.ts has no
-    // authenticated panel session, so null is passed and the mount refuses
-    // (400 muse_panel_session_id_required after the 503 store check, or 404
-    // draft_not_found if a token ever existed). No handler is called on any
-    // refusal path, and no success path exists until session issuance, an
-    // authenticated panel session, a real draft lookup, and real host methods
-    // are wired in — see docs/muse-panel-session-store.md §4.
+    // Muse feature panel routes (wired in code, host binding still open —
+    // NOT live panel traffic yet). Principal comes from server
+    // authentication above (principal.orgId = companyId, never a body
+    // field). The body carries only { draftId }; a token, price, title,
+    // payment method, or company ID in the body is ignored, never read.
+    // Draft lookup is live via panelDraftRegistry and host methods go
+    // through the live adapter, but session ID is still null here:
+    // index.ts has no authenticated panel session, so the mount
+    // refuses (400 muse_panel_session_id_required after the 503 store
+    // check). No handler is called on any refusal path. A success path
+    // needs a Muse host to register a draft, issue a session via
+    // issuePanelSession(), and bind its host methods — see
+    // docs/muse-panel-live-wiring.md.
     const panelActionByPath:Record<string,string>={
       '/v1/muse/panel/approve':'approve',
       '/v1/muse/panel/resume':'resume',

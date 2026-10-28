@@ -669,6 +669,7 @@ test('Meta lead webhook gate: missing secret and bad signature fail closed witho
 // the index.ts splice that still needs a full server build to verify.
 import { MemoryPanelSessionTokenStore } from '../src/muse-panel-session-store.js';
 import { createPanelSessionMount } from '../src/muse-panel-session-mount.js';
+import { MemoryPanelDraftRegistry, issuePanelSession, panelDraftResolver, createPanelLiveHostDeps } from '../src/muse-panel-live-wiring.js';
 
 test('Panel session store gate: no store fails closed with 503, and a missing session fails closed with 403, calling no handler', async () => {
   let calls = 0;
@@ -703,4 +704,42 @@ test('Panel session store gate: no store fails closed with 503, and a missing se
   assert.equal(missing.status, 403);
   assert.deepEqual(missing.body, { error: 'muse_panel_session_token_not_found' });
   assert.equal(calls, 0, 'no refused mount request may reach a handler');
+});
+
+// Panel live wiring gate (CI-listed via this file): draft registry +
+// session issuance + live host adapter, through the session mount.
+// Full standalone file is apps/api/test/muse-panel-live-wiring.test.ts;
+// this gate is what CI actually runs until its own ci.yml line is added.
+test('panel live wiring: registered draft, issued session, mount approve via live host', async () => {
+  const drafts = new MemoryPanelDraftRegistry();
+  const store = new MemoryPanelSessionTokenStore();
+  await drafts.registerDraft({ draftId: 'draft-live-1', companyId: 'company-1', expiresAt: '2026-10-27T12:10:00.000Z', now: '2026-10-27T12:00:00.000Z' });
+  const issued = await issuePanelSession({
+    store, draftRegistry: drafts, principal: { subject: 'consumer-1', companyId: 'company-1' },
+    draftId: 'draft-live-1', approvalToken: 'approval-token-from-session', now: '2026-10-27T12:00:00.000Z',
+  });
+  let approveCalls = 0;
+  const mount = createPanelSessionMount({
+    store,
+    resolveDraft: panelDraftResolver(drafts),
+    hostDeps: createPanelLiveHostDeps({
+      approveDraft: async () => { approveCalls += 1; return { status: 'payment_processing' }; },
+      resumeDraft: async () => ({ kind: 'present_review', draftId: 'draft-live-1', approvalRequired: true, approvalCarried: false, executeAgain: false, freshBuy: false } as never),
+      optInReminder: async () => ({ consumerId: 'consumer-1', draftId: 'draft-live-1', optedIn: true } as never),
+      optOutReminder: async () => null,
+    }),
+  });
+  const approve = await mount.handlePanelSessionRequest({
+    principal: { subject: 'consumer-1', companyId: 'company-1' }, sessionId: issued.sessionId,
+    draftId: 'draft-live-1', action: 'approve', now: '2026-10-27T12:00:00.000Z',
+  });
+  assert.equal(approve.status, 202);
+  assert.equal(approveCalls, 1);
+  await assert.rejects(
+    issuePanelSession({
+      store, draftRegistry: drafts, principal: { subject: 'consumer-1', companyId: 'company-1' },
+      draftId: 'draft-unknown', approvalToken: 't', now: '2026-10-27T12:00:00.000Z',
+    }),
+    /muse_panel_mount_draft_not_found/,
+  );
 });

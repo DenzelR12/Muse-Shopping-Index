@@ -400,3 +400,8 @@ no Render Starter change, and no live URL claim.
 ## Exactly-once guard (added 2026-10-28)
 
 Duplicates, retries, webhook redelivery, and bursts are handled by a shared claim in `apps/api/src/muse-exactly-once.ts` (see `docs/muse-exactly-once.md`): one stable key per logical action per tenant, atomic Postgres claim, duplicate replay returns the original result, stale claims reconcile instead of auto-retrying, and a burst limiter that fails closed past its cap. Tested locally 8/8. Not claimed as live, not load-tested at 10,000 requests, and no scaled host or queue is configured yet — a burst is fail-closed, not guaranteed through.
+
+
+## Panel live wiring (added 2026-10-28)
+
+Draft registry, session issuance, and a live host adapter are now in code (`apps/api/src/muse-panel-live-wiring.ts`, see `docs/muse-panel-live-wiring.md`), CI-gated via `provider-readiness.test.ts`. index.ts no longer returns a null draft. Live panel traffic is still blocked at one gap only: production host binding — a real Muse host must supply an authenticated panel session (consumer identity, connection, session token) and bind its host methods. No fake consumer, guessed connection, or body token is used to close that gap.
