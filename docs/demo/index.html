@@ -2,57 +2,76 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Muse Shopping Index — Interactive Demo</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#f0f0f0;margin:0;padding:24px;display:flex;justify-content:center}
-.phone{width:390px;max-width:100%;background:#f5f5f5;border:1px solid #ddd;border-radius:24px;overflow:hidden}
-header{background:#fff;padding:14px 16px;border-bottom:1px solid #eee}
-header b{font-size:20px} header p{margin:2px 0 0;color:#666;font-size:13px}
-.tabs{display:flex;gap:8px;padding:12px 16px}
-.tabs button{flex:1;padding:10px;border:1px solid #ccc;background:#fff;border-radius:20px;cursor:pointer}
-.tabs button[aria-pressed="true"]{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-main{padding:0 16px 16px;min-height:520px}
-.bubble{background:#fff;border:1px solid #ddd;border-radius:18px;padding:14px;margin:12px 0}
-.card{background:#fff;border:1px solid #ddd;border-radius:18px;padding:16px;margin:12px 0}
-.tee{font-size:44px;text-align:center;background:#111;color:#fff;border-radius:12px;padding:28px 0;letter-spacing:6px}
-button.primary{width:100%;padding:14px;background:#1d4ed8;color:#fff;border:0;border-radius:10px;font-size:16px;cursor:pointer}
-button.secondary{width:100%;padding:12px;background:#fff;border:1px solid #ccc;border-radius:10px;cursor:pointer;margin-top:8px}
+body{font-family:system-ui,sans-serif;background:#e9e9e9;margin:0;padding:24px;display:flex;justify-content:center}
+.phone{width:390px;max-width:100%;background:#fff;border:1px solid #ccc;border-radius:28px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+.top{background:#1d4ed8;color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.top b{font-size:19px}.top span{font-size:20px;cursor:pointer}
+main{padding:16px;min-height:560px}
+.reel{background:#111;color:#fff;border-radius:14px;padding:22px 16px;text-align:center}
+.reel .tee{font-size:52px;letter-spacing:8px;margin:30px 0}
+.bubble{background:#f5f5f5;border-radius:14px;padding:14px;margin:12px 0}
+.card{border:1px solid #ddd;border-radius:14px;padding:16px;margin:12px 0}
+.card .thumb{background:#111;color:#fff;border-radius:10px;padding:24px 0;text-align:center;font-size:32px;letter-spacing:6px;margin-bottom:12px}
+button{width:100%;padding:14px;border:0;border-radius:10px;font-size:16px;cursor:pointer}
+button.blue{background:#1d4ed8;color:#fff}
+button.red{background:#dc2626;color:#fff}
+button.white{background:#fff;border:1px solid #ccc;margin-top:8px}
 button:disabled{opacity:.6}
+.tabs{display:flex;gap:8px;margin-bottom:8px}
+.tabs button{border:1px solid #ccc;background:#fff}
+.tabs button[aria-pressed="true"]{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.redhead{background:#dc2626}
+.process{text-align:center;padding:40px 10px}
 footer{padding:0 16px 16px;color:#666;font-size:12px}
 .diff s{color:#900}.diff b{color:#060}
 </style></head><body><div class="phone">
-<header><b>Muse</b><p>Muse Shopping Index &nbsp;•&nbsp; DEMO &nbsp;•&nbsp; TEST data only</p></header>
+<div class="top" id="topbar"><b>𝕞 Muse Shopping Index</b><span onclick="reset()" aria-label="Close demo">×</span></div>
+<main>
 <div class="tabs" role="group" aria-label="Demo views">
-<button id="tabConsumer" aria-pressed="true" onclick="show('consumer')">Consumer chat</button>
+<button id="tabConsumer" aria-pressed="true" onclick="show('consumer')">Consumer</button>
 <button id="tabBusiness" aria-pressed="false" onclick="show('business')">For business</button>
 </div>
-<main>
 <div id="consumer">
-<div class="bubble" id="intro"><b>Reel</b><br>@TheEnrg &nbsp;•&nbsp; ENRG apparel<br><br><button class="primary" id="shopBtn" onclick="toReview()">Shop this reel in Muse</button></div>
-<div id="review" hidden>
-<div class="bubble">You tapped Shop this reel. Here's your exact review — nothing is bought until you approve it.</div>
-<div class="card"><div class="tee">ENRG</div><h2 style="font-size:18px">ENRG Unisex Oversized T-Shirt</h2>
-<p>THEENRG.COM • Item $44.00<br>Shipping $5.00 • Tax $3.52<br><b>Total: $52.52 USD</b><br>Saved payment • Pay in 2 x $22.00 (item, per store page)</p>
-<button class="primary" id="approveBtn" onclick="approve()">Approve $52.52</button>
-<button class="secondary" onclick="drift()">Simulate a price change (reapproval case)</button></div></div>
-<div id="driftCard" class="card diff" hidden><p><b>Price changed — reapprove before anything moves.</b></p>
-<p>Item: <s>$44.00</s> <b>$46.00</b><br>Shipping $5.00 • Tax $3.52<br>Total: <s>$52.52</s> <b>$54.52 USD</b> (TEST example)</p>
-<button class="primary" onclick="approveNew()">Approve $54.52 (new approval)</button></div>
+<div id="reelView">
+<div class="reel"><p style="text-align:left;margin:0">@TheEnrg &nbsp;•&nbsp; ENRG apparel</p><div class="tee">ENRG</div><p>ENRG Unisex Oversized T-Shirt</p></div>
+<button class="blue" style="margin-top:12px" id="shopBtn" onclick="toReview()">🛍 Shop this reel</button>
+<p style="color:#666;font-size:13px;text-align:center">Tap Shop this reel — the Muse panel opens in this window.</p>
+</div>
+<div id="reviewView" hidden>
+<h2 style="margin:0 0 8px">Product Review</h2>
+<div class="card"><div class="thumb">ENRG</div>
+<p style="margin:0">Seller: <b>THEENRG.COM</b><br>Product: ENRG Unisex Oversized T-Shirt<br>Price: $44.00<br>Shipping: $5.00<br>Tax: $3.52<br><b>Total: $52.52 USD</b><br>🟢 In Stock (TEST)<br>Saved payment</p>
+<button class="blue" id="approveBtn" onclick="approve()">🔒 Approve Purchase — $52.52</button>
+<button class="white" onclick="showDrift()">Try a price change (reapproval case)</button></div></div>
+<div id="processView" class="process" hidden><p style="font-size:36px">◌</p><h2>Processing your order…</h2><p>Please do not close this window.<br>Approved once for $52.52. No second purchase will run.</p></div>
+<div id="doneView" hidden><div class="bubble"><h2 style="color:#060;margin:0">✓ Shipped</h2><p>Tracking: Not available yet. We will update you here in Muse when the seller shares tracking.</p></div>
+<div class="bubble"><h2 style="color:#060;margin:0">✓ Delivered</h2><p>Your ENRG tee has arrived. Enjoy it — and let Muse know here if anything is not right.</p></div>
+<button class="white" onclick="reset()">Start over</button></div>
+<div id="driftView" hidden>
+<div class="top redhead" style="margin:-16px -16px 12px;border-radius:0"><b>⚠ Price Update Detected</b><span>×</span></div>
+<h2>Approval Required</h2><div class="card"><p>The price for this item has changed since your last review.</p>
+<p>Previous Price: $52.52<br>New Price: <b>$54.52 USD</b> (TEST example: item $46.00 + shipping $5.00 + tax $3.52)</p>
+<p style="background:#fef3c7;padding:10px;border-radius:8px">Your old $52.52 approval did <b>not</b> execute. No payment was taken at the old price. Reapprove to continue at the new price, or cancel.</p>
+<button class="red" onclick="approveNew()">Reapprove Purchase — $54.52</button>
+<button class="white" onclick="cancelDrift()">Cancel Order</button></div></div>
 <div id="status" aria-live="polite"></div>
 </div>
 <div id="business" hidden>
-<div class="card"><h2 style="font-size:18px">How the connector helps THEENRG.COM</h2>
+<div class="card"><h2>How the connector helps THEENRG.COM</h2>
 <p><b>Verified sales — not just likes</b><br>Reel likes: 161K (user-supplied) • Verified orders: 1<br>Verified revenue: $52.52 USD • 1 x ENRG tee</p>
 <p><b>Full funnel, in one place</b><br>Reel tap 1 → Review 1 → Approved 1 → Shipped 1 → Delivered 1<br>No double-counting. Refunds subtract.</p>
-<p><b>What THEENRG can do with it</b><br>See the tee that actually sold. Restock what sells, fix what stalls. No storefront to run. Muse handles review, approval, and updates in chat.</p>
 <p><b>Demo example — 1 order only. Not THEENRG's real sales.</b></p></div>
 </div>
 </main>
-<footer>Demo only. No real purchase, order, payment, tracking, or delivery is created. Shipping $5.00 and tax $3.52 are demo examples; the store page said shipping calculated at checkout and tax not available. This is a UI prototype, not native Muse integration and not a storefront.</footer>
+<footer>Demo only. No real purchase, order number, delivery address, delivery date, tracking, or payment is created. Shipping $5.00 and tax $3.52 are demo examples; the store page said shipping calculated at checkout and tax not available. This is a UI prototype, not native Muse integration and not a storefront.</footer>
 </div>
 <script>
+function hideAll(){['reelView','reviewView','processView','doneView','driftView'].forEach(id=>document.getElementById(id).hidden=true);}
 function show(v){document.getElementById('consumer').hidden=v!=='consumer';document.getElementById('business').hidden=v!=='business';document.getElementById('tabConsumer').setAttribute('aria-pressed',v==='consumer');document.getElementById('tabBusiness').setAttribute('aria-pressed',v==='business');}
-function toReview(){document.getElementById('review').hidden=false;document.getElementById('shopBtn').disabled=true;document.getElementById('shopBtn').textContent='Shop this reel ✓';}
-function setStatus(h){document.getElementById('status').innerHTML=h;}
-function approve(){document.getElementById('approveBtn').disabled=true;setStatus('<div class="bubble"><b>Processing…</b><br>Approved once for $52.52. No second purchase will run.</div>');setTimeout(()=>{setStatus('<div class="bubble"><b>Shipped ✓</b><br>Tracking: Not available yet. We will update you here in Muse when the seller shares tracking.</div>');},1500);setTimeout(()=>{setStatus('<div class="bubble"><b>Delivered ✓</b><br>Your ENRG tee has arrived. Enjoy it — and let Muse know here if anything is not right.</div>');},3000);}
-function approveNew(){setStatus('<div class="bubble"><b>Approved $54.52 ✓</b><br>New approval only — the old $52.52 approval did not execute.</div>');}
-function drift(){document.getElementById('driftCard').hidden=false;document.getElementById('approveBtn').disabled=true;}
+function toReview(){hideAll();document.getElementById('reviewView').hidden=false;}
+function approve(){hideAll();document.getElementById('processView').hidden=false;setTimeout(()=>{hideAll();document.getElementById('doneView').hidden=false;},2000);}
+function showDrift(){hideAll();document.getElementById('driftView').hidden=false;}
+function approveNew(){hideAll();document.getElementById('processView').hidden=false;document.querySelector('#processView p:last-child').textContent='Approved once for $54.52 at the new price. No second purchase will run.';setTimeout(()=>{hideAll();document.getElementById('doneView').hidden=false;},2000);}
+function cancelDrift(){hideAll();document.getElementById('reelView').hidden=false;document.getElementById('status').innerHTML='<div class="bubble"><b>Cancelled.</b> No purchase was made and no payment was taken.</div>';}
+function reset(){hideAll();document.getElementById('reelView').hidden=false;document.getElementById('status').innerHTML='';}
 </script></body></html>
