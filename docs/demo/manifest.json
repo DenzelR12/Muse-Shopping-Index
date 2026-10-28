@@ -1,0 +1,13 @@
+{
+  "name": "Muse Shopping Index — Interactive Demo",
+  "short_name": "Muse Demo",
+  "description": "Demo: Shop this reel in Muse — exact review, one approval, door. Demo only, no real purchase.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}
