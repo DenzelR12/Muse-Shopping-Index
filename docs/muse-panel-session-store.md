@@ -3,10 +3,11 @@
 ## Read first: code-ready, not live
 
 Muse Shopping Index is a **Muse feature, not a storefront**. The panel
-is mounted by a Muse host inside a Muse window/surface. Nothing in
-this batch mounts a route in `apps/api/src/index.ts`, and no live
-panel-to-API traffic, live Postgres, live seller, live reminder
-channel, or native Muse window is claimed. This doc closes the
+is mounted by a Muse host inside a Muse window/surface. Nothing in this batch creates a live panel route, live Postgres, live
+seller, live reminder channel, or native Muse window. The index.ts
+dispatch branches ARE now present in code (see §4), but they are
+fail-closed only: no success path exists yet, so no live panel-to-API
+traffic is claimed. This doc closes the
 precise mount blocker from `docs/live-panel-routes-design.md` §5 in
 code, and gives the exact, auditable step that still has to happen
 before a route may be described as live.
@@ -96,10 +97,49 @@ execution state the panel must show, and it would not prevent a
 second execution — the existing approval flow's consume-once is
 what prevents that, and it is unchanged.
 
-## 4. The index.ts splice (NOT applied in this batch)
+## 4. The index.ts splice (APPLIED in code, fail-closed only — NOT a live route)
 
-This is the only remaining wiring step, and it must be applied with
-a full server build — not from a file-only push alone:
+The splice is now present in `apps/api/src/index.ts` (imports, a
+Postgres-when-pool store, a `createPanelSessionMount` built from server
+state, and four dispatch branches after server authentication:
+POST /v1/muse/panel/approve, /resume, /reminder-opt-in,
+/reminder-opt-out). What it does, honestly:
+
+- No pool (no DATABASE_URL) → every panel request returns 503
+  `muse_panel_session_store_not_configured`, calling no handler.
+- With a pool but no authenticated panel session → 400
+  `muse_panel_session_id_required`, calling no handler. index.ts has
+  no authenticated panel session yet, so this is the outcome for every
+  request that reaches the branches today.
+- The body carries only `{ draftId }` (validated, max 160 chars);
+  any token, price, title, payment method, or company ID in the body
+  is ignored, never read. Principal is principal.orgId from server
+  authentication, never a body field.
+- `resolveDraft` returns null (no server-owned draft store is wired
+  in index.ts) and hostDeps are defensive stubs that throw
+  `muse_panel_host_not_configured` if ever called. They are
+  unreachable while no session token can exist, and they must be
+  replaced with real server methods before any success path exists.
+
+What is still missing before anyone may describe a panel route as
+live or working: (1) a session-issuance path at draft creation, (2)
+an authenticated panel session ID for index.ts to use, (3) a real
+server-owned draft lookup, (4) real panel host methods
+(approveDraft / resumeDraft / optInReminder / optOutReminder),
+(5) a full server build with the branches passing in CI, (6) a local
+full-server run showing each refusal calling no handler, and (7) a
+real-browser confirmation run (live-panel-routes-design §4). Until
+all seven are recorded, the mount is code, not a live route.
+
+The splice itself was verified in a typecheck harness (real
+`tsc --strict`, real panel modules, exit 0) and at runtime (503
+without a pool, 400 without a session, no handler called). A full
+repo `pnpm build` / `pnpm typecheck` in the real workspace was NOT
+run in that harness, so CI is still the full-build check — do not
+claim it until CI passes.
+
+The original splice text, kept for audit (the placeholders are now
+the explicit null / throwing-stub choices above, not hidden):
 
 ```ts
 // In apps/api/src/index.ts, built from server state at startup:

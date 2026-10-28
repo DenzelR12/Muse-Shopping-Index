@@ -156,3 +156,23 @@ local full-server run showing each refusal case calling no handler,
 and a real-browser confirmation run (§4) before anyone may describe
 a panel route as live. Until then, panel routes are code-ready,
 not mounted, and no live panel-to-API traffic is claimed.
+
+## 7. Index.ts splice applied in code — fail-closed only (new)
+
+`apps/api/src/index.ts` now contains the four dispatch branches
+(POST /v1/muse/panel/approve, /resume, /reminder-opt-in,
+/reminder-opt-out), built from server state with a Postgres-when-pool
+session store and `createPanelSessionMount`. This changes §6's
+"still not applied" status in one narrow sense only: the wiring
+exists in code. It does NOT change the live status: no session
+issuance, no authenticated panel session, no real draft lookup, and
+no real host methods exist in index.ts yet, so every request through
+the branches refuses today (503 without a pool, 400 without a
+session) and no handler is ever called. The verification in §4 is
+therefore still incomplete: full server build in CI, local
+full-server refusal run, and real-browser confirmation are all still
+outstanding. Until they are recorded, panel routes are code-ready,
+not mounted in any live sense, and no live panel-to-API traffic,
+live Postgres, live seller, or native Muse window is claimed. See
+`docs/muse-panel-session-store.md` §4 for the exact splice and its
+remaining gaps.
