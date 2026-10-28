@@ -9,7 +9,7 @@
 
 ## Screenshot proof (redacted)
 
-![Live Graph API Explorer read — catalog ID and product ID blacked out, including in the paging URLs](live-meta-catalog-proof.jpg)
+![Live Graph API Explorer read — catalog ID and product ID blacked out, including in the paging URLs](live-meta-catalog-<img width="1277" height="596" alt="Screenshot 2026-10-28 at 12 49 23 PM" src="https://github.com/user-attachments/assets/ef41ee31-4905-40d1-a158-fc0ad0217a9e" />.jpg)
 
 Catalog ID and product ID are blacked out in the query, in the returned item, and in the paging URLs. No access token appears in the screenshot (Explorer shows "Unavailable in session"). Pagination cursors remain visible; they are not IDs or tokens and cannot be used without a token.
 
