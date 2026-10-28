@@ -113,6 +113,7 @@ Reel (Meta) ──► Muse window ──► Exact review ──► One approval 
 |---|---|
 | POST/GET/DELETE `/v1/muse/generic-profiles` | In code, Postgres + memory, company = authenticated principal |
 | POST `/v1/muse/panel/approve`, `/resume`, `/reminder-opt-in`, `/reminder-opt-out` | In code, **fail-closed only** — refuses every request until panel sessions, draft lookup, and host methods are wired |
+| Exactly-once guard (`muse-exactly-once.ts`) | Atomic claim per tenant + key, replay returns original result, stale reconciles never auto-retries, burst limiter fails closed — in code, tested 8/8 locally; **no 10,000-request load test yet, no scaled host/queue** (see [exactly-once](docs/muse-exactly-once.md)) |
 | Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — **first live read verified 2026-10-28 via Graph Explorer** (see [live proof](docs/live-meta-catalog-proof.md)); not yet a read through this client or a Render route |
 | Shopify Storefront client | Product query only, tenant-gated, TEST-labelled — no live read yet |
 | BI (`muse-bi.ts`) | Tenant-trimmed, verified-only, watermark on verified success only — supplied/demo events until a live source is credential-gated |
@@ -162,7 +163,8 @@ Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is 
 
 ## What is NOT live yet
 
-- No live seller, no live payment, no live Shop handling, and no live Meta or Shopify catalog read.
+- **10,000-request burst handling is not proven.** The exactly-once guard is in code, but no concurrent load test, queue service, or scaled host exists yet — a burst is fail-closed, not guaranteed through.
+- No live seller, no live payment, no live Shop handling, and no live Shopify catalog read. First live Meta catalog read verified 2026-10-28 via Graph Explorer only (see [live proof](docs/live-meta-catalog-proof.md)); not yet through the repo client or a Render route.
 - No native Muse window. The panel is host-agnostic DOM a Muse host mounts; native Muse integration needs Meta approval and is not claimed.
 - No live panel-to-API routes yet. Panel host wiring maps callbacks to existing server methods; a production host passing bound methods is still a separate step.
 - No live reminder channel. Opt-in entry and wiring exist, but no authorized channel is configured, so no live reminder is claimed.

@@ -1,7 +1,6 @@
 # Muse Shopping Index — Indie Submission Brief
 
-Status: submission brief, not a live claim. Written against target main HEAD
-`d49c309673d56127a886bba001250b3ab73ad355` (2026-10-27). Everything below
+Status: submission brief, not a live claim. Updated 2026-10-28: first live Meta catalog read verified via Graph Explorer (see docs/live-meta-catalog-proof.md); the section below that said no Meta catalog connection exists is now superseded for the TEST catalog read only — it is not a read through the repo client, a live seller, or live payment. Everything below
 is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
@@ -396,3 +395,8 @@ synthetic scenarios, no model trained or fine-tuned, no regeneration
 run. Demo work is deferred to last and untouched in this batch: no
 90-second cut re-assembly, no narration or mockup changes for the cut,
 no Render Starter change, and no live URL claim.
+
+
+## Exactly-once guard (added 2026-10-28)
+
+Duplicates, retries, webhook redelivery, and bursts are handled by a shared claim in `apps/api/src/muse-exactly-once.ts` (see `docs/muse-exactly-once.md`): one stable key per logical action per tenant, atomic Postgres claim, duplicate replay returns the original result, stale claims reconcile instead of auto-retrying, and a burst limiter that fails closed past its cap. Tested locally 8/8. Not claimed as live, not load-tested at 10,000 requests, and no scaled host or queue is configured yet — a burst is fail-closed, not guaranteed through.

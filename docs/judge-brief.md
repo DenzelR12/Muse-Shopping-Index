@@ -78,6 +78,7 @@ is not yet a read through the repo client or a Render route.
 | Area | Status |
 | --- | --- |
 | Interactive demo (above) | **Live** on GitHub Pages, static, no backend. It proves the flow and the safety case; it is not a real purchase. |
+| Exactly-once guard (`muse-exactly-once.ts`) | **In code, tested 8/8 locally.** Atomic Postgres claim per tenant + key, duplicate replay returns the original result, stale claims reconcile never auto-retry, burst limiter fails closed. Not a live route, not a 10,000-request load test, no scaled host/queue yet — see [docs/muse-exactly-once.md](muse-exactly-once.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **In code, fail-closed only.** The four dispatch branches exist, but every request refuses today (503 without a database, 400 without an authenticated panel session), because session issuance, a real draft lookup, and real host methods are not wired yet. No handler is ever called through them. |
 | Live panel route, live Postgres, live seller, live payment | **Not live, except one Graph Explorer catalog read.** No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. First live Meta catalog read (ClutchAgent TEST item, $1.00 USD, 2026-10-28) is proved in [docs/live-meta-catalog-proof.md](live-meta-catalog-proof.md). |
