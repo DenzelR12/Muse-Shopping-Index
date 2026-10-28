@@ -67,8 +67,16 @@ import {
   type MusePanelMountDependencies,
   type MusePanelMountDraft,
   type MusePanelMountPrincipal,
-  type MusePanelRouteResponse,
 } from './muse-panel-mount.js';
+
+// Local response shape: muse-panel-mount.ts declares MusePanelRouteResponse
+// locally without exporting it, so importing it breaks `pnpm build`
+// (CI #84). This shape is structural, so the adapter's return remains
+// assignable to it; do not re-import the unexported type.
+export type MusePanelSessionRouteResponse = {
+  status: number;
+  body: unknown;
+};
 import type {
   MusePanelSessionStore,
 } from './muse-panel-session-store.js';
@@ -92,13 +100,13 @@ export interface MusePanelSessionRequest {
 export function createPanelSessionMount(config: MusePanelSessionMountConfig) {
   const store = config.store ?? null;
 
-  function fail(status: number, error: string): MusePanelRouteResponse {
+  function fail(status: number, error: string): MusePanelSessionRouteResponse {
     return { status, body: { error } };
   }
 
   async function handlePanelSessionRequest(
     request: MusePanelSessionRequest,
-  ): Promise<MusePanelRouteResponse> {
+  ): Promise<MusePanelSessionRouteResponse> {
     const principal = request.principal;
     if (
       !principal ||
