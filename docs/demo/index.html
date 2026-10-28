@@ -36,6 +36,7 @@ footer{padding:0 16px 16px;color:#666;font-size:12px}
 <div class="tabs" role="group" aria-label="Demo views">
 <button id="tabConsumer" aria-pressed="true" onclick="show('consumer')">Consumer</button>
 <button id="tabBusiness" aria-pressed="false" onclick="show('business')">For business</button>
+<button id="tabService" aria-pressed="false" onclick="show('service')">Service: ClutchAgent</button>
 </div>
 <div id="consumer">
 <div id="reviewView">
@@ -62,13 +63,23 @@ footer{padding:0 16px 16px;color:#666;font-size:12px}
 <p><b>Full funnel, in one place</b><br>Reel tap 1 → Review 1 → Approved 1 → Shipped 1 → Delivered 1<br>No double-counting. Refunds subtract.</p>
 <p><b>Demo example — 1 order only. Not THEENRG's real sales.</b></p></div>
 </div>
+<div id="service" hidden>
+<div class="card"><h2 style="margin:0 0 8px">ClutchAgent — Service Review</h2>
+<p style="margin:0">Provider: <b>ClutchAgent</b> (Muse Meta side)<br>Service: <b>AI Operating System for Athletes</b><br>Sovereign tools for recruiting, NIL, and performance — engineered for the next generation of athletes.</p>
+<p>What this is: <b>service access in Muse</b>, not a physical product shipment.<br>Delivery: access delivered in Muse — no shipping, no door delivery.<br>Price: <b>To be confirmed at review</b> (no ClutchAgent service price invented here)<br>Payment: Saved payment</p>
+<button class="blue" id="serviceApproveBtn" onclick="approveService()">🔒 Approve Service Access</button>
+<button class="white" onclick="show('consumer')">Back to THEENRG product flow</button></div>
+<div id="serviceDone" hidden><div class="bubble"><h2 style="color:#060;margin:0">✓ Service access confirmed</h2><p>Access delivered in Muse. Start here in Muse — no shipment, no tracking, because this is a service, not a tee.</p></div></div>
+<p style="color:#666;font-size:12px">Demo illustration only. This shows how a service flow would look — it is not ClutchAgent's real service offering, price, or checkout. Replace price/access details with real ones only if ClutchAgent supplies them.</p>
+</div>
+
 </div>
 </main>
 <footer>Demo only. No real purchase, order number, delivery address, delivery date, tracking, or payment is created. Shipping $5.00 and tax $3.52 are demo examples; the store page said shipping calculated at checkout and tax not available. This is a UI prototype, not native Muse integration and not a storefront.</footer>
 </div>
 <script>
 function hideFlow(){['reviewView','processView','doneView','driftView'].forEach(id=>document.getElementById(id).hidden=true);}
-function show(v){document.getElementById('consumer').hidden=v!=='consumer';document.getElementById('business').hidden=v!=='business';document.getElementById('tabConsumer').setAttribute('aria-pressed',v==='consumer');document.getElementById('tabBusiness').setAttribute('aria-pressed',v==='business');}
+function show(v){document.getElementById('consumer').hidden=v!=='consumer';document.getElementById('business').hidden=v!=='business';document.getElementById('service').hidden=v!=='service';document.getElementById('tabConsumer').setAttribute('aria-pressed',v==='consumer');document.getElementById('tabBusiness').setAttribute('aria-pressed',v==='business');document.getElementById('tabService').setAttribute('aria-pressed',v==='service');}
 function playReel(){var v=document.getElementById('reelVideo');v.muted=true;v.playsInline=true;var pr=v.play();if(pr!==undefined){pr.then(function(){document.getElementById('playOverlay').style.display='none';}).catch(function(){document.getElementById('playOverlay').style.display='flex';});}}
 document.addEventListener('DOMContentLoaded',function(){var v=document.getElementById('reelVideo');v.muted=true;v.playsInline=true;var pr=v.play();if(pr!==undefined){pr.then(function(){document.getElementById('playOverlay').style.display='none';}).catch(function(){document.getElementById('playOverlay').style.display='flex';});}else{document.getElementById('playOverlay').style.display='flex';}});
 function toReview(){document.getElementById('reelVideo').pause();document.getElementById('videoStage').hidden=true;document.getElementById('flowStage').hidden=false;hideFlow();document.getElementById('reviewView').hidden=false;}
@@ -76,5 +87,6 @@ function approve(){hideFlow();document.getElementById('processView').hidden=fals
 function showDrift(){hideFlow();document.getElementById('driftView').hidden=false;}
 function approveNew(){hideFlow();document.getElementById('processView').hidden=false;setTimeout(()=>{hideFlow();document.getElementById('doneView').hidden=false;},2000);}
 function cancelDrift(){resetAll();document.getElementById('status').innerHTML='<div class="bubble"><b>Cancelled.</b> No purchase was made and no payment was taken.</div>';}
+function approveService(){document.getElementById('serviceApproveBtn').disabled=true;document.getElementById('serviceDone').hidden=false;}
 function resetAll(){document.getElementById('flowStage').hidden=true;document.getElementById('videoStage').hidden=false;document.getElementById('status').innerHTML='';var v=document.getElementById('reelVideo');v.currentTime=0;v.play();}
 </script></body></html>
