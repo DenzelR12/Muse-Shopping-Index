@@ -1,5 +1,7 @@
 # Muse Shopping Index
 
+[![CI](https://github.com/DenzelR12/Muse-Shopping-Index/actions/workflows/ci.yml/badge.svg)](https://github.com/DenzelR12/Muse-Shopping-Index/actions)  [Live demo](https://denzelr12.github.io/Muse-Shopping-Index/demo/)  [Judge brief](docs/judge-brief.md)
+
 Tap **Shop this reel** in Muse, review exactly once, approve once, and let the server execute — fewer clicks from a Reel to the door.
 
 `muse shop index` is the Meta app inside this project — not a separate product, and not a new name for the project.
@@ -90,6 +92,31 @@ First run, in the demo:
 5. A reminder is an explicit "Remind me" choice at review stage, default OFF. One generic reminder only, through an authorized channel only.
 
 The exact review is rendered by the Muse feature panel (`apps/demo/src/muse-feature-panel.ts`), a host-mounted DOM panel for a Muse window/surface — not a storefront, shop site, cart page, or checkout page. The panel renders server state and dispatches host callbacks only; it never grants approval, signs a draft, or executes.
+
+## Architecture
+
+```
+Reel (Meta) ──► Muse window ──► Exact review ──► One approval ──► Server execution ──► Verified status
+                     ▲                │                    │ (consume-once)
+                     │                │                    ▼
+              Panel (Muse host)   Signed draft        Revalidate live state
+                     │                │                    │ uncertain → reconcile,
+                     └──── Index ─────┘                    │ never blind retry
+                           ▲
+              Meta catalog (read-only) • Shopify Storefront (read-only)
+              Tenant-scoped: one seller's data never leaks to another seller.
+```
+
+## API surface — what exists, and its real status
+
+| Route / module | Status |
+|---|---|
+| POST/GET/DELETE `/v1/muse/generic-profiles` | In code, Postgres + memory, company = authenticated principal |
+| POST `/v1/muse/panel/approve`, `/resume`, `/reminder-opt-in`, `/reminder-opt-out` | In code, **fail-closed only** — refuses every request until panel sessions, draft lookup, and host methods are wired |
+| Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — no live catalog read yet |
+| Shopify Storefront client | Product query only, tenant-gated, TEST-labelled — no live read yet |
+| BI (`muse-bi.ts`) | Tenant-trimmed, verified-only, watermark on verified success only — supplied/demo events until a live source is credential-gated |
+| Render API `muse-shopping-index-api` | Deployed, Postgres configured, root auth-gated (`unauthorized`, 2026-10-28) — no live seller/payment/panel traffic yet |
 
 ## Structure
 
