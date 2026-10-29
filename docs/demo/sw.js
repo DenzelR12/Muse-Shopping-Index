@@ -1,5 +1,5 @@
 /* Muse Shopping Index demo service worker — demo only, no data, no purchase. */
-const CACHE = 'muse-demo-v24';
+const CACHE = 'muse-demo-v26';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
