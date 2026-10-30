@@ -103,14 +103,27 @@ or carrier fact in the demo is real.
 - **Meta AI (25%)** — The flow is built around Muse: Reel intent
   becomes a Muse review, and a Reel-interpretation harness shows a
   match going to exact review while a price mismatch (caption $199
-  vs catalog $249) is rejected with no draft and no approval. Still
-  missing: a live, measured Muse interpretation against a live
-  catalog.
+  vs catalog $249) is rejected with no draft and no approval.
+  **Live since 2026-10-29:** muse-spark-1.3 watched 3 frames of a real
+  studio Reel and returned structured JSON (visible items, featured
+  item, candidates, confidence). The honest result was UNCERTAIN —
+  both products were prominent — so the demo routes through a
+  "Which one?" picker instead of guessing, and the new
+  `muse-reel-grounding.ts` module (8/8 tests) verifies model proposals
+  against the catalog: exact only on a confident verified match,
+  picker otherwise, fail-closed on anything unverifiable. A naive
+  color-histogram similarity baseline was tried and rejected (it
+  scored the wrong garment higher); only a semantic embedding is an
+  acceptable visual signal, and no invented scores are shown. Honest
+  limits: one live run, TEST catalog, embedding scores pending.
 - **Technical (20%)** — Deterministic server authorization, signed
   drafts, consume-once approval, drift reapproval, tenant isolation,
   and a fail-closed panel mount that refuses rather than invents.
   Still missing: the full live wiring (session issuance, draft
-  lookup, host methods) and a live Postgres-backed run.
+  lookup, host methods) and a live Postgres-backed run. New:
+  `muse-reel-grounding.ts` takes the model's structured output and
+  runs it through catalog verification (tenant check, verified-only
+  matching, fail-closed on hallucination), 8/8 tests green.
 - **Demo (25%)** — A live, clickable Reels feed with both a product
   and a service, product thumbnail tags like Instagram, and the
   price-change safety case, all demo-labelled. Still missing: a real

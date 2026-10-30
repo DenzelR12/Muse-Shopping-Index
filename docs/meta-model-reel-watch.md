@@ -65,3 +65,13 @@ instead of building a wrong draft.
 - CLIP weights download (~350MB, one-time) was pending user approval at
   writing time; the demo card shows "pending embedding run" until real scores
   land. No invented scores are shown.
+
+## Structured JSON output (2026-10-29, second probe)
+
+The first probe returned labeled text (`VISIBLE:`/`FEATURED:` lines) that had
+to be parsed. A second probe asked for strict JSON and returned it cleanly
+(3,119 tokens, finish=stop, valid JSON): `visible` with per-item `seen_at`
+timestamps and attributes, `featured: "UNCERTAIN"`, ranked `candidates`,
+`confidence: "high"`, and a one-sentence note. The agent pipeline
+(`muse-reel-grounding.ts`) consumes this JSON shape; the labeled-text format
+is retired. Full output archived in `~/workspace/msi-reel-watch/frames/grounding_output.json`.
