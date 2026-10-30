@@ -1,14 +1,14 @@
 # Muse Shopping Index
 
-[![CI](https://github.com/DenzelR12/Muse-Shopping-Index/actions/workflows/ci.yml/badge.svg)](https://github.com/DenzelR12/Muse-Shopping-Index/actions)  [Live demo](https://denzelr12.github.io/Muse-Shopping-Index/demo/)  [Judge brief](docs/submission/judge-brief.md)
+[![CI](https://github.com/DenzelR12/Muse-Shopping-Index/actions/workflows/ci.yml/badge.svg)](https://github.com/DenzelR12/Muse-Shopping-Index/actions)  [(Live Demo)](https://denzelr12.github.io/Muse-Shopping-Index/demo/)  [(Judge Brief)](docs/submission/judge-brief.md)
 
 Tap **Shop this reel** in Muse, review exactly once, approve once, and let the server execute — fewer clicks from a Reel to the door.
 
 ## Watch the pitch (2:56)
 
-[![Muse Shopping Index — pitch video](https://img.youtube.com/vi/ND0hfXih8bg/maxresdefault.jpg)](https://www.youtube.com/watch?v=ND0hfXih8bg)
+[![Muse Shopping Index — pitch video](https://img.youtube.com/vi/ND0hfXih8bg/maxresdefault.jpg)](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo_video_small.MP4)
 
-One exact review. One approval. Nothing hidden. Same video on this site: [watch here](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo_video_small.MP4) · [Try the live demo](https://denzelr12.github.io/Muse-Shopping-Index/demo/)
+One exact review. One approval. Nothing hidden. Click the cover and the video plays right in your browser — no trip to another site. Also on [YouTube](https://www.youtube.com/watch?v=ND0hfXih8bg).
 
 `muse shop index` is the Meta app inside this project — not a separate product, and not a new name for the project.
 

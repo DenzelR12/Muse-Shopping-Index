@@ -8,6 +8,8 @@ is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
 
+**Measured on the live demo (2026-10-30, demo v55):** Reel tap → approval takes **2 taps** on an exact match (THEENRG tee — Shop this reel → Approve Purchase; ClutchAgent service — Shop this reel → Approve Service Access). When Muse's match is uncertain — the mixed-product hoodie Reel — it asks "Which one?" first: **3 taps**, and the extra tap is the safety behavior working as designed. Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
+
 ## 1. Track: Indie developer
 
 The user has chosen the **Indie developer track** for the Meta Global AI
@@ -287,8 +289,12 @@ and not "an AI chatbot with a buy button."
    code-ready (read-only, TEST-labelled); what is still missing
    is the store owner's authorization and a verified read
    against a real store, which is pending a call.
-4. A measured clicks/time number: time or clicks from Reel tap to
-   approval, before versus after, measured on a real run.
+4. A measured clicks/time number — CLICKS MEASURED on the live demo
+   (2026-10-30, demo v55): 2 taps from Reel tap to approval on an exact
+   match; 3 taps when Muse is uncertain and asks "Which one?" first
+   (the extra tap is the safety behavior). Still open: a before-versus-
+   after comparison and any time number, measured on a real run — no
+   baseline exists yet, and reading time is not claimed.
 5. A 90-second demo video with a failure/reapproval case, ending on the
    honest close: green CI, no-money demo, credential-gated live paths.
 6. Real Postgres verification (against the Render database once it
