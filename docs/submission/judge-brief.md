@@ -1,6 +1,6 @@
 # Muse Shopping Index — Judge Brief
 
-**Watch the pitch (2:56):** [Muse Shopping Index — pitch video](https://www.youtube.com/watch?v=ND0hfXih8bg)
+**Watch the pitch (2:57):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
 
 
 ## What it is, in one line

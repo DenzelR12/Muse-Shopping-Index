@@ -1,6 +1,6 @@
 # Muse Shopping Index — Indie Submission Brief
 
-**Watch the pitch (2:56):** [Muse Shopping Index — pitch video](https://www.youtube.com/watch?v=ND0hfXih8bg)
+**Watch the pitch (2:57):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
 
 
 Status: submission brief, not a live claim. Updated 2026-10-28: first live Meta catalog read verified via Graph Explorer (see docs/meta/live-meta-catalog-proof.md); the section below that said no Meta catalog connection exists is now superseded for the TEST catalog read only — it is not a read through the repo client, a live seller, or live payment. Everything below
