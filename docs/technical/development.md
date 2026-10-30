@@ -68,7 +68,7 @@ node scripts/build-muse-commerce-training.mjs
 node scripts/build-muse-commerce-training.mjs --check
 ```
 
-Keep held-out cases out of training. Measure action/argument accuracy and inspect unsafe failures separately. A successful export is not an SFT/LoRA job. Live evaluation consumes inference usage but does not run commerce APIs; do not connect evaluation tools to transaction execution. Actual training requires an authorized trainable model/infrastructure and compatible data interface. See [model guide](../muse-model-training.md).
+Keep held-out cases out of training. Measure action/argument accuracy and inspect unsafe failures separately. A successful export is not an SFT/LoRA job. Live evaluation consumes inference usage but does not run commerce APIs; do not connect evaluation tools to transaction execution. Actual training requires an authorized trainable model/infrastructure and compatible data interface. See [model guide](../research/muse-model-training.md).
 
 ## Safe integration workflow
 

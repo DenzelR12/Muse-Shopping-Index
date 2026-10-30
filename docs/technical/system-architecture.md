@@ -76,7 +76,7 @@ The **execution plane** persists transaction intent and payment references befor
 6. Prove idempotency and recovery with injected response loss and replay.
 7. Validate company-specific cancellations, refunds and fulfillment evidence.
 
-Do not require Shopify credentials for an unrelated company's adapter. The current API's production readiness implementation still checks the reference adapter; a new production execution profile needs its own explicit readiness wiring. See [adapter contract](../company-adapter-contract.md).
+Do not require Shopify credentials for an unrelated company's adapter. The current API's production readiness implementation still checks the reference adapter; a new production execution profile needs its own explicit readiness wiring. See [adapter contract](../platform/company-adapter-contract.md).
 
 ## Product intelligence boundary
 

@@ -89,7 +89,7 @@ With authorized model access, `--probe-model` makes a synthetic review-only mode
 | Event replay/signature error | Verify endpoint/secret/raw body and event identity; do not disable verification |
 | Pending authentication | Resume owned stored Checkout; expired/paid sessions must not start a duplicate payment |
 
-API package commands include `alert-check` and `refund-recovery` after build. The API also wires periodic refund recovery when prerequisites exist. Coordinate worker/scheduler ownership and locks; adding an external schedule without checking existing execution is not a recovery strategy. See owning source and [owner-absence operations](../owner-absence-operations.md).
+API package commands include `alert-check` and `refund-recovery` after build. The API also wires periodic refund recovery when prerequisites exist. Coordinate worker/scheduler ownership and locks; adding an external schedule without checking existing execution is not a recovery strategy. See owning source and [owner-absence operations](../operations/owner-absence-operations.md).
 
 For uncertain payment/order effects, preserve records and stop automatic new attempts. Reconcile using exact company/draft/payment/order evidence. Consumer communication must distinguish payment, order creation, fulfillment and refund finality.
 
@@ -110,4 +110,4 @@ Restore testing must include draft/approval compatibility, credential decryption
 - Durable database, backup/restore, certificate verification review, observability and incident ownership.
 - Security review and safe retirement of duplicate infrastructure after dependency checks.
 
-Follow the [hackathon runbook](../hackathon-launch-runbook.md) for the sandbox sequence. Never infer all-company live support from a universal contract or public-launch readiness from green CI.
+Follow the [hackathon runbook](../submission/hackathon-launch-runbook.md) for the sandbox sequence. Never infer all-company live support from a universal contract or public-launch readiness from green CI.

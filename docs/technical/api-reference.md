@@ -1,6 +1,6 @@
 # HTTP API and tool reference
 
-Implementation authority: `apps/api/src/index.ts` and the request validators/services it invokes. This reference inventories the API; it is not a replacement for executable schemas. The [connector OpenAPI draft](../muse-connector.openapi.json) intentionally covers only selected Muse routes and is not a complete public API specification or evidence of native Meta registration.
+Implementation authority: `apps/api/src/index.ts` and the request validators/services it invokes. This reference inventories the API; it is not a replacement for executable schemas. The [connector OpenAPI draft](../platform/muse-connector.openapi.json) intentionally covers only selected Muse routes and is not a complete public API specification or evidence of native Meta registration.
 
 ## Authentication and transport
 
@@ -152,4 +152,4 @@ For enrollment specifically, missing Shop claim and incomplete/mismatched enroll
 
 Tool arguments containing company/connection IDs are lookup inputs, not proof of permission. Tool annotations describe intended behavior; runtime checks enforce it. The broader business MCP server is documented in the [gateway README](../../services/mcp-gateway/README.md).
 
-Muse's native function names and policy include resolution, connection/enrollment requests, details, review/reapproval, approved execution, trusted authentication, order/refund reads and reconciliation. See the [model action contract](../muse-model-training.md) and `apps/demo/src/muse-tool-agent.ts`. The model never selects arbitrary checkout URLs or grants itself approval.
+Muse's native function names and policy include resolution, connection/enrollment requests, details, review/reapproval, approved execution, trusted authentication, order/refund reads and reconciliation. See the [model action contract](../research/muse-model-training.md) and `apps/demo/src/muse-tool-agent.ts`. The model never selects arbitrary checkout URLs or grants itself approval.

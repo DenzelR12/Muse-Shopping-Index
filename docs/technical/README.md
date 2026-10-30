@@ -12,7 +12,7 @@ A person taps **Shop this reel** in Muse, or expresses a conversational shopping
 
 - Read: [System architecture](system-architecture.md)
 - Demo intent code: `apps/demo/src/reel-commerce.ts`
-- Read: [Muse/Meta entry contract](../muse-entry-contract.md)
+- Read: [Muse/Meta entry contract](../platform/muse-entry-contract.md)
 - Demo entry code: `apps/demo/src/muse-entry-simulator.ts` (labelled simulator)
 - Limit, stated plainly: native Meta/Reels entry, account linking, and a trusted confirmation callback are integration work. A labeled demonstration harness is not native Meta distribution.
 
@@ -20,7 +20,7 @@ A person taps **Shop this reel** in Muse, or expresses a conversational shopping
 
 Muse resolves offerings only through authorized company adapters and server-owned connections. A catalog name alone is not a live company.
 
-- Read: [Company adapter contract](../company-adapter-contract.md), then [System architecture](system-architecture.md)
+- Read: [Company adapter contract](../platform/company-adapter-contract.md), then [System architecture](system-architecture.md)
 - Adapter code: `services/mcp-gateway/src/business-connectors.ts`
 
 #### 2a. Meta catalog read — where it fits in the chain
@@ -34,7 +34,7 @@ its own: catalog data still has to pass the signed-draft, exact-review,
 and explicit-approval steps unchanged, and no purchase is executed by
 the read itself.
 
-- Read: [Meta catalog client](../meta-catalog-client.md)
+- Read: [Meta catalog client](../meta/meta-catalog-client.md)
 - Client code: `apps/api/src/meta-catalog.ts` (internal helper
   `readMetaCatalog`; deliberately no new public route and no public
   purchase route)
@@ -42,11 +42,11 @@ the read itself.
 A Shopify catalog read fits the same slot in the chain — one
 company's own store, read-only, validated before any draft — and
 is documented the same way, with the same limits:
-[Shopify catalog client](../shopify-catalog.md) (`apps/api/src/shopify-catalog.ts`,
+[Shopify catalog client](../sellers/shopify-catalog.md) (`apps/api/src/shopify-catalog.ts`,
 internal helper `readShopifyCatalog`; Storefront query only, no
 cart, checkout, write, order, or customer endpoint, no live read
 verified). The panel that presents the resulting review is wired
-to the host by [Panel host wiring](../panel-host-wiring.md)
+to the host by [Panel host wiring](../platform/panel-host-wiring.md)
 (`apps/api/src/muse-panel-host.ts`): panel callbacks map to
 existing server methods only, with no new public route and no
 live HTTP traffic or native Muse window integration claimed.
@@ -75,7 +75,7 @@ live HTTP traffic or native Muse window integration claimed.
   business gains platform access from it — that would need Business
   Verification + App Review + per-business OAuth, not a shared System
   User token. Environment variable names only are documented in
-  [Meta catalog client](../meta-catalog-client.md); no token, catalog
+  [Meta catalog client](../meta/meta-catalog-client.md); no token, catalog
   ID, app ID, or secret value appears in any doc.
 
 ### 3. Collect missing details in one batch
@@ -151,37 +151,37 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 
 | Topic | Reference |
 | --- | --- |
-| Model policy, native tools, synthetic data and evaluation | [Muse model training](../muse-model-training.md) |
-| Company adapter admission | [Company adapter contract](../company-adapter-contract.md) |
-| Sandbox and hackathon preparation | [Launch runbook](../hackathon-launch-runbook.md) |
-| Native connector onboarding draft | [OpenAPI JSON](../muse-connector.openapi.json) |
-| Normalized shopping and discovery | [Product discovery](../product-discovery.md), [semantic product contract](../semantic-product-contract.md) |
-| Cross-company network | [Universal commerce network](../universal-ai-commerce-network.md), [agentic network](../universal-agentic-commerce-network.md) |
-| Connector background | [Muse commerce connectors](../muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
-| Meta catalog client (read-only, gated) | [Meta catalog client](../meta-catalog-client.md) |
-| Shopify catalog client (read-only, gated, Storefront query only) | [Shopify catalog client](../shopify-catalog.md) — no cart, checkout, write, order, or customer endpoint; no live Shopify read, store, token, or seller verified yet; endpoint/version shape not live-verified against a real store. |
-| Muse feature panel host wiring (callback → server method only) | [Panel host wiring](../panel-host-wiring.md) — no new public route, no live HTTP traffic, no native Muse window integration claimed; live routes and the native renderer remain separate steps. |
-| Impact measurement protocol (A/B, verified-only revenue, no dark patterns) | [Impact measurement protocol](../impact-measurement-protocol.md) — protocol only, no measured numbers yet, no live seller or live run verified. |
-| Multi-seller pilot plan (3 sellers, read-only first, test-only) | [Multi-seller pilot plan](../multi-seller-pilot-plan.md) — plan only, no sellers verified, store-owner call pending. |
-| Accessibility / multilingual expansion (market expansion argument) | [Accessibility and multilingual expansion](../accessibility-multilingual-expansion.md) — no standard or audit claimed, demo rendering English-only today. |
-| Meta AI tooling (Spark, Image, catalog, entry, multimodal candidate) | [Meta AI tooling](../meta-ai-tooling.md) — Image visuals are workspace-only DEMO assets, never seller photos; no live Meta catalog read; no fine-tuning; SAM 3.1 not forced. |
-| Muse feature panel routes (pure handler logic, NOT mounted) | [Live panel routes design](../live-panel-routes-design.md) — code: `apps/api/src/muse-panel-routes.ts`, tests: `apps/api/test/muse-panel-routes.test.ts`; mount adapter: `apps/api/src/muse-panel-mount.ts`, tests: `apps/api/test/muse-panel-mount.test.ts`, provider gate; no route mounted in `apps/api/src/index.ts` — blocker is a missing panel session token store (design §5), no live HTTP traffic claimed. |
-| Meta lead callback webhook (pure handler, NOT mounted, separate from purchase) | [Meta lead webhook](../meta-lead-webhook.md) — code: `apps/api/src/muse-lead-webhook.ts`, tests: `apps/api/test/muse-lead-webhook.test.ts`, provider gate; webhook-first, HMAC-SHA256, server-owned page → company mapping, deduplication by leadgen_id, PII minimized; no route mounted in `apps/api/src/index.ts`, no leadgen subscription, no `leads_retrieval` approval, no live lead or live Graph fetch claimed; a callback never grants approval, signs a draft, or executes a purchase. |
-| Product 100% checklist (code-100% vs live-100%, owner per item) | [Product 100% checklist](../product-100-checklist.md) — code-100% closed in code; live-100% blocked externally (card/DB, tokens, business model, Meta/Shop approvals, real money). |
-| Mockup realness (AI mockups are DEMO, never real screenshots) | [Mockup realness](../mockup-realness.md) — real panel screenshot run checklist (real Postgres, test tenants, host binding, session store, browser run). |
-| Multi-company TEST tenants (THEENRG Shopify + ClutchAgent Meta, both on Muse Shopping Index) | [Multi-company test tenants](../multi-company-test-tenants.md) — harness + demo, TEST only, isolation + drift-only-one-tenant + tenant-trimmed BI, provider gates. |
-| Technical verification checklist (live-blocked steps, evidence rules) | [Technical verification checklist](../technical-verification-checklist.md) — checklist only, live steps blocked on card + database, store-owner call, and test catalog. |
-| Business model options (undecided, no numbers as facts) | [Business model options](../business-model-options.md) — four options, decision-needed flag, no fee or revenue figure claimed. |
-| Multimodal Reel intent candidate (untrusted inputs, catalog-verified) | [Meta AI tooling](../meta-ai-tooling.md) §5 — code: `apps/demo/src/muse-multimodal-intent.ts`, tests: `apps/demo/test/muse-multimodal-intent.test.ts`; candidate never supplies a title, price, or stock level. |
-| Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../muse-entry-contract.md) |
-| Locale as code (trusted context field, fail-closed review gate) | [Locale implementation](../locale-implementation-2026-10-27.md) |
-| Opt-in reminder server component (gated, generic, one-only) | [Reminder implementation](../reminder-implementation-2026-10-27.md) |
-| Muse feature panel (host-mounted DOM panel, not a storefront) | [Accessibility and abandoned-chat recovery](../accessibility-abandoned-recovery.md) — panel code: `apps/demo/src/muse-feature-panel.ts` (`mountMuseFeaturePanel`), host resume: `apps/api/src/muse-agent-host.ts` (`resumeDraft`), resume decisions: `apps/api/src/muse-abandoned-recovery.ts` |
-| Accessibility and abandoned-chat recovery design | [Accessibility and abandoned-chat recovery](../accessibility-abandoned-recovery.md) |
-| Multilingual locale training scenarios | [Multilingual training update](../training-update-multilingual-2026-10-27.md) |
-| Intelligence and operations | [Company intelligence](../company-intelligence-reports.md), [owner absence](../owner-absence-operations.md) |
-| Production planning | [Readiness](../competition-readiness.md), [production checklist](../production-checklist.md), [zero trust](../zero-trust-production.md) |
-| Demo presentation | [Competition demo](../competition-demo.md), [build notes](../competition-build.md) |
+| Model policy, native tools, synthetic data and evaluation | [Muse model training](../research/muse-model-training.md) |
+| Company adapter admission | [Company adapter contract](../platform/company-adapter-contract.md) |
+| Sandbox and hackathon preparation | [Launch runbook](../submission/hackathon-launch-runbook.md) |
+| Native connector onboarding draft | [OpenAPI JSON](../platform/muse-connector.openapi.json) |
+| Normalized shopping and discovery | [Product discovery](../sellers/product-discovery.md), [semantic product contract](../platform/semantic-product-contract.md) |
+| Cross-company network | [Universal commerce network](../platform/universal-ai-commerce-network.md), [agentic network](../platform/universal-agentic-commerce-network.md) |
+| Connector background | [Muse commerce connectors](../platform/muse-commerce-connectors.md), [MCP gateway](../../services/mcp-gateway/README.md) |
+| Meta catalog client (read-only, gated) | [Meta catalog client](../meta/meta-catalog-client.md) |
+| Shopify catalog client (read-only, gated, Storefront query only) | [Shopify catalog client](../sellers/shopify-catalog.md) — no cart, checkout, write, order, or customer endpoint; no live Shopify read, store, token, or seller verified yet; endpoint/version shape not live-verified against a real store. |
+| Muse feature panel host wiring (callback → server method only) | [Panel host wiring](../platform/panel-host-wiring.md) — no new public route, no live HTTP traffic, no native Muse window integration claimed; live routes and the native renderer remain separate steps. |
+| Impact measurement protocol (A/B, verified-only revenue, no dark patterns) | [Impact measurement protocol](../research/impact-measurement-protocol.md) — protocol only, no measured numbers yet, no live seller or live run verified. |
+| Multi-seller pilot plan (3 sellers, read-only first, test-only) | [Multi-seller pilot plan](../operations/multi-seller-pilot-plan.md) — plan only, no sellers verified, store-owner call pending. |
+| Accessibility / multilingual expansion (market expansion argument) | [Accessibility and multilingual expansion](../research/accessibility-multilingual-expansion.md) — no standard or audit claimed, demo rendering English-only today. |
+| Meta AI tooling (Spark, Image, catalog, entry, multimodal candidate) | [Meta AI tooling](../meta/meta-ai-tooling.md) — Image visuals are workspace-only DEMO assets, never seller photos; no live Meta catalog read; no fine-tuning; SAM 3.1 not forced. |
+| Muse feature panel routes (pure handler logic, NOT mounted) | [Live panel routes design](../platform/live-panel-routes-design.md) — code: `apps/api/src/muse-panel-routes.ts`, tests: `apps/api/test/muse-panel-routes.test.ts`; mount adapter: `apps/api/src/muse-panel-mount.ts`, tests: `apps/api/test/muse-panel-mount.test.ts`, provider gate; no route mounted in `apps/api/src/index.ts` — blocker is a missing panel session token store (design §5), no live HTTP traffic claimed. |
+| Meta lead callback webhook (pure handler, NOT mounted, separate from purchase) | [Meta lead webhook](../meta/meta-lead-webhook.md) — code: `apps/api/src/muse-lead-webhook.ts`, tests: `apps/api/test/muse-lead-webhook.test.ts`, provider gate; webhook-first, HMAC-SHA256, server-owned page → company mapping, deduplication by leadgen_id, PII minimized; no route mounted in `apps/api/src/index.ts`, no leadgen subscription, no `leads_retrieval` approval, no live lead or live Graph fetch claimed; a callback never grants approval, signs a draft, or executes a purchase. |
+| Product 100% checklist (code-100% vs live-100%, owner per item) | [Product 100% checklist](../operations/product-100-checklist.md) — code-100% closed in code; live-100% blocked externally (card/DB, tokens, business model, Meta/Shop approvals, real money). |
+| Mockup realness (AI mockups are DEMO, never real screenshots) | [Mockup realness](../research/mockup-realness.md) — real panel screenshot run checklist (real Postgres, test tenants, host binding, session store, browser run). |
+| Multi-company TEST tenants (THEENRG Shopify + ClutchAgent Meta, both on Muse Shopping Index) | [Multi-company test tenants](../sellers/multi-company-test-tenants.md) — harness + demo, TEST only, isolation + drift-only-one-tenant + tenant-trimmed BI, provider gates. |
+| Technical verification checklist (live-blocked steps, evidence rules) | [Technical verification checklist](../operations/technical-verification-checklist.md) — checklist only, live steps blocked on card + database, store-owner call, and test catalog. |
+| Business model options (undecided, no numbers as facts) | [Business model options](../research/business-model-options.md) — four options, decision-needed flag, no fee or revenue figure claimed. |
+| Multimodal Reel intent candidate (untrusted inputs, catalog-verified) | [Meta AI tooling](../meta/meta-ai-tooling.md) §5 — code: `apps/demo/src/muse-multimodal-intent.ts`, tests: `apps/demo/test/muse-multimodal-intent.test.ts`; candidate never supplies a title, price, or stock level. |
+| Muse/Meta entry contract and demo simulator | [Muse/Meta entry contract](../platform/muse-entry-contract.md) |
+| Locale as code (trusted context field, fail-closed review gate) | [Locale implementation](../research/locale-implementation-2026-10-27.md) |
+| Opt-in reminder server component (gated, generic, one-only) | [Reminder implementation](../research/reminder-implementation-2026-10-27.md) |
+| Muse feature panel (host-mounted DOM panel, not a storefront) | [Accessibility and abandoned-chat recovery](../research/accessibility-abandoned-recovery.md) — panel code: `apps/demo/src/muse-feature-panel.ts` (`mountMuseFeaturePanel`), host resume: `apps/api/src/muse-agent-host.ts` (`resumeDraft`), resume decisions: `apps/api/src/muse-abandoned-recovery.ts` |
+| Accessibility and abandoned-chat recovery design | [Accessibility and abandoned-chat recovery](../research/accessibility-abandoned-recovery.md) |
+| Multilingual locale training scenarios | [Multilingual training update](../research/training-update-multilingual-2026-10-27.md) |
+| Intelligence and operations | [Company intelligence](../platform/company-intelligence-reports.md), [owner absence](../operations/owner-absence-operations.md) |
+| Production planning | [Readiness](../submission/competition-readiness.md), [production checklist](../operations/production-checklist.md), [zero trust](../operations/zero-trust-production.md) |
+| Demo presentation | [Competition demo](../submission/competition-demo.md), [build notes](../submission/competition-build.md) |
 | Security reporting/guidance | [SECURITY.md](../../SECURITY.md) |
 
 Historical design and product documents may describe intended capabilities. For executable behavior, inspect the linked source, tests and configuration gates. Documentation terms such as "supports" describe a contract or implementation, not proof that a named company has authorized a live integration.

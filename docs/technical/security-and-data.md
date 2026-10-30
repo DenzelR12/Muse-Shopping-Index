@@ -76,4 +76,4 @@ Database restore can reintroduce previously consumed nonces, stale grants and in
 - Enforce request/log redaction, retention, observability access, backups, credential rotation and independent security review before public launch.
 - Protect the actual human confirmation integration from model self-approval and validate its account-linking trust boundary.
 
-See [SECURITY.md](../../SECURITY.md), [zero-trust production guidance](../zero-trust-production.md) and [operations](operations.md). Do not publish a new security contact or policy that the project owner has not established.
+See [SECURITY.md](../../SECURITY.md), [zero-trust production guidance](../operations/zero-trust-production.md) and [operations](operations.md). Do not publish a new security contact or policy that the project owner has not established.
