@@ -21,10 +21,14 @@ can look a Reel up in seconds and resolve it to one exact, verified
 item before any approval. A caption never overrides a catalog entry:
 a stale, unverifiable, or out-of-stock entry is unavailable, and a
 price mismatch forces reapproval. Today that index exists as code and
-test data, plus one verified live read: on 2026-10-28 a Graph API
-Explorer read returned the ClutchAgent TEST item ($1.00 USD) — see
-[docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md). That read
-is not yet a read through the repo client or a Render route.
+test data, plus verified live reads of the ClutchAgent Test Catalog:
+a Graph API Explorer read on 2026-10-28, and — since 2026-10-30 — a
+read through the repo client itself (`apps/api/src/meta-catalog.ts`)
+running on Render, with all eight verification checks passing
+(title, price, currency, availability, freshness, raw IDs stripped)
+— see [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md),
+including the 2026-10-30 addendum and the shell screenshot. TEST
+catalog, Development Mode, read-only: not a commercial seller.
 
 ## Try it first (live demo, no sign-in, no backend)
 
@@ -85,7 +89,7 @@ is not yet a read through the repo client or a Render route.
 | Panel live wiring (`muse-panel-live-wiring.ts`) | **In code, CI-gated.** Draft registry (Postgres + memory), server-side session issuance, live host adapter with tenant + in-flight guards. Panel routes in `index.ts` now resolve drafts instead of returning null — **live traffic still blocked at one gap only: production host binding** (consumer identity + connection + session token from a real Muse host). See [docs/platform/muse-panel-live-wiring.md](../platform/muse-panel-live-wiring.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **Wired in code, host binding open.** Draft lookup is live via the registry and host methods go through the live adapter; requests still refuse without an authenticated panel session and bound host methods. The remaining gap is production host binding only, not draft lookup or issuance. |
-| Live panel route, live Postgres, live seller, live payment | **Not live, except one Graph Explorer catalog read.** No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. First live Meta catalog read (ClutchAgent TEST item, $1.00 USD, 2026-10-28) is proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md). |
+| Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads.** No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). |
 | Measured chat-to-door time | **Not measured.** No tap → approval → verified order → delivered timestamps exist yet, because no real seller test has run. No time is claimed. |
 | Business model | **Undecided.** Who pays, and for what, is not yet decided. This brief does not invent one. |
 | Reel-to-SKU match | **Not independently verified.** The ENRG Reel and the $44 tee match by the terms shown, but the exact SKU link has not been verified against a live catalog. |

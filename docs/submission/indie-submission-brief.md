@@ -3,7 +3,7 @@
 **Watch the pitch (2:57):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
 
 
-Status: submission brief, not a live claim. Updated 2026-10-28: first live Meta catalog read verified via Graph Explorer (see docs/meta/live-meta-catalog-proof.md); the section below that said no Meta catalog connection exists is now superseded for the TEST catalog read only — it is not a read through the repo client, a live seller, or live payment. Everything below
+Status: submission brief, not a live claim. Updated 2026-10-28: first live Meta catalog read verified via Graph Explorer (see docs/meta/live-meta-catalog-proof.md); the section below that said no Meta catalog connection exists is now superseded for the TEST catalog read only — it is not a read through the repo client, a live seller, or live payment. Updated 2026-10-30: the repo client has now read the same TEST catalog live, running on Render — all eight verification checks pass (see the proof doc's 2026-10-30 addendum and screenshot). Still not a live seller, not a review built from live catalog data, and not live payment. Everything below
 is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
@@ -29,6 +29,20 @@ November 3 deadline remains the buffer.
 **No Meta catalog API or connection exists in the source or in the target
 today.** Meta catalog access is not something this project already has, and
 it must not be presented as if it were.
+
+**Update 2026-10-30 — the paragraph above is superseded for the TEST
+catalog.** A read-only Meta catalog client now exists in the target
+(`apps/api/src/meta-catalog.ts`), is registered at server startup, and
+has read the ClutchAgent Test Catalog live through the deployed
+service on Render: one item, verified title, price, currency and
+availability, 24-hour freshness window, raw IDs stripped — all eight
+harness checks pass (proof: [live Meta catalog proof](../meta/live-meta-catalog-proof.md),
+2026-10-30 addendum and screenshot). Plan steps 1–4 below are done
+for this TEST catalog. Step 5 is done only up to the verified live
+read: an exact review built from live catalog data, and an explicit
+approval on it, have not run. Commercial sellers still require
+per-seller authorization and, for Live mode, Business Verification
+plus App Review.
 
 What "catalog" actually means in the source (`DenzelR12/the-gift-signal`,
 HEAD `d4e90535e0b7097d4493e07911f5dbf033477190`, audited read-only):
@@ -273,16 +287,16 @@ and not "an AI chatbot with a buy button."
 
 ## Remaining live blockers (not done)
 
-1. Render Postgres: card tomorrow, then create `muse-shopping-index-db`
-   at $10.50/month (PostgreSQL 18, Oregon, $6 compute + 15 GB storage
-   $4.50), fresh database, never the old gift-signal database.
-2. `DATABASE_URL` (linked from the new database) plus the remaining
-   environment variables, set by the user in Render only, never in chat
-   or in the repo. The Render API service is deployed and responding
-   (commit `a152d08`, URL `https://muse-shopping-index-api.onrender.com`),
-   but its root currently returns
-   `persistent_rate_limit_not_configured` — server running, persistence
-   and database configuration missing, not a completed live API.
+1. Render Postgres: DONE — `muse-shopping-index-db` created
+   2026-10-28 at $10.50/month (PostgreSQL 18, Oregon, $6 compute +
+   15 GB storage $4.50), fresh database, never the old gift-signal
+   database.
+2. `DATABASE_URL` and the Meta catalog environment variables are set
+   in Render (values never in chat or in the repo). The API service
+   runs on Render Starter (`https://muse-shopping-index-api.onrender.com`)
+   and its root returns `{"error":"unauthorized"}` — deployed and
+   auth-gated, not a completed live API: no live panel traffic or
+   seller execution yet.
 3. One real company end to end in test mode: profile, adapter,
    authorized provider connection, manifest → TRANSACTION_READY.
    The Shopify catalog adapter for that company's store is now
