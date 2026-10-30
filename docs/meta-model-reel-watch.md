@@ -43,3 +43,25 @@ grants. An ambiguous reel gets an honest "I see two products" instead of a wrong
   supplied catalog or said unknown.
 - Credential via Secure Vault only; no secret in chat, logs, or this repo.
 - Probe cost: ~9,356 tokens total across all Meta Model API probes to date (Oct 26 + this run).
+
+## Evidence strip (demo v39, 2026-10-29)
+
+The hoodie review view now carries a "How Muse matched this Reel" card showing
+the live model output: frame thumbnails at 0:07 (hoodie) and 0:02/0:12 (tee),
+the per-item "seen at" list, and the verdict **UNCERTAIN** — presented as the
+safety rule working, not as a failure. A live flow would ask "which one?"
+instead of building a wrong draft.
+
+## Embedding matching — status 2026-10-29
+
+- The Meta Model API model list has no embedding endpoint (checked 2026-10-29:
+  muse-spark/wonder/voice/image/sam only), so catalog-image embeddings run
+  locally and test-only: CLIP ViT-B/32, precomputed, scores cached in the demo.
+- Test: reel tee crop @0:12 vs theenrg.com tee product photo (expected high);
+  reel hoodie crop @0:07 vs the same photo (expected low — correct rejection).
+- A naive color-histogram baseline was tried first and REJECTED: it scored the
+  hoodie crop higher than the tee crop (background-color confound). Only a
+  semantic embedding is an acceptable visual-match signal here.
+- CLIP weights download (~350MB, one-time) was pending user approval at
+  writing time; the demo card shows "pending embedding run" until real scores
+  land. No invented scores are shown.
