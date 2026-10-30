@@ -48,3 +48,9 @@ A prior authentication check the same day returned JoeBlow for `/me` in 152 ms, 
 3. JoeBlow System User in the Muse Shopping Index portfolio, assigned the shared catalog, token generated with `catalog_management`.
 4. Token stored in Render as `META_CATALOG_ACCESS_TOKEN` and catalog ID as `META_CATALOG_ID` (names verified in Render Environment, 2026-10-28 15:18–15:19 EDT; values never read or copied).
 5. Graph API Explorer read with that token, v26.0, returned the item above.
+
+## Addendum — 2026-10-30: live read through the repo client (verified)
+
+The caveat above ("not a read through meta-catalog.ts") is superseded for the repo-client path. On 2026-10-30, with the API service on Render Starter (web shell), the verification harness (`apps/api/test/muse-live-catalog-verify.ts`) ran live through `apps/api/src/meta-catalog.ts` against this same catalog and item: **ALL CHECKS PASS** — exactly one item, "Test - ClutchAgent Access", price 1 USD, availability "in stock", status verified, 24h freshness window, raw IDs stripped, source META CATALOG, label TEST — Development Mode / test catalog. Run at 2026-10-30T23:15:56Z on deploy d32d7ca.
+
+Two parser fixes were needed to get here: the products call now requests explicit fields (c26db7f), and the price parser accepts Meta's formatted price string ("$1.00") by stripping one leading currency symbol before strict parsing (d32d7ca). The token's identity was confirmed via /me as the portfolio System User (JoeBlow); the token value has never been printed or committed. Scope unchanged: TEST catalog, Development Mode, read-only — no commercial seller, no live transaction.
