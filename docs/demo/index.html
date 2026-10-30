@@ -63,6 +63,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .cmt-post{width:100%}
 
 @media (min-width:768px){
+.phone{width:min(920px,96vw);}
 .phone-stage{position:relative;max-width:880px;margin:0 auto;}
 .phone-frame{display:block;width:100%;height:auto;border-radius:18px;}
 .reel-feed{position:absolute;left:38.2%;top:23.8%;width:20.3%;height:62.7%;border-radius:22px;scrollbar-width:none;}
@@ -271,7 +272,7 @@ if(window.matchMedia&&!window.matchMedia('(pointer:fine)').matches)return;
 var startY=0,startTop=0,dragging=false,moved=false;
 feed.addEventListener('mousedown',function(e){
 if(e.button!==0)return;
-dragging=true;moved=false;startY=e.clientY;startTop=feed.scrollTop;
+dragging=true;moved=false;startY=e.clientY;startTop=feed.scrollTop;feed.style.scrollSnapType='none';
 });
 feed.addEventListener('mousemove',function(e){
 if(!dragging)return;
@@ -279,7 +280,7 @@ var dy=e.clientY-startY;
 if(Math.abs(dy)>8){moved=true;e.preventDefault();}
 if(moved)feed.scrollTop=startTop-dy;
 });
-function end(){dragging=false;}
+function end(){if(!dragging)return;dragging=false;feed.style.scrollSnapType='';}
 feed.addEventListener('mouseup',end);
 feed.addEventListener('mouseleave',end);
 // A drag ending on a button/video must not trigger its click.
