@@ -261,4 +261,31 @@ function shareReel(btn){var item=btn.closest('.reel-item');var text=item?item.ge
 function openSite(url){window.open(url,'_blank','noopener');}
 function toast(msg){var st=document.getElementById('status');if(!st){return;}st.textContent=msg;setTimeout(function(){if(st.textContent===msg){st.textContent='';}},2200);}
 function togglePlay(v){try{if(v.paused){v.play();}else{v.pause();}}catch(e){}}
-</script></body></html>
+</script><script>
+(function(){
+var feed=document.getElementById('reelFeed');
+if(!feed)return;
+// Mouse-drag scrolling for the phone mockup (fine pointers only).
+// Touch keeps native scrolling; taps still work via a movement threshold.
+if(window.matchMedia&&!window.matchMedia('(pointer:fine)').matches)return;
+var startY=0,startTop=0,dragging=false,moved=false;
+feed.addEventListener('mousedown',function(e){
+if(e.button!==0)return;
+dragging=true;moved=false;startY=e.clientY;startTop=feed.scrollTop;
+});
+feed.addEventListener('mousemove',function(e){
+if(!dragging)return;
+var dy=e.clientY-startY;
+if(Math.abs(dy)>8){moved=true;e.preventDefault();}
+if(moved)feed.scrollTop=startTop-dy;
+});
+function end(){dragging=false;}
+feed.addEventListener('mouseup',end);
+feed.addEventListener('mouseleave',end);
+// A drag ending on a button/video must not trigger its click.
+feed.addEventListener('click',function(e){
+if(moved){e.stopPropagation();e.preventDefault();moved=false;}
+},true);
+})();
+</script>
+</body></html>
