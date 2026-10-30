@@ -4,7 +4,7 @@
 
 Tap **Shop this reel** in Muse, review exactly once, approve once, and let the server execute — fewer clicks from a Reel to the door.
 
-## Watch the pitch (2:51)
+## Watch the pitch (2:57)
 
 [![Muse Shopping Index — pitch video](https://img.youtube.com/vi/ND0hfXih8bg/maxresdefault.jpg)](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
 
