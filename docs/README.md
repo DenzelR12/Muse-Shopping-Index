@@ -100,4 +100,4 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 - [transaction-lifecycle.md](technical/transaction-lifecycle.md)
 
 The live demo stays at `demo/` in this folder — its address does not change.
-The pitch video stays at `muse_demo_video_small.MP4` in this folder.
+The pitch video stays at `muse_demo-video.MP4` in this folder.
