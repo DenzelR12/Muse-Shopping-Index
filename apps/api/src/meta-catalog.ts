@@ -242,12 +242,17 @@ function parsePrice(rawPrice: unknown, rawCurrency: unknown): {amount: number; c
   let amount: number | null = null;
   let currency: string | null = null;
   if (typeof rawPrice === 'string') {
-    const withCurrency = /^(\d+(?:\.\d+)?)\s+([A-Za-z]{3})$/.exec(rawPrice.trim());
+    // Meta formats catalog prices with a leading currency symbol
+    // (live-verified 2026-10-30: price arrives as "$1.00" with the
+    // currency in its own field). Strip one leading symbol, then
+    // apply the same strict amount parsing as before.
+    const cleaned = rawPrice.trim().replace(/^[$\u20AC\u00A3\u00A5]\s?/, '');
+    const withCurrency = /^(\d+(?:\.\d+)?)\s+([A-Za-z]{3})$/.exec(cleaned);
     if (withCurrency) {
       amount = Number(withCurrency[1]);
       currency = withCurrency[2].toUpperCase();
-    } else if (/^\d+(?:\.\d+)?$/.test(rawPrice.trim())) {
-      amount = Number(rawPrice.trim());
+    } else if (/^\d+(?:\.\d+)?$/.test(cleaned)) {
+      amount = Number(cleaned);
     }
   } else if (typeof rawPrice === 'number') {
     amount = rawPrice;

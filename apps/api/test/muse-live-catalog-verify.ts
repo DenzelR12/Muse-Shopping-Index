@@ -47,13 +47,13 @@ const SELF_TEST = process.env.SELF_TEST === '1';
 // item's display fields; no IDs, no token).
 const FIXTURE_CATALOG = {name: 'ClutchAgent Test Catalog'};
 const FIXTURE_PRODUCTS = {
-  data: [{name: 'Test - ClutchAgent Access', price: '1.00', currency: 'USD'}],
+  data: [{name: 'Test - ClutchAgent Access', price: '$1.00', currency: 'USD', availability: 'in stock'}],
 };
 
 function fixtureTransport(): MetaCatalogTransport {
   return {
     async get(url: string): Promise<unknown> {
-      if (url.endsWith('/products')) return FIXTURE_PRODUCTS;
+      if (url.includes('/products')) return FIXTURE_PRODUCTS;
       return FIXTURE_CATALOG;
     },
   };
