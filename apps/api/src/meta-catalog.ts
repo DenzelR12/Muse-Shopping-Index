@@ -185,7 +185,7 @@ export function createMetaCatalogClient(args: {
   };
   return {
     fetchCatalog: (catalogId: string) => args.transport.get(urlFor(catalogId, '')),
-    fetchProducts: (catalogId: string) => args.transport.get(urlFor(catalogId, '/products')),
+    fetchProducts: (catalogId: string) => args.transport.get(urlFor(catalogId, '/products?fields=id,name,price,currency,availability')),
   };
 }
 
