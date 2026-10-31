@@ -81,9 +81,28 @@ is retired. Full output archived in `~/workspace/msi-reel-watch/frames/grounding
 
 Method: OpenAI CLIP ViT-B/32, zero-shot, whole frames; 6 evenly spaced
 frames per THEENRG studio reel; each frame embedded and compared (cosine)
-against the tee catalog photo and against both product-name prompts. The
-full per-frame table and the run script are kept in the reel-watch working
-files (`clip-results-2026-10-30.md`, `clip_run.py`).
+against the tee catalog photo and against both product-name prompts.
+
+How to read these scores: a CLIP score is a similarity, not a percentage
+or a confidence — 0.377 does not mean "37.7% sure." Scores are only
+meaningful as comparisons between candidates on the same input, where the
+margin is the signal. Image-to-text scores live in a low range (a genuinely
+matching description typically lands ~0.25–0.35; unrelated text sits near
+0.1 or below), and photo-to-photo scores run higher than photo-to-text
+scores — the two kinds are not comparable to each other.
+
+Per-frame results (frame times 0.75 / 3.46 / 6.17 / 8.88 / 11.58 / 14.29 s):
+
+Sanity — tee catalog photo vs prompts: tee prompt 0.3772, hoodie prompt
+0.1256.
+
+Reel A (tee reel), mean over 6 frames: vs tee photo 0.5419; vs tee prompt
+0.2175; vs hoodie prompt 0.1733. Tee prompt wins 5/6 frames, mean margin
++0.0442.
+
+Reel B (mixed/hoodie reel), mean over 6 frames: vs tee photo 0.5518; vs
+tee prompt 0.2236; vs hoodie prompt 0.1727. Tee prompt wins 5/6 frames,
+mean margin +0.0509.
 
 Sanity check (product identity in isolation): the tee catalog photo scores
 0.377 against the tee prompt vs 0.126 against the hoodie prompt — a decisive
