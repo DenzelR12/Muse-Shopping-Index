@@ -37,6 +37,9 @@
  * - STRIPE_TEST_SECRET_KEY — must be a Stripe TEST key (sk_test_...).
  * - MUSE_STRIPE_TEST_ENABLED — must be '1' or 'true'.
  * - MUSE_TEST_ORDER_APPROVAL — the one-time operator approval code.
+ * - MUSE_TEST_ORDER_QUANTITY — optional order quantity (integer
+ *   1..99, default 1). Quantity is part of the draft's identity, so
+ *   each quantity is a separate draft requiring its own approval.
  * - DRAFT_SIGNING_SECRET, APPROVAL_SIGNING_SECRET — the existing
  *   server signing secrets for drafts and approval tokens.
  * - DATABASE_URL — when present (and not SELF_TEST), the exactly-once
@@ -149,7 +152,7 @@ function record(step: string, status: string, detail: string, at?: string): void
 }
 
 let finalStatus = 'STARTED';
-let draftFacts: {draftId: string; total: number; currency: string; claimKey: string} | null = null;
+let draftFacts: {draftId: string; total: number; currency: string; claimKey: string; quantity: number} | null = null;
 let catalogFacts: {title: string; priceAmount: number; currency: string} | null = null;
 let approvalFingerprint: string | null = null;
 let executionFacts: {status: string; executionId?: string; providerReference?: string | null} | null = null;
@@ -170,7 +173,7 @@ function buildReport(): string {
     lines.push(`- Catalog item (Meta catalog, TEST): "${catalogFacts.title}" — ${catalogFacts.priceAmount} ${catalogFacts.currency}`);
   }
   if (draftFacts) {
-    lines.push(`- Draft: ${draftFacts.draftId} — total ${draftFacts.total} ${draftFacts.currency}`);
+    lines.push(`- Draft: ${draftFacts.draftId} — quantity ${draftFacts.quantity} — total ${draftFacts.total} ${draftFacts.currency}`);
     lines.push(`- Exactly-once claim key (Stripe idempotency key): ${draftFacts.claimKey}`);
   }
   lines.push(`- Approval: ${approvalFingerprint ? `operator code present (sha256 fingerprint: ${approvalFingerprint})` : 'absent — nothing executed'}`);
@@ -234,13 +237,21 @@ function fixtureStripeListFetch(): StripeTestFetchFn {
 }
 
 function fixtureStripeFetch(state: {calls: number; idempotencyKeys: string[]}): StripeTestFetchFn {
-  const impl = async (_url: unknown, init?: {headers?: Record<string, string>}): Promise<unknown> => {
+  const impl = async (_url: unknown, init?: {headers?: Record<string, string>; body?: unknown}): Promise<unknown> => {
     state.calls += 1;
     state.idempotencyKeys.push(init?.headers?.['idempotency-key'] ?? '');
+    // Echo the requested amount/currency like Stripe would, so the
+    // adapter's echo check exercises any quantity, not just $1.
+    const params = new URLSearchParams(String(init?.body ?? ''));
     return {
       ok: true,
       status: 200,
-      json: async () => ({id: FIXTURE_PAYMENT_INTENT_ID, status: 'succeeded', amount: 100, currency: 'usd'}),
+      json: async () => ({
+        id: FIXTURE_PAYMENT_INTENT_ID,
+        status: 'succeeded',
+        amount: Number(params.get('amount') ?? 100),
+        currency: params.get('currency') ?? 'usd',
+      }),
     };
   };
   return impl as unknown as StripeTestFetchFn;
@@ -253,6 +264,15 @@ function configGating(message: string): Promise<never> {
 }
 
 async function main(): Promise<void> {
+  // Quantity is part of the draft's identity (the adapter hashes it
+  // into the draft id), so a different quantity is a different draft
+  // with its own claim/idempotency key and its own exact approval.
+  // MUSE_TEST_ORDER_QUANTITY: integer 1..99, default 1.
+  const quantityRaw = process.env.MUSE_TEST_ORDER_QUANTITY?.trim();
+  const quantity = quantityRaw === undefined || quantityRaw === '' ? 1 : Number(quantityRaw);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+    await configGating('test_order_quantity_invalid');
+  }
   // --- Config gating (exit 2, nothing executed) -------------------------
   let catalogConfig: MetaCatalogConfig;
   let catalogId: string | null;
@@ -412,7 +432,7 @@ async function main(): Promise<void> {
   try {
     const created = await runtime.createDraft(COMPANY_ID, CONNECTION_ID, {
       offerIds: [offer.offerId],
-      quantity: 1,
+      quantity,
       kind: 'PURCHASE',
     });
     draft = created.draft;
@@ -426,8 +446,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const claimKey = stripeTestIdempotencyKey(COMPANY_ID, draft.draftId);
-  draftFacts = {draftId: draft.draftId, total: draft.total, currency: draft.currency, claimKey};
-  record('draft_built', 'PASS', `draft ${draft.draftId} — total ${draft.total} ${draft.currency} (from the verified catalog read only)`);
+  draftFacts = {draftId: draft.draftId, total: draft.total, currency: draft.currency, claimKey, quantity};
+  record('draft_built', 'PASS', `draft ${draft.draftId} — quantity ${quantity} — total ${draft.total} ${draft.currency} (from the verified catalog read only)`);
 
   // --- Release mode: release a completed definite-failure claim -------
   // Entered only with MUSE_TEST_ORDER_RELEASE_FAILED=1, after the same
