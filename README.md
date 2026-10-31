@@ -158,6 +158,32 @@ trust-and-safety / payments review for outside sellers. No step requires
 new infrastructure on the Muse Shopping Index side; execution adapters
 plug into the same signed draft → exact approval → execution flow.
 
+## Built during the event (Oct 26 – Nov 4, 2026)
+
+In the open: this repo began on Oct 26 as a copy of the author's prior
+private commerce project (the gift-signal). That codebase supplied the
+starting server skeleton (auth, approvals, Stripe execution). Everything
+that makes this Muse Shopping Index was designed and built during the
+event window:
+
+- The Muse-feature framing and panel (mounted review surface, live
+  wiring, session issuance), the generic execution profile registry, the
+  exactly-once execution guard, and the signed Reel entry contract.
+- The Meta catalog client (read-only) and its live verification against
+  a real test catalog (Oct 28 and Oct 30, 2026).
+- The Muse Spark reel-grounding work: live vision probes, the
+  fail-closed grounding module (exact / picker / fail-closed), and the
+  CLIP embedding benchmark that corroborated the model's UNCERTAIN
+  verdict (Oct 30).
+- The Shop Pay payment vehicle alongside Stripe, the persisted manifest
+  store, the opt-in reminder, tenant-scoped BI with a metric
+  verification contract, and the multilingual demo (48 UI languages).
+- The interactive demo itself (all versions) and the pitch video.
+
+The legacy `apps/storefront` code is leftover from the source copy,
+labelled as such in place; it is not the product surface and is not
+presented as event work.
+
 ## Structure
 
 - `apps/api/` — authentication, enrollment, approvals, provider control, Muse continuation, and transaction persistence; Meta and Shopify catalog clients, panel host wiring, the reminder, and abandoned-chat recovery.
