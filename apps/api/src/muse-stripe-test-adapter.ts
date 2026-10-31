@@ -179,7 +179,7 @@ interface StripePaymentIntentPayload {
   status?: string;
   amount?: number;
   currency?: string;
-  error?: {code?: string};
+  error?: {code?: string; message?: string; param?: string; type?: string};
 }
 
 export class StripeTestModeConnectorAdapter implements ZeroTrustConnectorAdapter {
@@ -347,13 +347,24 @@ export class StripeTestModeConnectorAdapter implements ZeroTrustConnectorAdapter
         throw new Error('execution_uncertain_reconciliation_required');
       }
       // Definite provider refusal (card/payment/parameter error).
+      // Surface Stripe's own error detail: on invalid_request_error
+      // the `code` field is usually absent — `type`, `param`, and
+      // `message` carry the diagnosis. Error payloads contain no
+      // secrets; the key is still scrubbed defensively and the
+      // message truncated before it can reach a report.
+      const errText = [payload.error?.message, payload.error?.param ? `param: ${payload.error.param}` : '']
+        .filter(Boolean)
+        .join(' — ')
+        .split(this.secretKey)
+        .join('[redacted]')
+        .slice(0, 400);
       const failed: ConnectorExecution = {
         executionId: `stripe-test-exec-${draft.draftId}`,
         draftId: draft.draftId,
         status: 'FAILED',
         ...(payload.id ? {providerReference: payload.id} : {}),
         committedAt: this.now().toISOString(),
-        message: `Stripe test-mode payment refused: ${payload.error?.code ?? `http_${response.status}`}`,
+        message: `Stripe test-mode payment refused: ${payload.error?.code ?? payload.error?.type ?? `http_${response.status}`}${errText ? ` — ${errText}` : ''}`,
       };
       this.executed.set(draft.draftId, failed);
       return {...failed};

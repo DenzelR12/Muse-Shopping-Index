@@ -759,3 +759,21 @@ test('meta catalog items map to stable test offers, unverified items excluded, n
   assert.equal(offers[0].offerId,again[0].offerId);
   assert.doesNotMatch(JSON.stringify(offers),/gid:\/\/|acct_|catalog_/);
 });
+
+test('stripe test adapter surfaces Stripe error type, param, and message on a definite refusal',async()=>{
+  const refusingFetch=(async()=>{
+    return {ok:false,status:400,json:async()=>({error:{type:'invalid_request_error',param:'return_url',message:'Please add a return_url to this request.'}})} as unknown as Response;
+  }) as unknown as typeof fetch;
+  const adapter=stripeTestAdapter({calls:0,keys:[],amounts:[],methods:[]} as never,{fetchImpl:refusingFetch});
+  const {runtime,drafts}=stripeTestRuntime(adapter);
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  const execution=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+  assert.equal(execution.status,'FAILED');
+  assert.equal(execution.providerReference,undefined);
+  // The live failure printed only "http_400" because the adapter read
+  // error.code, which invalid_request_error usually omits; the report
+  // must carry Stripe's own diagnosis instead.
+  assert.match(execution.message,/invalid_request_error/);
+  assert.match(execution.message,/return_url/);
+  assert.match(execution.message,/Please add a return_url/);
+});
