@@ -6,9 +6,9 @@ Tap **Shop this reel** in Muse, review exactly once, approve once, and let the s
 
 ## Watch the pitch (2:57)
 
-[![Muse Shopping Index — pitch video](https://img.youtube.com/vi/ND0hfXih8bg/maxresdefault.jpg)](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
+<p align="center"><a href="https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4"><img src="docs/pitch-poster.jpg.JPG" alt="Muse Shopping Index — pitch video" width="720"></a></p>
 
-One exact review. One approval. Nothing hidden. Click the cover and the video plays right in your browser — no trip to another site. Also on [YouTube](https://www.youtube.com/watch?v=ND0hfXih8bg).
+One exact review. One approval. Nothing hidden. Click the cover and the video plays right in your browser — no trip to another site.
 
 `muse shop index` is the Meta app inside this project — not a separate product, and not a new name for the project.
 
