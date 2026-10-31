@@ -53,8 +53,26 @@
  * approval gate defaults to a fixture code; set
  * MUSE_TEST_ORDER_NO_APPROVAL=1 to exercise the AWAITING_APPROVAL stop.
  *
+ * RELEASE MODE — MUSE_TEST_ORDER_RELEASE_FAILED=1: after the same
+ * config gating and the same catalog read + draft build (so the
+ * deterministic draft id and claim key match the original run), the
+ * harness releases the exactly-once claim left behind by a DEFINITE
+ * provider failure (e.g. Stripe's 400 for a missing return_url: the
+ * PaymentIntent create+confirm was refused before anything existed)
+ * so the corrected order can run under a fresh approval. Release
+ * requires TWO pieces of evidence and changes nothing without both:
+ * (1) the stored claim is completed with result status FAILED and no
+ * providerReference; (2) Stripe shows zero PaymentIntents for this
+ * draft. Any gap — wrong claim state, a PaymentIntent found, or the
+ * Stripe list call failing — stops with RELEASE_REFUSED, exit 1.
+ * Release mode never executes a charge and never needs
+ * MUSE_TEST_ORDER_APPROVAL. In SELF_TEST it seeds the memory store
+ * with exactly that completed-FAILED claim and uses a fixture Stripe
+ * list with zero PaymentIntents.
+ *
  * Exit codes: 0 = order COMPLETED (or DUPLICATE with the original
- * result), 1 = failure / reconciliation required / claim in progress,
+ * result, or CLAIM_RELEASED in release mode), 1 = failure /
+ * reconciliation required / claim in progress / RELEASE_REFUSED,
  * 2 = config gating, 3 = AWAITING_APPROVAL (nothing executed).
  */
 
@@ -101,6 +119,7 @@ import {
 } from '../src/muse-stripe-test-adapter';
 
 const SELF_TEST = process.env.SELF_TEST === '1';
+const RELEASE_FAILED = process.env.MUSE_TEST_ORDER_RELEASE_FAILED === '1';
 const COMPANY_ID = CLUTCHAGENT_COMPANY_ID;
 const CONNECTION_ID = 'clutchagent-test-connection';
 const SUBJECT_ID = 'operator-test-approver';
@@ -202,6 +221,16 @@ function fixtureCatalogTransport(): MetaCatalogTransport {
       return FIXTURE_CATALOG;
     },
   };
+}
+
+/** Release-mode fixture: a Stripe PaymentIntent list containing zero intents. */
+function fixtureStripeListFetch(): StripeTestFetchFn {
+  const impl = async (): Promise<unknown> => ({
+    ok: true,
+    status: 200,
+    json: async () => ({object: 'list', data: [] as Array<{metadata?: {draft_id?: string}}>}),
+  });
+  return impl as unknown as StripeTestFetchFn;
 }
 
 function fixtureStripeFetch(state: {calls: number; idempotencyKeys: string[]}): StripeTestFetchFn {
@@ -399,6 +428,91 @@ async function main(): Promise<void> {
   const claimKey = stripeTestIdempotencyKey(COMPANY_ID, draft.draftId);
   draftFacts = {draftId: draft.draftId, total: draft.total, currency: draft.currency, claimKey};
   record('draft_built', 'PASS', `draft ${draft.draftId} — total ${draft.total} ${draft.currency} (from the verified catalog read only)`);
+
+  // --- Release mode: release a completed definite-failure claim -------
+  // Entered only with MUSE_TEST_ORDER_RELEASE_FAILED=1, after the same
+  // config gating and the same catalog read + draft build above, so the
+  // deterministic draft id and claim key are identical to the failed
+  // run. Both evidence checks must pass or nothing changes; this mode
+  // never executes a charge and never needs an approval code.
+  if (RELEASE_FAILED) {
+    const store: ExactlyOnceStore =
+      !SELF_TEST && process.env.DATABASE_URL?.trim()
+        ? new PostgresExactlyOnceStore(new Pool({connectionString: process.env.DATABASE_URL}))
+        : new MemoryExactlyOnceStore();
+    if (SELF_TEST) {
+      // Seed the exact state a definite live failure leaves behind: a
+      // completed claim whose result is FAILED with no provider ref.
+      const seeded = await store.claim({key: claimKey, companyId: COMPANY_ID, draftId: draft.draftId, operation: 'stripe_test_order'});
+      if (seeded.outcome !== 'won') {
+        record('claim_evidence', 'FAIL', `self-test seed claim outcome ${seeded.outcome} — expected won`);
+        finalStatus = 'FAILED';
+        await writeReport();
+        process.exit(1);
+      }
+      await store.complete({
+        key: claimKey,
+        companyId: COMPANY_ID,
+        result: {status: 'FAILED', executionId: `stripe-test-exec-${draft.draftId}`, providerReference: null},
+      });
+      console.log('PASS  self-test release seed — completed FAILED claim (providerReference null) stored for the fixture draft');
+    }
+    // Evidence 1: the stored claim itself is a completed definite failure.
+    const stored = await store.getClaim({key: claimKey, companyId: COMPANY_ID});
+    const storedResult = stored?.result as {status?: string; providerReference?: string | null} | undefined;
+    const claimEvidenceOk =
+      stored?.status === 'completed' &&
+      storedResult?.status === 'FAILED' &&
+      (storedResult?.providerReference === null || storedResult?.providerReference === undefined);
+    if (!claimEvidenceOk) {
+      record(
+        'claim_evidence',
+        'STOP',
+        `stored claim is not a completed definite failure (claim ${stored?.status ?? 'absent'}, result status ${storedResult?.status ?? 'none'}, provider reference ${storedResult?.providerReference ?? 'none'}) — RELEASE_REFUSED, nothing changed`,
+      );
+      finalStatus = 'RELEASE_REFUSED';
+      await writeReport();
+      process.exit(1);
+    }
+    record('claim_evidence', 'PASS', 'stored claim is completed, result status FAILED, no provider reference — definite failure, nothing was created');
+    // Evidence 2: Stripe itself shows no PaymentIntent for this draft.
+    let matchingIntents: number;
+    try {
+      const listFetch: StripeTestFetchFn = SELF_TEST ? fixtureStripeListFetch() : (stripeFetch ?? (globalThis.fetch as StripeTestFetchFn));
+      const listKey = SELF_TEST ? FIXTURE_STRIPE_KEY : (process.env.STRIPE_TEST_SECRET_KEY as string);
+      const listResponse = await listFetch('https://api.stripe.com/v1/payment_intents?limit=100', {
+        method: 'GET',
+        headers: {authorization: `Bearer ${listKey}`},
+      });
+      if (!listResponse.ok) throw new Error(`stripe_list_http_${listResponse.status}`);
+      const listPayload = (await listResponse.json()) as {data?: Array<{metadata?: {draft_id?: string}}>};
+      matchingIntents = (listPayload.data ?? []).filter((intent) => intent.metadata?.draft_id === draft.draftId).length;
+    } catch (err) {
+      record('stripe_evidence', 'STOP', `Stripe PaymentIntent list failed (${(err as Error).message}) — no evidence, no release; RELEASE_REFUSED, nothing changed`);
+      finalStatus = 'RELEASE_REFUSED';
+      await writeReport();
+      process.exit(1);
+    }
+    if (matchingIntents > 0) {
+      record('stripe_evidence', 'STOP', `${matchingIntents} PaymentIntent(s) found for draft ${draft.draftId} in Stripe test mode — RELEASE_REFUSED, nothing changed`);
+      finalStatus = 'RELEASE_REFUSED';
+      await writeReport();
+      process.exit(1);
+    }
+    record('stripe_evidence', 'PASS', `0 PaymentIntents found for draft ${draft.draftId} in Stripe test mode`);
+    const released = await store.releaseCompletedFailure({key: claimKey, companyId: COMPANY_ID});
+    if (!released) {
+      record('claim_released', 'STOP', 'the store guard refused the release — RELEASE_REFUSED, nothing changed');
+      finalStatus = 'RELEASE_REFUSED';
+      await writeReport();
+      process.exit(1);
+    }
+    record('claim_released', 'PASS', 'completed FAILED claim released on evidence — the same draft may be executed again under a fresh exact approval');
+    if (SELF_TEST) console.log('PASS  self-test release mode — claim released on fixture evidence, CLAIM_RELEASED');
+    finalStatus = 'CLAIM_RELEASED';
+    await writeReport();
+    process.exit(0);
+  }
 
   // --- Step 3: approval gate ---------------------------------------------
   const approvalCode = SELF_TEST

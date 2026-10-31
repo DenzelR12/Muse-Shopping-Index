@@ -76,6 +76,14 @@ export const CLUTCHAGENT_COMPANY_ID = 'clutchagent';
 export const STRIPE_TEST_ADAPTER_ID = 'stripe-test-mode';
 export const STRIPE_TEST_PAYMENT_METHOD = 'pm_card_visa';
 export const STRIPE_TEST_MODE_LABEL = 'TEST — Stripe test mode, no real money';
+/**
+ * Stripe requires a return_url when a PaymentIntent is confirmed
+ * (omitting it is a 400 before any PaymentIntent exists). The test
+ * card (pm_card_visa) never redirects, so this URL is never actually
+ * visited by the test flow; it points at the project's public demo
+ * surface.
+ */
+export const STRIPE_TEST_RETURN_URL = 'https://denzelr12.github.io/Muse-Shopping-Index/demo/';
 
 export interface StripeTestConfig {
   enabled: boolean;
@@ -305,6 +313,7 @@ export class StripeTestModeConnectorAdapter implements ZeroTrustConnectorAdapter
       currency: draft.currency.toLowerCase(),
       payment_method: STRIPE_TEST_PAYMENT_METHOD,
       confirm: 'true',
+      return_url: STRIPE_TEST_RETURN_URL,
       description: `Muse Shopping Index TEST order — ${draft.summary}`,
       'metadata[company_id]': draft.companyId,
       'metadata[draft_id]': draft.draftId,

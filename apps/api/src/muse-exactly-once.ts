@@ -94,7 +94,38 @@ export interface ExactlyOnceStore {
   complete(input: { key: string; companyId: string; result: unknown }): Promise<boolean>;
   /** Release only on a definite, evidenced failure. Never on timeout. */
   release(input: { key: string; companyId: string }): Promise<boolean>;
+  /** Read-only lookup: the stored claim's status and result, or null when no claim exists. Changes nothing. */
+  getClaim(input: { key: string; companyId: string }): Promise<{ status: ExactlyOnceStatus; result?: unknown } | null>;
+  /**
+   * Release a COMPLETED claim — but only when its stored result is a
+   * definite failure: the provider said "no, this did not happen"
+   * (result status FAILED) and nothing was ever created on the
+   * provider side (no providerReference). This is the module's
+   * standing doctrine applied to completed claims: only a definite
+   * failure may release a claim, and only on evidence — never an
+   * uncertain outcome, never a timeout, never a success. Returns
+   * true when the claim was released, false (changing nothing) in
+   * every other case: no claim, claim still in progress, completed
+   * success, or a failure that carries a provider reference.
+   */
+  releaseCompletedFailure(input: { key: string; companyId: string }): Promise<boolean>;
   purgeExpired(now: string): Promise<number>;
+}
+
+/**
+ * A stored result is a definite failure only when the provider
+ * definitively refused AND created nothing: status FAILED with no
+ * providerReference (null or absent). A FAILED result that still
+ * carries a provider reference means something exists provider-side
+ * and must be reconciled, never released.
+ */
+function isDefiniteFailureResult(result: unknown): boolean {
+  if (!result || typeof result !== 'object') return false;
+  const candidate = result as { status?: unknown; providerReference?: unknown };
+  return (
+    candidate.status === 'FAILED' &&
+    (candidate.providerReference === null || candidate.providerReference === undefined)
+  );
 }
 
 function requireNonEmpty(value: string | undefined, code: string): string {
@@ -177,6 +208,28 @@ export class MemoryExactlyOnceStore implements ExactlyOnceStore {
     const mapKey = this.mapKey(input.companyId, input.key);
     const record = this.values.get(mapKey);
     if (!record || record.status !== 'in_progress') return false;
+    this.values.delete(mapKey);
+    return true;
+  }
+
+  async getClaim(input: { key: string; companyId: string }): Promise<{ status: ExactlyOnceStatus; result?: unknown } | null> {
+    const record = this.values.get(this.mapKey(input.companyId, input.key));
+    if (!record) return null;
+    return {
+      status: record.status,
+      ...(record.result !== undefined ? { result: record.result } : {}),
+    };
+  }
+
+  async releaseCompletedFailure(input: { key: string; companyId: string }): Promise<boolean> {
+    // Synchronous check-and-delete (no await in between): a single
+    // process cannot interleave another claim between the check and
+    // the delete.
+    const mapKey = this.mapKey(input.companyId, input.key);
+    const record = this.values.get(mapKey);
+    if (!record || record.status !== 'completed' || !isDefiniteFailureResult(record.result)) {
+      return false;
+    }
     this.values.delete(mapKey);
     return true;
   }
@@ -271,6 +324,43 @@ export class PostgresExactlyOnceStore implements ExactlyOnceStore {
     const deleted = await this.pool.query(
       `DELETE FROM muse_exactly_once_claims
        WHERE company_id = $1 AND claim_key = $2 AND status = 'in_progress'`,
+      [input.companyId, input.key],
+    );
+    return (deleted.rowCount ?? 0) > 0;
+  }
+
+  async getClaim(input: { key: string; companyId: string }): Promise<{ status: ExactlyOnceStatus; result?: unknown } | null> {
+    await this.init();
+    const existing = await this.pool.query(
+      `SELECT status, result_json FROM muse_exactly_once_claims
+       WHERE company_id = $1 AND claim_key = $2`,
+      [input.companyId, input.key],
+    );
+    const row = existing.rows[0];
+    if (!row) return null;
+    return {
+      status: String(row.status) as ExactlyOnceStatus,
+      ...(row.result_json ? { result: JSON.parse(String(row.result_json)) } : {}),
+    };
+  }
+
+  async releaseCompletedFailure(input: { key: string; companyId: string }): Promise<boolean> {
+    await this.init();
+    // One DELETE statement is atomic in Postgres: the WHERE conditions
+    // are evaluated against the row while it is locked for deletion,
+    // so the check-and-delete cannot be split by a concurrent writer
+    // (two racing releases yield rowCount 1 for exactly one of them;
+    // a racing claim insert blocks until the delete commits and then
+    // wins the freed key). The result conditions are enforced in SQL
+    // on the stored JSON: status must be FAILED, and providerReference
+    // must extract to SQL NULL — which covers both an absent key and
+    // an explicit JSON null, matching "nothing was ever created".
+    const deleted = await this.pool.query(
+      `DELETE FROM muse_exactly_once_claims
+       WHERE company_id = $1 AND claim_key = $2 AND status = 'completed'
+         AND result_json IS NOT NULL
+         AND (result_json::jsonb ->> 'status') = 'FAILED'
+         AND (result_json::jsonb ->> 'providerReference') IS NULL`,
       [input.companyId, input.key],
     );
     return (deleted.rowCount ?? 0) > 0;

@@ -668,6 +668,82 @@ test('stripe test uncertain provider outcome requires reconciliation, leaves the
   assert.equal(state.calls,1);
 });
 
+// --- return_url fix + exactly-once definite-failure release ---
+import {STRIPE_TEST_RETURN_URL} from '../dist/muse-stripe-test-adapter.js';
+
+test('stripe test adapter sends the required return_url when confirming the PaymentIntent',async()=>{
+  const bodies:string[]=[];
+  const capturingFetch=(async(_url:unknown,init?:{body?:unknown})=>{
+    bodies.push(String(init?.body??''));
+    const params=new URLSearchParams(init?.body as string);
+    return {ok:true,status:200,json:async()=>({id:'pi_test_unit_2',status:'succeeded',amount:Number(params.get('amount')),currency:params.get('currency')})} as unknown as Response;
+  }) as unknown as typeof fetch;
+  const adapter=stripeTestAdapter({calls:0,keys:[],amounts:[],methods:[]} as never,{fetchImpl:capturingFetch});
+  const {runtime,drafts}=stripeTestRuntime(adapter);
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  const execution=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+  assert.equal(execution.status,'CONFIRMED');
+  assert.equal(bodies.length,1);
+  // Stripe refuses confirmation without return_url (live http_400, no
+  // PaymentIntent created); the create+confirm body must carry it.
+  assert.equal(new URLSearchParams(bodies[0]).get('return_url'),STRIPE_TEST_RETURN_URL);
+  assert.equal(STRIPE_TEST_RETURN_URL,'https://denzelr12.github.io/Muse-Shopping-Index/demo/');
+});
+
+test('exactly-once getClaim reads state without changing it',async()=>{
+  const store=new MemoryExactlyOnceStore();
+  const key='gift-signal:test-order:clutchagent:draft-getclaim-unit';
+  assert.equal(await store.getClaim({key,companyId:'clutchagent'}),null);
+  await store.claim({key,companyId:'clutchagent',operation:'stripe_test_order'});
+  const seen=await store.getClaim({key,companyId:'clutchagent'});
+  assert.equal(seen?.status,'in_progress');
+  // Read-only: the claim is still in progress afterwards, not consumed.
+  const again=await store.claim({key,companyId:'clutchagent',operation:'stripe_test_order'});
+  assert.equal(again.outcome,'in_progress');
+  await store.complete({key,companyId:'clutchagent',result:{status:'FAILED',providerReference:null}});
+  const done=await store.getClaim({key,companyId:'clutchagent'});
+  assert.equal(done?.status,'completed');
+  assert.deepEqual(done?.result,{status:'FAILED',providerReference:null});
+  // Tenant scope: the same key under another company is a different claim.
+  assert.equal(await store.getClaim({key,companyId:'other-company'}),null);
+});
+
+test('exactly-once releaseCompletedFailure releases only a completed definite failure with no provider reference',async()=>{
+  const store=new MemoryExactlyOnceStore();
+  const base='gift-signal:test-order:clutchagent:';
+  // No claim exists: refused, and still nothing there.
+  assert.equal(await store.releaseCompletedFailure({key:`${base}absent`,companyId:'clutchagent'}),false);
+  assert.equal(await store.getClaim({key:`${base}absent`,companyId:'clutchagent'}),null);
+  // In-progress claim: refused, claim untouched.
+  await store.claim({key:`${base}in-progress`,companyId:'clutchagent',operation:'stripe_test_order'});
+  assert.equal(await store.releaseCompletedFailure({key:`${base}in-progress`,companyId:'clutchagent'}),false);
+  assert.equal((await store.getClaim({key:`${base}in-progress`,companyId:'clutchagent'}))?.status,'in_progress');
+  // Completed CONFIRMED (a success): refused.
+  await store.claim({key:`${base}confirmed`,companyId:'clutchagent',operation:'stripe_test_order'});
+  await store.complete({key:`${base}confirmed`,companyId:'clutchagent',result:{status:'CONFIRMED',providerReference:'pi_test_unit_1'}});
+  assert.equal(await store.releaseCompletedFailure({key:`${base}confirmed`,companyId:'clutchagent'}),false);
+  assert.equal((await store.getClaim({key:`${base}confirmed`,companyId:'clutchagent'}))?.status,'completed');
+  // Completed FAILED but WITH a provider reference (something exists
+  // provider-side): refused — that is reconciliation, not release.
+  await store.claim({key:`${base}failed-with-ref`,companyId:'clutchagent',operation:'stripe_test_order'});
+  await store.complete({key:`${base}failed-with-ref`,companyId:'clutchagent',result:{status:'FAILED',providerReference:'pi_test_unit_9'}});
+  assert.equal(await store.releaseCompletedFailure({key:`${base}failed-with-ref`,companyId:'clutchagent'}),false);
+  assert.equal((await store.getClaim({key:`${base}failed-with-ref`,companyId:'clutchagent'}))?.status,'completed');
+  // Completed FAILED with providerReference null: released.
+  await store.claim({key:`${base}failed-null-ref`,companyId:'clutchagent',operation:'stripe_test_order'});
+  await store.complete({key:`${base}failed-null-ref`,companyId:'clutchagent',result:{status:'FAILED',executionId:'stripe-test-exec-x',providerReference:null}});
+  assert.equal(await store.releaseCompletedFailure({key:`${base}failed-null-ref`,companyId:'clutchagent'}),true);
+  assert.equal(await store.getClaim({key:`${base}failed-null-ref`,companyId:'clutchagent'}),null);
+  // After a successful release the same key can be claimed and won again.
+  const rewon=await store.claim({key:`${base}failed-null-ref`,companyId:'clutchagent',operation:'stripe_test_order'});
+  assert.equal(rewon.outcome,'won');
+  // Completed FAILED with providerReference absent entirely: also released.
+  await store.claim({key:`${base}failed-no-ref`,companyId:'clutchagent',operation:'stripe_test_order'});
+  await store.complete({key:`${base}failed-no-ref`,companyId:'clutchagent',result:{status:'FAILED'}});
+  assert.equal(await store.releaseCompletedFailure({key:`${base}failed-no-ref`,companyId:'clutchagent'}),true);
+  assert.equal(await store.getClaim({key:`${base}failed-no-ref`,companyId:'clutchagent'}),null);
+});
+
 test('meta catalog items map to stable test offers, unverified items excluded, no raw provider IDs',()=>{
   const at='2026-10-31T00:00:00Z';
   const offers=metaCatalogItemsToStripeTestOffers([
