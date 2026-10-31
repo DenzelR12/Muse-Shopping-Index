@@ -69,9 +69,11 @@ live HTTP traffic or native Muse window integration claimed.
   never a guessed price; consumer output carries the resolved display
   title only, with raw provider IDs stripped, and is labelled
   `META CATALOG` / `TEST — Development Mode / test catalog`.
-- Limit, stated plainly: this is client code, gated and unproven
-  against a real catalog. No live catalog read, no live seller, no App
-  Review, and no Business Verification is claimed, and no other
+- Limit, stated plainly: the client has since been proven against a
+  real TEST catalog — live reads verified 2026-10-28 via Graph Explorer
+  and 2026-10-30 through this repo client itself on Render, all checks
+  pass (see [live proof](../meta/live-meta-catalog-proof.md)). No live
+  seller, no App Review, and no Business Verification is claimed, and no other
   business gains platform access from it — that would need Business
   Verification + App Review + per-business OAuth, not a shared System
   User token. Environment variable names only are documented in
@@ -94,7 +96,7 @@ The server prepares an exact, signed draft: seller, offering and configuration, 
 
 The consumer sees one exact review before any payment. Consumer-facing labels must be safe: a resolved company display name and **Saved payment** — never a raw provider account identifier or a raw variant identifier. If a title or configuration cannot be resolved, fail closed instead of showing an internal ID.
 
-Note: locale is now a trusted context field, not just a training scenario — the step machine carries `consumerLocale` (profile language preference first, device/Muse locale second, location never consulted as a language) and a fail-closed review gate: if no verified review in the consumer's language is available, it collects the verified version first and never presents an unverified or model-translated review. Demo review rendering is still English-only in presentation, and production host wiring is not done.
+Note: locale is now a trusted context field, not just a training scenario — the step machine carries `consumerLocale` (profile language preference first, device/Muse locale second, location never consulted as a language) and a fail-closed review gate: if no verified review in the consumer's language is available, it collects the verified version first and never presents an unverified or model-translated review. The demo UI renders in 48 languages; exact review terms stay English until a verified translation exists, and production host wiring is not done.
 
 - Read: [Transaction lifecycle and invariants](transaction-lifecycle.md), [Security, identity and data](security-and-data.md)
 
@@ -163,9 +165,9 @@ After execution, Muse presents only owned, verified status. Shop handles backend
 | Muse feature panel host wiring (callback → server method only) | [Panel host wiring](../platform/panel-host-wiring.md) — no new public route, no live HTTP traffic, no native Muse window integration claimed; live routes and the native renderer remain separate steps. |
 | Impact measurement protocol (A/B, verified-only revenue, no dark patterns) | [Impact measurement protocol](../research/impact-measurement-protocol.md) — protocol only, no measured numbers yet, no live seller or live run verified. |
 | Multi-seller pilot plan (3 sellers, read-only first, test-only) | [Multi-seller pilot plan](../operations/multi-seller-pilot-plan.md) — plan only, no sellers verified, store-owner call pending. |
-| Accessibility / multilingual expansion (market expansion argument) | [Accessibility and multilingual expansion](../research/accessibility-multilingual-expansion.md) — no standard or audit claimed, demo rendering English-only today. |
-| Meta AI tooling (Spark, Image, catalog, entry, multimodal candidate) | [Meta AI tooling](../meta/meta-ai-tooling.md) — Image visuals are workspace-only DEMO assets, never seller photos; no live Meta catalog read; no fine-tuning; SAM 3.1 not forced. |
-| Muse feature panel routes (pure handler logic, NOT mounted) | [Live panel routes design](../platform/live-panel-routes-design.md) — code: `apps/api/src/muse-panel-routes.ts`, tests: `apps/api/test/muse-panel-routes.test.ts`; mount adapter: `apps/api/src/muse-panel-mount.ts`, tests: `apps/api/test/muse-panel-mount.test.ts`, provider gate; no route mounted in `apps/api/src/index.ts` — blocker is a missing panel session token store (design §5), no live HTTP traffic claimed. |
+| Accessibility / multilingual expansion (market expansion argument) | [Accessibility and multilingual expansion](../research/accessibility-multilingual-expansion.md) — no standard or audit claimed; demo UI renders in 48 languages, exact review terms in English. |
+| Meta AI tooling (Spark, Image, catalog, entry, multimodal candidate) | [Meta AI tooling](../meta/meta-ai-tooling.md) — Image visuals are workspace-only DEMO assets, never seller photos; live Meta catalog read verified 2026-10-30 (TEST catalog, see live proof); no fine-tuning; SAM 3.1 not forced. |
+| Muse feature panel routes (pure handler logic, NOT mounted) | [Live panel routes design](../platform/live-panel-routes-design.md) — code: `apps/api/src/muse-panel-routes.ts`, tests: `apps/api/test/muse-panel-routes.test.ts`; mount adapter: `apps/api/src/muse-panel-mount.ts`, tests: `apps/api/test/muse-panel-mount.test.ts`, provider gate; session issuance and the draft registry are in code (panel live wiring) — the remaining blocker is production host binding, no live HTTP traffic claimed. |
 | Meta lead callback webhook (pure handler, NOT mounted, separate from purchase) | [Meta lead webhook](../meta/meta-lead-webhook.md) — code: `apps/api/src/muse-lead-webhook.ts`, tests: `apps/api/test/muse-lead-webhook.test.ts`, provider gate; webhook-first, HMAC-SHA256, server-owned page → company mapping, deduplication by leadgen_id, PII minimized; no route mounted in `apps/api/src/index.ts`, no leadgen subscription, no `leads_retrieval` approval, no live lead or live Graph fetch claimed; a callback never grants approval, signs a draft, or executes a purchase. |
 | Product 100% checklist (code-100% vs live-100%, owner per item) | [Product 100% checklist](../operations/product-100-checklist.md) — code-100% closed in code; live-100% blocked externally (card/DB, tokens, business model, Meta/Shop approvals, real money). |
 | Mockup realness (AI mockups are DEMO, never real screenshots) | [Mockup realness](../research/mockup-realness.md) — real panel screenshot run checklist (real Postgres, test tenants, host binding, session store, browser run). |

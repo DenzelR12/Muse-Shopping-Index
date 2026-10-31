@@ -6,6 +6,12 @@
 > a live order, or a live shipment. Muse Shopping Index is a Muse
 > feature, never a storefront, shop site, cart page, checkout page,
 > or product-listing site.
+>
+> **Superseded in part, 2026-10-30:** the ClutchAgent TEST catalog has
+> since been read live through the repo client (all checks pass — see
+> [live Meta catalog proof](../meta/live-meta-catalog-proof.md)).
+> Statements below describe the state at this batch's writing; the
+> THEENRG / Shopify side remains not live.
 
 ## 1. What is code, what is TEST, and what is NOT live
 
@@ -181,8 +187,10 @@ the real product, and the real Storefront token. No live Shopify
 read has been performed or claimed.
 
 **ClutchAgent (Meta) — unverified:** the real Meta catalog, the
-System User, and the token. No live Meta catalog read has been
-performed or claimed. App Review is not done. Business Verification
+System User, and the token. At this batch's writing no live Meta
+catalog read had been performed; the TEST catalog read has since been
+verified live (2026-10-30 — see the supersession note at the top of
+this doc). App Review is not done. Business Verification
 is not done.
 
 **Meta Business Verification entity work — NOT in this batch:**
