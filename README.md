@@ -121,10 +121,42 @@ Reel (Meta) ──► Muse window ──► Exact review ──► One approval 
 | POST `/v1/muse/panel/approve`, `/resume`, `/reminder-opt-in`, `/reminder-opt-out` | In code, **fail-closed only** — refuses every request until panel sessions, draft lookup, and host methods are wired |
 | Panel live wiring (`muse-panel-live-wiring.ts`) | Draft registry + session issuance + live host adapter, CI-gated — **live panel traffic still blocked at production host binding only** (see [panel live wiring](docs/platform/muse-panel-live-wiring.md)) |
 | Exactly-once guard (`muse-exactly-once.ts`) | Atomic claim per tenant + key, replay returns original result, stale reconciles never auto-retries, burst limiter fails closed — in code, tested 8/8 locally; **no 10,000-request load test yet, no scaled host/queue** (see [exactly-once](docs/platform/muse-exactly-once.md)) |
-| Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — **first live read verified 2026-10-28 via Graph Explorer** (see [live proof](docs/meta/live-meta-catalog-proof.md)); not yet a read through this client or a Render route |
+| Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — live reads verified 2026-10-28 via Graph Explorer and **2026-10-30 through this client itself, all checks pass** (see [live proof](docs/meta/live-meta-catalog-proof.md)); TEST catalog only, no commercial seller read yet |
 | Shopify Storefront client | Product query only, tenant-gated, TEST-labelled — no live read yet |
 | BI (`muse-bi.ts`) | Tenant-trimmed, verified-only, watermark on verified success only — supplied/demo events until a live source is credential-gated |
 | Render API `muse-shopping-index-api` | Deployed, Postgres configured, root auth-gated (`unauthorized`, 2026-10-28) — no live seller/payment/panel traffic yet |
+
+## If you are at Meta: how this goes live
+
+Everything on this side of the wall is built and, where a live check was
+possible without Meta, verified. The remaining steps are Meta-side, in
+order:
+
+1. **Bind a real Muse host to the panel.** The review panel is a Muse
+   feature surface mounted inside a Muse window; the server is ready for
+   a real host identity and session token (`POST /v1/muse/agent`,
+   `MUSE_AGENT_ENABLED`). Until a real host binds, the panel routes fail
+   closed by design (see [panel live
+   wiring](docs/platform/muse-panel-live-wiring.md)).
+2. **Put a "Shop this reel" entry point on the Reel.** The surface is
+   Meta's; the handoff contract is written and implemented server-side
+   (`POST /v1/muse/reel-entry` — [the entry
+   contract](docs/platform/muse-entry-contract.md)).
+3. **Sign the handoff.** The reel context (reel + catalog reference)
+   should arrive signed, the way Meta signs webhooks today. The server
+   verifies the signature and mints its own signed draft; it never
+   trusts unsigned or client-supplied context.
+4. **Grant catalog access at platform scale.** The read-only catalog
+   client is built and verified live against a real test catalog
+   (2026-10-30 — [proof](docs/meta/live-meta-catalog-proof.md));
+   platform use needs Business Verification + App Review for advanced
+   `catalog_management`, then per-seller authorization — never one
+   shared token.
+
+Beyond the switches: a product decision to put commerce in Muse, and
+trust-and-safety / payments review for outside sellers. No step requires
+new infrastructure on the Muse Shopping Index side; execution adapters
+plug into the same signed draft → exact approval → execution flow.
 
 ## Structure
 
