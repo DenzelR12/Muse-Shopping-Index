@@ -1,6 +1,6 @@
 # Muse Shopping Index — Judge Brief
 
-**Watch the pitch (2:57):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
+**Watch the pitch (2:59):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.mp4)
 
 
 ## What it is, in one line
@@ -29,11 +29,18 @@ running on Render, with all eight verification checks passing
 — see [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md),
 including the 2026-10-30 addendum and the shell screenshot. TEST
 catalog, Development Mode, read-only: not a commercial seller.
+On 2026-10-31 that verified read became a completed order: the
+same TEST item ran the full chain in Stripe TEST mode — signed
+draft, explicit operator approval, exactly-once claim, confirmed
+test PaymentIntent ($2.00, quantity 2 of the $1.00 item; no real
+money) — see [docs/meta/live-stripe-test-order-proof.md](../meta/live-stripe-test-order-proof.md).
+Still TEST mode and a TEST item: not a live seller, not a live
+payment.
 
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v73, verified live 2026-10-31, published from main, folder /docs)
+(demo v74, verified live 2026-10-31, published from main, folder /docs)
 
 Disclosure, up front: **the five demo Reels are AI-generated studio
 clips made for this demo.** The products, prices, and catalog photos
@@ -126,7 +133,7 @@ details, and is never required: Done is always one tap away.
 | Panel live wiring (`muse-panel-live-wiring.ts`) | **In code, CI-gated.** Draft registry (Postgres + memory), server-side session issuance, live host adapter with tenant + in-flight guards. Panel routes in `index.ts` now resolve drafts instead of returning null — **live traffic still blocked at one gap only: production host binding** (consumer identity + connection + session token from a real Muse host). See [docs/platform/muse-panel-live-wiring.md](../platform/muse-panel-live-wiring.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **Wired in code, host binding open.** Draft lookup is live via the registry and host methods go through the live adapter; requests still refuse without an authenticated panel session and bound host methods. The remaining gap is production host binding only, not draft lookup or issuance. |
-| Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads.** The Postgres database itself is live (created 2026-10-28), but no Postgres-backed panel or execution run is verified yet. No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). |
+| Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads and one Stripe TEST-mode order.** The Postgres database itself is live (created 2026-10-28), but no Postgres-backed panel run is verified yet; the Postgres exactly-once store was exercised live by the TEST-mode order. No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). One Stripe TEST-mode end-to-end order completed on 2026-10-31 (same TEST item, $2.00 quantity-2, test PaymentIntent confirmed) — proof: [docs/meta/live-stripe-test-order-proof.md](../meta/live-stripe-test-order-proof.md). |
 | Measured chat-to-door time | **Not measured.** No tap → approval → verified order → delivered timestamps exist yet, because no real seller test has run. No time is claimed. |
 | Business model | **Decided (2026-10-31):** sellers pay a fee only on a verified order — no fee for clicks, drafts, or abandoned carts. The fee level is set with pilot sellers; no figure is claimed. |
 | Reel-to-item match | **Verified by the live model path against the demo catalog** (2026-10-31): first THEENRG clip → exact tee, seller tag verified; second clip → picker, tag not confirmed. **Not** yet verified against a live Shopify catalog read of THEENRG — the demo catalog is screenshot-derived. |

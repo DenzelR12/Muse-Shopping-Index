@@ -105,7 +105,7 @@ function pixelTrack(name, params){
 <div class="top"><h1 style="margin:0;font-size:18px">𝕞 Muse Shopping Index</h1><span onclick="resetAll()" aria-label="Restart demo">×</span></div>
 <main>
 <div id="videoStage">
-<div class="hero"><b>Shop this reel → exact review → one approval → door</b><span class="live-badge">LIVE DEMO</span><br><button class="pitch-btn" onclick="openPitch()">▶ Watch the pitch (2:57)</button><br><span style="font-size:12px;color:#444">Deaf-friendly: all information is visual — captions available, full transcripts, no sound-only alerts.</span><br><button class="white" style="margin-top:8px;padding:8px 12px;font-size:13px" onclick="document.getElementById('videoStage').hidden=true;document.getElementById('flowStage').hidden=false;show('business');document.getElementById('flowStage').scrollIntoView();">Selling? See For business</button></div>
+<div class="hero"><b>Shop this reel → exact review → one approval → door</b><span class="live-badge">LIVE DEMO</span><br><button class="pitch-btn" onclick="openPitch()">▶ Watch the pitch (2:59)</button><br><span style="font-size:12px;color:#444">Deaf-friendly: all information is visual — captions available, full transcripts, no sound-only alerts.</span><br><button class="white" style="margin-top:8px;padding:8px 12px;font-size:13px" onclick="document.getElementById('videoStage').hidden=true;document.getElementById('flowStage').hidden=false;show('business');document.getElementById('flowStage').scrollIntoView();">Selling? See For business</button></div>
 <p style="color:#666;font-size:13px;text-align:center;margin:0 0 8px">Scroll Reels — like Instagram. Shop on either Reel.</p>
 <div class="card"><h2 style="margin:0 0 8px">Live status</h2><p id="liveStatusLine" style="margin:0 0 8px"><b>⏳ Checking the live API…</b></p><p style="color:#555;margin:0">What is verified (Oct 31, 2026): the Shop buttons on the THEENRG reels call <b>Muse Spark live</b> on the Render API, and the server verifies the verdict before any review opens. A live read of the ClutchAgent <b>TEST catalog</b> passed Oct 30 (a $1.00 test item — not a commercial seller). Postgres <b>muse-shopping-index-db</b> is live. Panel routes are in code and fail closed until a real Muse host binds them. <b>No live seller, payment, or order yet</b> — demo data is labelled demo.</p></div>
 <div class="reel-feed" id="reelFeed">
@@ -329,7 +329,7 @@ Saved payment</p>
 <footer>Demo only. No real purchase, order number, delivery address, delivery date, tracking, or payment is created. Shipping $5.00 and tax $3.52 are demo examples; the store page said shipping calculated at checkout and tax not available. This is a UI prototype, not native Muse integration and not a storefront.</footer>
 </div>
 <script>
-/* v73 share step: confirmation screens only. Opt-in, never auto-posts, no pixel event. */
+/* v74 share step: confirmation screens only. Opt-in, never auto-posts, no pixel event. */
 var SHARE_URL='https://denzelr12.github.io/Muse-Shopping-Index/demo/';
 var shareDismissed=false;
 function shareStep(btn,kind){var box=btn.closest('.shareStep');if(!box)return;var text=(kind==='moment')?box.getAttribute('data-moment'):box.getAttribute('data-find');box.setAttribute('data-current',text);if(navigator.share){try{navigator.share({title:'Muse Shopping Index',text:text,url:SHARE_URL}).catch(function(){});}catch(e){}return;}var fb=box.querySelector('.shareFallback');var x=box.querySelector('.shareX');if(x){x.href='https://twitter.com/intent/tweet?text='+encodeURIComponent(text+' '+SHARE_URL);}if(fb){fb.hidden=false;}}
@@ -443,8 +443,8 @@ if(moved){e.stopPropagation();e.preventDefault();moved=false;}
 <div id="pitchModal" class="pitch-modal" hidden role="dialog" aria-modal="true" aria-label="Pitch video" onclick="if(event.target===this)closePitch()">
 <div class="pitch-box">
 <button class="pitch-close" onclick="closePitch()">✕ Close</button>
-<video id="pitchVideo" controls playsinline preload="none" poster="https://img.youtube.com/vi/9-ZPIJaTxxA/maxresdefault.jpg" src="https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4"></video>
-<p class="pitch-alt">Trouble playing? <a href="https://www.youtube.com/watch?v=9-ZPIJaTxxA" target="_blank" rel="noopener">Watch on YouTube</a></p>
+<video id="pitchVideo" controls playsinline preload="none" poster="https://img.youtube.com/vi/GXLAJu5WwfI/maxresdefault.jpg" src="https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.mp4"></video>
+<p class="pitch-alt">Trouble playing? <a href="https://www.youtube.com/watch?v=GXLAJu5WwfI" target="_blank" rel="noopener">Watch on YouTube</a></p>
 </div>
 </div>
 <script>
