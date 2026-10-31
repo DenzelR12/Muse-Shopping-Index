@@ -79,7 +79,7 @@ const SYSTEM_PROMPT =
   'Answer with strict JSON only — no prose, no code fences.';
 
 const USER_TEXT =
-  'Three frames from a 15-second studio Reel (timestamps 2s, 7s, 12s). On-screen text includes "VIBER UNIVERSITY"-style branding.\n\n' +
+  'Six frames from a 15-second studio Reel, sampled across its full length (timestamps 1s, 2s, 5s, 7s, 10s, 12s). On-screen text includes "VIBER UNIVERSITY"-style branding.\n\n' +
   'TEST CATALOG (demo data from screenshots, not a live catalog read):\n' +
   '1. ENRG Unisex Oversized T-Shirt — $44.00 USD\n' +
   '2. HVU Unisex Mineral Wash Boxy Full Zip Hoodie — $70.00 USD\n\n' +
