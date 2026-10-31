@@ -35,6 +35,12 @@ catalog, Development Mode, read-only: not a commercial seller.
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
 (demo v63, verified live 2026-10-31, published from main, folder /docs)
 
+Disclosure, up front: **the five demo Reels are AI-generated studio
+clips made for this demo.** The products, prices, and catalog photos
+in them are the real THEENRG items, and the grounding measurements
+below were run against these clips frame by frame. In production,
+the same flow runs on a seller's real Reels.
+
 1. **Reel 1 — THEENRG, products that ship.** Tap **Shop this reel
    in Muse**. The demo calls the production API and **Muse Spark
    watches the reel live** — six frames, server-side — and the "How
@@ -105,7 +111,8 @@ catalog, Development Mode, read-only: not a commercial seller.
 
 | Area | Status |
 | --- | --- |
-| Interactive demo (above) | **Live** on GitHub Pages, static, no backend. It proves the flow and the safety case; it is not a real purchase. |
+| Interactive demo (above) | **Live** on GitHub Pages. The feed and panels are static files, but the demo is not backend-free: the THEENRG Shop buttons call the production API's live Muse Spark grounding route, and the page checks live API status on load. It proves the flow and the safety case; it is not a real purchase. |
+| Demo grounding route (`POST /v1/demo/reel-grounding`, `GET /v1/demo/status`) | **Live** on the production API (Render). Reel-id enum input only; server-held frames; Muse Spark verdict admitted only through the fail-closed grounding module; 24-hour cache, 20 fresh calls/hour budget; CORS scoped to the demo origin. Read-only: it cannot approve, sign, or execute anything. |
 | Exactly-once guard (`muse-exactly-once.ts`) | **In code, tested 8/8 locally.** Atomic Postgres claim per tenant + key, duplicate replay returns the original result, stale claims reconcile never auto-retry, burst limiter fails closed. Not a live route, not a 10,000-request load test, no scaled host/queue yet — see [docs/platform/muse-exactly-once.md](../platform/muse-exactly-once.md). |
 | Panel live wiring (`muse-panel-live-wiring.ts`) | **In code, CI-gated.** Draft registry (Postgres + memory), server-side session issuance, live host adapter with tenant + in-flight guards. Panel routes in `index.ts` now resolve drafts instead of returning null — **live traffic still blocked at one gap only: production host binding** (consumer identity + connection + session token from a real Muse host). See [docs/platform/muse-panel-live-wiring.md](../platform/muse-panel-live-wiring.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
@@ -113,7 +120,7 @@ catalog, Development Mode, read-only: not a commercial seller.
 | Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads.** The Postgres database itself is live (created 2026-10-28), but no Postgres-backed panel or execution run is verified yet. No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). |
 | Measured chat-to-door time | **Not measured.** No tap → approval → verified order → delivered timestamps exist yet, because no real seller test has run. No time is claimed. |
 | Business model | **Undecided.** Who pays, and for what, is not yet decided. This brief does not invent one. |
-| Reel-to-SKU match | **Not independently verified.** The ENRG Reel and the $44 tee match by the terms shown, but the exact SKU link has not been verified against a live catalog. |
+| Reel-to-item match | **Verified by the live model path against the demo catalog** (2026-10-31): first THEENRG clip → exact tee, seller tag verified; second clip → picker, tag not confirmed. **Not** yet verified against a live Shopify catalog read of THEENRG — the demo catalog is screenshot-derived. |
 
 Numbers to read as demo, not as facts: shipping $5.00 and tax $3.52
 are demo examples (the store page said shipping is calculated at
@@ -128,28 +135,29 @@ or carrier fact in the demo is real.
   for products and for services, with the business side seeing
   verified orders instead of likes. Proved in the demo; still
   missing: one real seller in test mode with measured timestamps.
-- **Meta AI (25%)** — The flow is built around Muse: Reel intent
-  becomes a Muse review, and a Reel-interpretation harness shows a
-  match going to exact review while a price mismatch (caption $199
-  vs catalog $249) is rejected with no draft and no approval.
-  **Live since 2026-10-29:** muse-spark-1.3 watched 3 frames of a real
-  studio Reel and returned structured JSON (visible items, featured
-  item, candidates, confidence). The honest result was UNCERTAIN —
-  both products were prominent — so the demo routes through a
-  "Which one?" picker instead of guessing, and the new
-  `muse-reel-grounding.ts` module (8/8 tests) verifies model proposals
-  against the catalog: exact only on a confident verified match,
-  picker otherwise, fail-closed on anything unverifiable. A naive
+- **Meta AI (25%)** — **Live in the demo path since 2026-10-31:**
+  tapping Shop on a THEENRG Reel calls the production API, and Muse
+  Spark (muse-spark-1.3) watches six frames of the Reel plus both
+  products' catalog photos, checks the seller's product tag as a
+  claim to verify (never as fact), and returns structured JSON. The
+  server-side `muse-reel-grounding.ts` module (8/8 tests) admits an
+  exact review only on a confident, catalog-verified match; anything
+  else goes to the "Which one?" picker or fails closed. **Measured
+  live, 2026-10-31:** first THEENRG clip → exact tee at high
+  confidence, seller tag verified; second clip → UNCERTAIN → picker
+  (the model's raw answer varies between runs on this genuinely
+  mixed Reel; the server verdict is stable). Also live: Meta
+  catalog API reads of the ClutchAgent TEST catalog through the
+  repo client (2026-10-30, all checks pass). Earlier evidence, in
+  order: the 2026-10-29 three-frame probe returned UNCERTAIN on the
+  mixed Reel — which is why the picker exists; a naive
   color-histogram similarity baseline was tried and rejected (it
-  scored the wrong garment higher); only a semantic embedding is an
-  acceptable visual signal, and no invented scores are shown. A
-  semantic embedding has since been measured (CLIP ViT-B/32, local,
-  2026-10-30): it identifies each product in isolation (sanity
-  margin +0.25) but cannot separate the two studio reels by featured
-  product — it would name the tee on both reels — so it corroborates
-  the UNCERTAIN verdict instead of replacing it, and the picker
-  stays, now with measured evidence. Honest limits: a small number
-  of live runs, TEST catalog, one embedding configuration tested.
+  scored the wrong garment higher); CLIP ViT-B/32 (local,
+  2026-10-30) identifies each product in isolation (sanity margin
+  +0.25) but cannot separate the two studio Reels by featured
+  product, corroborating UNCERTAIN. Honest limits: a small number
+  of live runs, a two-product demo catalog (screenshot-derived, not
+  a live store read), one embedding configuration tested.
 - **Technical (20%)** — Deterministic server authorization, signed
   drafts, consume-once approval, drift reapproval, tenant isolation,
   and a fail-closed panel mount that refuses rather than invents.
