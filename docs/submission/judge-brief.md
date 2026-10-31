@@ -33,13 +33,13 @@ catalog, Development Mode, read-only: not a commercial seller.
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v61, verified live 2026-10-31, published from main, folder /docs)
+(demo v63, verified live 2026-10-31, published from main, folder /docs)
 
 1. **Reel 1 — THEENRG, products that ship.** Tap **Shop this reel
    in Muse**. The demo calls the production API and **Muse Spark
    watches the reel live** — six frames, server-side — and the "How
    Muse matched this Reel" card shows the model's actual verdict
-   and the server's verification of it. On this clip the tee
+   and the server's verification of it. The model also receives both products' catalog photos and the reel's seller tag as a claim to verify — on Reel 1 the tag checks out against the frames; on the second clip it does not, which is part of why Muse asks. On this clip the tee
    dominates four of the six frames at high confidence, so you
    continue to the exact review — seller THEENRG.COM, total
    $52.52 USD (demo terms, see below) — then **Approve $52.52** and
@@ -59,10 +59,14 @@ catalog, Development Mode, read-only: not a commercial seller.
    **Reapprove $54.52** to continue, or **Cancel** to return to the
    $52.52 review with nothing executed.
 3. **Reel 2 — Travel, tickets.** Scroll to the park clip and tap
-   **Shop this reel in Muse**. The review is for theme park day
-   tickets × 2, price "To be confirmed at review" (no travel partner
-   exists, so no price is invented). **Approve Tickets** confirms in
-   Muse — tickets delivered in Muse, no shipping.
+   **Shop this reel in Muse**. The Ticket Review shows the exact
+   demo terms the pitch video uses: Starfall Park (a fictional demo
+   park), 1-Day Ticket, **Sat, Nov 14, 2026, 2 adults, $119.00 × 2 +
+   $15.47 tax = $253.47 USD**, mobile tickets in Muse, no shipping.
+   **Change date or guests** recomputes the total, and the approval
+   binds to exactly what is shown. **Approve Purchase** runs
+   "Booking your tickets…" and lands on the ticket in Muse with
+   its gate QR (a demo ticket, not valid for entry).
 4. **Reel 3 — ClutchAgent, a service.** Two clips. Tap **Shop this
    reel in Muse**. Same workflow, different outcome: service access
    delivered in Muse, not a shipment — no shipping, no door delivery,

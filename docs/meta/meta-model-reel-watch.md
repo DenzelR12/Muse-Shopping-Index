@@ -186,3 +186,42 @@ sampling.
 Fresh-call latency measured at 6–13 seconds; cached responses return
 in about a second. Total Meta Model API spend across all 2026-10-29 →
 2026-10-31 probing and live calls: roughly $0.08 of the $150 credit.
+
+### Route v2 — catalog photos + seller-tag verification (2026-10-31)
+
+Later the same day the route gained the two data points the first
+version lacked. The model now also receives **both catalog photos**
+(the tee photo, and the hoodie photo the user supplied from the live
+theenrg.com product page that morning) as labelled reference images,
+and each reel's **seller tag** (its product chip in the feed) as a
+claim to verify: featured may equal the tagged title only when the
+frames show it dominantly; otherwise UNCERTAIN with the note stating
+what the frames actually favor. The response carries
+`tag: {title, verified}`, where verified requires the server-side
+grounding to land exact on the tagged product. A companion
+`GET /v1/demo/status` (same CORS scope) reports API + model readiness
+so the demo page's Live status card checks live instead of quoting a
+dated snapshot.
+
+Measured (fresh live calls, 2026-10-31 ~14:05–14:07Z, 13–17s each):
+
+- Reel 1 (`theenrg-mixed`, tag = tee): EXACT tee, high confidence —
+  "Navy ENRG tee dominates the runtime; hoodie only brief in the
+  middle so featured is clear." **Tag verified: true.**
+- Reel 2 (`theenrg-tee`, tag = hoodie): **picker** on every run,
+  **tag verified: false** (the server does not call a tag verified
+  on a picker verdict). The model's raw answer varied between fresh
+  calls — featured=hoodie at high confidence with both products
+  as candidates in one run (hoodie in four of six frames per the
+  photo match), featured=UNCERTAIN at medium confidence in another
+  ("Tagged hoodie is clear at 0:07 but ENRG tee dominates at 0:01
+  and 0:05 with non-catalog white tee at 0:10-0:12") — while the
+  server-side verdict stayed stable: picker either way. The picker
+  renders candidates in the model's own order for that run. That
+  variance is itself the finding: raw model answers wobble on a
+  genuinely mixed reel, so the deterministic server contract —
+  never the model's confidence alone — decides what may proceed.
+
+Demo v63 renders the picker from the live verdict (seen-at lines,
+candidate order, both catalog photos) and shows the tag outcome on
+the evidence card.
