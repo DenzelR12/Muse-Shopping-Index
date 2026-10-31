@@ -139,4 +139,6 @@ fashion retrieval (LookBench), strong current models score below 60%
 Recall@1. Our two-reel probe is not a benchmark and is not presented as
 one — but its direction matches the benchmarked reality: this matching
 problem is hard even for specialized systems, which is why the consumer
-flow asks instead of guessing.
+flow asks instead of guessing. The checkpoint run is also the canonical
+one — OpenAI's ViT-B/32, published zero-shot ImageNet top-1 of 63.2% —
+so the reel result is not an artifact of a weak or misconfigured model.
