@@ -65,6 +65,8 @@ test('mixed reel: live UNCERTAIN grounds to the picker', async () => {
   assert.equal(result.servedFrom, 'live');
   assert.equal(result.catalogSource, 'demo');
   assert.equal(result.grounding.verdict, 'picker');
+  assert.equal(result.tag.title, 'ENRG Unisex Oversized T-Shirt');
+  assert.equal(result.tag.verified, false);
   assert.equal(counter.calls, 1);
 });
 
@@ -79,6 +81,26 @@ test('tee reel: confident exact match grounds to exact', async () => {
     assert.equal(result.grounding.item.title, 'ENRG Unisex Oversized T-Shirt');
     assert.equal(result.grounding.item.priceAmount, 44);
   }
+});
+
+test('tag verified only when the exact match is the tagged product', async () => {
+  const counter = { calls: 0 };
+  const hoodieExact = JSON.stringify({
+    visible: [
+      { label: 'HVU Unisex Mineral Wash Boxy Full Zip Hoodie', seen_at: ['0:02', '0:07', '0:12'], attributes: { garment: 'hoodie' } },
+    ],
+    featured: 'HVU Unisex Mineral Wash Boxy Full Zip Hoodie',
+    candidates: ['HVU Unisex Mineral Wash Boxy Full Zip Hoodie'],
+    confidence: 'high',
+    note: 'Only the hoodie is visible.',
+  });
+  const result = await getDemoReelGrounding('theenrg-tee', {
+    ...baseDeps,
+    fetchImpl: mockFetchReturning(hoodieExact, counter),
+  });
+  assert.equal(result.grounding.verdict, 'exact');
+  assert.equal(result.tag.title, 'HVU Unisex Mineral Wash Boxy Full Zip Hoodie');
+  assert.equal(result.tag.verified, true);
 });
 
 test('second call is served from cache without another model call', async () => {

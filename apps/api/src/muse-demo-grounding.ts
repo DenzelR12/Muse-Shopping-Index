@@ -31,6 +31,7 @@ import {
   type ReelGroundingVerdict,
 } from './muse-reel-grounding.js';
 import { DEMO_REEL_FRAMES_B64 } from './demo-reel-frames.js';
+import { DEMO_CATALOG_PHOTOS_B64 } from './demo-catalog-photos.js';
 
 export const DEMO_GROUNDING_COMPANY_ID = 'theenrg-demo';
 
@@ -41,6 +42,19 @@ export const DEMO_GROUNDING_CATALOG: GroundingCatalogItem[] = [
 
 export const DEMO_REEL_IDS = ['theenrg-tee', 'theenrg-mixed'] as const;
 export type DemoReelId = (typeof DEMO_REEL_IDS)[number];
+
+/**
+ * Each demo reel's seller tag (its product chip in the demo feed) — a
+ * claim the model is asked to VERIFY against the frames, never a fact
+ * it may simply repeat. Reel order in the feed was curated on
+ * 2026-10-31 from the measured reads: the V5 clip (id theenrg-mixed)
+ * leads, tagged with the tee; the V3 clip (id theenrg-tee) follows,
+ * tagged with the hoodie.
+ */
+export const DEMO_REEL_TAGS: Record<DemoReelId, string> = {
+  'theenrg-mixed': 'ENRG Unisex Oversized T-Shirt',
+  'theenrg-tee': 'HVU Unisex Mineral Wash Boxy Full Zip Hoodie',
+};
 
 export function isDemoReelId(value: unknown): value is DemoReelId {
   return typeof value === 'string' && (DEMO_REEL_IDS as readonly string[]).includes(value);
@@ -54,6 +68,8 @@ export interface DemoGroundingResult {
   servedFrom: 'live' | 'cache';
   /** Always 'demo': screenshot-derived THEENRG products, not a live catalog read. */
   catalogSource: 'demo';
+  /** The seller tag for this reel and whether the frames verified it. */
+  tag: { title: string; verified: boolean };
   modelOutput: ReelGroundingModelOutput | null;
   grounding: ReelGroundingVerdict;
 }
@@ -78,15 +94,20 @@ const SYSTEM_PROMPT =
   '(5) Never guess. Uncertainty is a valid, preferred output over a wrong match. ' +
   'Answer with strict JSON only — no prose, no code fences.';
 
-const USER_TEXT =
-  'Six frames from a 15-second studio Reel, sampled across its full length (timestamps 1s, 2s, 5s, 7s, 10s, 12s). On-screen text includes "VIBER UNIVERSITY"-style branding.\n\n' +
-  'TEST CATALOG (demo data from screenshots, not a live catalog read):\n' +
-  '1. ENRG Unisex Oversized T-Shirt — $44.00 USD\n' +
-  '2. HVU Unisex Mineral Wash Boxy Full Zip Hoodie — $70.00 USD\n\n' +
-  'Respond with strict JSON only, in this shape:\n' +
-  '{"visible":[{"label":"<exact catalog title>","seen_at":["0:02"],"attributes":{"garment":"t-shirt"}}], ' +
-  '"featured":"<exact catalog title>" | "UNCERTAIN", "candidates":["<exact catalog title>"], ' +
-  '"confidence":"high" | "medium" | "low", "note":"<one line on what made it certain or uncertain>"}';
+function buildUserText(tagTitle: string): string {
+  return (
+    'Six frames from a 15-second studio Reel, sampled across its full length (timestamps 1s, 2s, 5s, 7s, 10s, 12s), preceded by the two catalog reference photos (photo 1 = ENRG Unisex Oversized T-Shirt, photo 2 = HVU Unisex Mineral Wash Boxy Full Zip Hoodie). Match the frames against the reference photos as well as the product names. On-screen text includes "VIBER UNIVERSITY"-style branding.\n\n' +
+    'TEST CATALOG (demo data from screenshots, not a live catalog read):\n' +
+    '1. ENRG Unisex Oversized T-Shirt — $44.00 USD\n' +
+    '2. HVU Unisex Mineral Wash Boxy Full Zip Hoodie — $70.00 USD\n\n' +
+    `SELLER TAG: this reel was tagged by the seller as: ${tagTitle}.\n` +
+    'Treat the tag as a claim to verify against the frames, never as truth by itself. Return featured = the tagged title ONLY if the frames clearly show that product as the dominant product of the reel. If the tagged product appears but another catalog product dominates the frames, or no product dominates, return featured: "UNCERTAIN", list the verifiable candidates, and use the note to say plainly what the frames actually favor.\n\n' +
+    'Respond with strict JSON only, in this shape:\n' +
+    '{"visible":[{"label":"<exact catalog title>","seen_at":["0:02"],"attributes":{"garment":"t-shirt"}}], ' +
+    '"featured":"<exact catalog title>" | "UNCERTAIN", "candidates":["<exact catalog title>"], ' +
+    '"confidence":"high" | "medium" | "low", "note":"<one line on what made it certain or uncertain>"}'
+  );
+}
 
 interface CacheEntry {
   at: number;
@@ -124,7 +145,14 @@ function parseModelContent(content: string): unknown {
 async function callModel(reelId: DemoReelId, deps: Required<Omit<DemoGroundingDeps, 'apiKey' | 'baseUrl' | 'model'>> & DemoGroundingDeps): Promise<DemoGroundingResult> {
   const frames = DEMO_REEL_FRAMES_B64[reelId];
   if (!frames || frames.length === 0) throw new Error('demo_grounding_frames_missing');
-  const content: Array<Record<string, unknown>> = [{ type: 'text', text: USER_TEXT }];
+  const tagTitle = DEMO_REEL_TAGS[reelId];
+  const content: Array<Record<string, unknown>> = [{ type: 'text', text: buildUserText(tagTitle) }];
+  for (const item of DEMO_GROUNDING_CATALOG) {
+    const photo = DEMO_CATALOG_PHOTOS_B64[item.title];
+    if (photo) {
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${photo}` } });
+    }
+  }
   for (const frame of frames) {
     content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frame}` } });
   }
@@ -168,6 +196,10 @@ async function callModel(reelId: DemoReelId, deps: Required<Omit<DemoGroundingDe
     modelRunAt: new Date(deps.now()).toISOString(),
     servedFrom: 'live',
     catalogSource: 'demo',
+    tag: {
+      title: tagTitle,
+      verified: grounding.verdict === 'exact' && grounding.item.title === tagTitle,
+    },
     modelOutput: grounding.verdict === 'fail-closed' ? null : modelOutput,
     grounding,
   };
