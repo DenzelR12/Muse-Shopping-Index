@@ -126,3 +126,17 @@ display CLIP scores; the "Which one?" picker remains the designed
 behavior. Caveats: no hoodie catalog photo exists, so the image-side
 comparison is one-directional; garment crops and temporal weighting were
 not tested and are not claimed.
+
+External benchmark context: "video-to-shop" is a benchmarked research
+problem, and the published results point the same way. MovingFashion
+(https://ar5iv.labs.arxiv.org/html/2110.02627) — 14,855 social-media
+videos, each linked to its shop product image — is the standard public
+benchmark for exactly this task; its best published model, SEAM
+Match-RCNN (purpose-built, with attention-weighted multi-frame
+aggregation), places the correct product in the top 5 of a 14K+ gallery
+about 80% of the time, with top-1 accuracy far lower. On fine-grained
+fashion retrieval (LookBench), strong current models score below 60%
+Recall@1. Our two-reel probe is not a benchmark and is not presented as
+one — but its direction matches the benchmarked reality: this matching
+problem is hard even for specialized systems, which is why the consumer
+flow asks instead of guessing.
