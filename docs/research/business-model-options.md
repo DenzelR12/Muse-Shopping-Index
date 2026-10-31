@@ -77,15 +77,17 @@
 
 ## Decision needed
 
-- [ ] Which option (A, B, C, or D) — user decision only.
+- [x] Which option (A, B, C, or D) — **decided by the user
+      2026-10-31: option A** (fee only on a verified order).
 - [ ] Fee / subscription level, if any — user decision only, never
-      invented here.
+      invented here. Still open: the level is set with pilot sellers.
 - [ ] Refund rule for the chosen option — agreed with each seller
       before the first test order.
 - [ ] Whether the pilot runs on a free / test-mode tier regardless
       of the option chosen (recommended: yes, so billing never blocks
       the first verified test order).
 
-Until all four boxes are checked by the user, the submission brief
-must keep saying: **business model undecided, no fee or revenue
-figure claimed.**
+**Decided 2026-10-31: per-verified-order fee (option A). Fee level
+set with pilot sellers.** The three remaining boxes are terms agreed
+with pilot sellers before the first test order; until the fee-level
+box is checked, no fee or revenue figure is claimed anywhere.
