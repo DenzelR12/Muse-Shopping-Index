@@ -62,9 +62,10 @@ instead of building a wrong draft.
 - A naive color-histogram baseline was tried first and REJECTED: it scored the
   hoodie crop higher than the tee crop (background-color confound). Only a
   semantic embedding is an acceptable visual-match signal here.
-- CLIP weights download (~350MB, one-time) was pending user approval at
-  writing time; the demo card shows "pending embedding run" until real scores
-  land. No invented scores are shown.
+- CLIP weights were approved, downloaded, and run on 2026-10-30 — see the
+  CLIP section at the end of this doc. Headline: CLIP does not separate the
+  two reels either; the picker stays, now with measured evidence behind it.
+  No invented scores are shown.
 
 ## Structured JSON output (2026-10-29, second probe)
 
@@ -75,3 +76,34 @@ timestamps and attributes, `featured: "UNCERTAIN"`, ranked `candidates`,
 `confidence: "high"`, and a one-sentence note. The agent pipeline
 (`muse-reel-grounding.ts`) consumes this JSON shape; the labeled-text format
 is retired. Full output archived in `~/workspace/msi-reel-watch/frames/grounding_output.json`.
+
+## CLIP embedding run — 2026-10-30 (local, test-only)
+
+Method: OpenAI CLIP ViT-B/32, zero-shot, whole frames; 6 evenly spaced
+frames per THEENRG studio reel; each frame embedded and compared (cosine)
+against the tee catalog photo and against both product-name prompts. The
+full per-frame table and the run script are kept in the reel-watch working
+files (`clip-results-2026-10-30.md`, `clip_run.py`).
+
+Sanity check (product identity in isolation): the tee catalog photo scores
+0.377 against the tee prompt vs 0.126 against the hoodie prompt — a decisive
++0.252 margin. CLIP knows the products apart when each is shown alone.
+
+On the reels (mean over 6 frames): the tee reel scores 0.542 against the
+tee photo, with a tee-prompt margin of +0.044 over the hoodie prompt; the
+mixed/hoodie reel scores 0.552 against the tee photo — higher than the tee
+reel itself — with a tee-prompt margin of +0.051. The tee prompt wins 5 of
+6 frames on BOTH reels. An argmax rule would name the tee as the featured
+product on both reels: right once, wrong once.
+
+Conclusion: CLIP is an improvement in kind over the rejected color
+histogram (which failed even the direct comparison), but zero-shot
+whole-frame CLIP is not a usable featured-product signal for two similar
+dark garments on the same model in the same studio. It corroborates
+muse-spark-1.3's UNCERTAIN on the mixed reel rather than overturning it —
+and it shows what the picker prevents: an honest "uncertain" becoming a
+confident wrong answer. The demo's evidence card therefore does not
+display CLIP scores; the "Which one?" picker remains the designed
+behavior. Caveats: no hoodie catalog photo exists, so the image-side
+comparison is one-directional; garment crops and temporal weighting were
+not tested and are not claimed.

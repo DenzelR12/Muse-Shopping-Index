@@ -129,9 +129,14 @@ or carrier fact in the demo is real.
   picker otherwise, fail-closed on anything unverifiable. A naive
   color-histogram similarity baseline was tried and rejected (it
   scored the wrong garment higher); only a semantic embedding is an
-  acceptable visual signal, and no invented scores are shown. Honest
-  limits: a small number of live runs, TEST catalog, embedding
-  scores pending.
+  acceptable visual signal, and no invented scores are shown. A
+  semantic embedding has since been measured (CLIP ViT-B/32, local,
+  2026-10-30): it identifies each product in isolation (sanity
+  margin +0.25) but cannot separate the two studio reels by featured
+  product — it would name the tee on both reels — so it corroborates
+  the UNCERTAIN verdict instead of replacing it, and the picker
+  stays, now with measured evidence. Honest limits: a small number
+  of live runs, TEST catalog, one embedding configuration tested.
 - **Technical (20%)** — Deterministic server authorization, signed
   drafts, consume-once approval, drift reapproval, tenant isolation,
   and a fail-closed panel mount that refuses rather than invents.
