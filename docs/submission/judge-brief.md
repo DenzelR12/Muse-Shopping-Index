@@ -30,19 +30,28 @@ running on Render, with all eight verification checks passing
 including the 2026-10-30 addendum and the shell screenshot. TEST
 catalog, Development Mode, read-only: not a commercial seller.
 
-## Try it first (live demo, no sign-in, no backend)
+## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v60, verified live 2026-10-30, published from main, folder /docs)
+(demo v61, verified live 2026-10-31, published from main, folder /docs)
 
-1. **Reel 1 — THEENRG, products that ship.** The feed opens with two
-   THEENRG studio clips. The first is the tee clip: tap **Shop this
-   reel in Muse** and you go straight to the exact review — seller
-   THEENRG.COM, item, shipping and tax (demo examples, see below),
-   total $52.52 USD — then **Approve $52.52** and watch Processing →
-   Shipped → Delivered. On the second clip both products appear, so
-   Muse asks "Which one?" first — the safety picker — because the
-   match is uncertain.
+1. **Reel 1 — THEENRG, products that ship.** Tap **Shop this reel
+   in Muse**. The demo calls the production API and **Muse Spark
+   watches the reel live** — six frames, server-side — and the "How
+   Muse matched this Reel" card shows the model's actual verdict
+   and the server's verification of it. On this clip the tee
+   dominates four of the six frames at high confidence, so you
+   continue to the exact review — seller THEENRG.COM, total
+   $52.52 USD (demo terms, see below) — then **Approve $52.52** and
+   watch Processing → Shipped → Delivered. Scroll to the second
+   THEENRG clip and tap Shop again: there the verdict is
+   **UNCERTAIN** — both products appear with no single clear
+   focus — so Muse asks "Which one?" first, the safety picker.
+   Neither verdict is staged: both were measured live on
+   2026-10-31, are cached for 24 hours, and are re-measured on
+   expiry (docs/meta/meta-model-reel-watch.md). If the model API
+   is ever unreachable, the demo says so and falls back to the
+   picker rather than guessing.
 2. **Try the safety case.** In Product Review, tap
    **Test price change (TEST)**. The total moves $52.52 → $54.52
    (item $46.00 + shipping $5.00 + tax $3.52). The old approval does

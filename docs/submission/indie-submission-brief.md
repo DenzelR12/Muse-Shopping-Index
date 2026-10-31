@@ -8,7 +8,7 @@ is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
 
-**Measured on the live demo (2026-10-30, demo v58):** Reel tap → approval takes **2 taps** on an exact match (THEENRG tee — Shop this reel → Approve Purchase; ClutchAgent service — Shop this reel → Approve Service Access). When Muse's match is uncertain — the mixed-product hoodie Reel — it asks "Which one?" first: **3 taps**, and the extra tap is the safety behavior working as designed. Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
+**Measured on the live demo (2026-10-31, demo v61):** Reel tap → approval takes **3 taps** when Muse Spark's live verdict is an exact match (THEENRG tee — Shop this reel → See the exact review → Approve Purchase; the model is consulted live on the first tap, so the evidence card is one of the three). When the live verdict is uncertain it asks "Which one?" first: **4 taps**, the extra taps being the live consultation and the safety behavior working as designed. The ClutchAgent service flow takes **2 taps** (Shop this reel → Approve Service Access). Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
 
 ## 1. Track: Indie developer
 

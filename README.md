@@ -122,6 +122,7 @@ Reel (Meta) ──► Muse window ──► Exact review ──► One approval 
 | Panel live wiring (`muse-panel-live-wiring.ts`) | Draft registry + session issuance + live host adapter, CI-gated — **live panel traffic still blocked at production host binding only** (see [panel live wiring](docs/platform/muse-panel-live-wiring.md)) |
 | Exactly-once guard (`muse-exactly-once.ts`) | Atomic claim per tenant + key, replay returns original result, stale reconciles never auto-retries, burst limiter fails closed — in code, tested 8/8 locally; **no 10,000-request load test yet, no scaled host/queue** (see [exactly-once](docs/platform/muse-exactly-once.md)) |
 | Meta catalog client (`meta-catalog.ts`) | Read-only, GET only, tenant-gated, TEST-labelled — live reads verified 2026-10-28 via Graph Explorer and **2026-10-30 through this client itself, all checks pass** (see [live proof](docs/meta/live-meta-catalog-proof.md)); TEST catalog only, no commercial seller read yet |
+| POST `/v1/demo/reel-grounding` (`muse-demo-grounding.ts`) | **Live** (2026-10-31) — the public demo's live model path: reel-id enum input only, server-held frames (six per reel), Muse Spark verdict validated by the fail-closed grounding module, 24h per-reel cache + fresh-call budget; read-only, cannot approve or execute; demo catalog context, labelled as such (see [reel-watch](docs/meta/meta-model-reel-watch.md)) |
 | Shopify Storefront client | Product query only, tenant-gated, TEST-labelled — no live read yet |
 | BI (`muse-bi.ts`) | Tenant-trimmed, verified-only, watermark on verified success only — supplied/demo events until a live source is credential-gated |
 | Render API `muse-shopping-index-api` | Deployed, Postgres configured, root auth-gated (`unauthorized`, 2026-10-28) — no live seller/payment/panel traffic yet |
@@ -157,32 +158,6 @@ Beyond the switches: a product decision to put commerce in Muse, and
 trust-and-safety / payments review for outside sellers. No step requires
 new infrastructure on the Muse Shopping Index side; execution adapters
 plug into the same signed draft → exact approval → execution flow.
-
-## Built during the event (Oct 26 – Nov 4, 2026)
-
-In the open: this repo began on Oct 26 as a copy of the author's prior
-private commerce project (the gift-signal). That codebase supplied the
-starting server skeleton (auth, approvals, Stripe execution). Everything
-that makes this Muse Shopping Index was designed and built during the
-event window:
-
-- The Muse-feature framing and panel (mounted review surface, live
-  wiring, session issuance), the generic execution profile registry, the
-  exactly-once execution guard, and the signed Reel entry contract.
-- The Meta catalog client (read-only) and its live verification against
-  a real test catalog (Oct 28 and Oct 30, 2026).
-- The Muse Spark reel-grounding work: live vision probes, the
-  fail-closed grounding module (exact / picker / fail-closed), and the
-  CLIP embedding benchmark that corroborated the model's UNCERTAIN
-  verdict (Oct 30).
-- The Shop Pay payment vehicle alongside Stripe, the persisted manifest
-  store, the opt-in reminder, tenant-scoped BI with a metric
-  verification contract, and the multilingual demo (48 UI languages).
-- The interactive demo itself (all versions) and the pitch video.
-
-The legacy `apps/storefront` code is leftover from the source copy,
-labelled as such in place; it is not the product surface and is not
-presented as event work.
 
 ## Structure
 
@@ -234,5 +209,5 @@ Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is 
 - No live panel-to-API routes yet. Panel host wiring maps callbacks to existing server methods; a production host passing bound methods is still a separate step.
 - No live reminder channel. Opt-in entry and wiring exist, but no authorized channel is configured, so no live reminder is claimed.
 - No live seller, payment, or panel traffic yet. The Render service now has Postgres (`muse-shopping-index-db`, PostgreSQL 18, Oregon) and `DATABASE_URL` set (verified 2026-10-28); its root now returns `unauthorized` for an unauthenticated request, not `persistent_rate_limit_not_configured`. That is an auth-gated server with a database configured, not a live transaction. See [live readiness](docs/operations/live-readiness.md) and [Render deployment](docs/operations/render-deployment.md).
-- Training is synthetic preparation only: 48 teaching and 30 held-out scenarios, no weight update. One live model result exists: the [reel-watch run](docs/meta/meta-model-reel-watch.md) (2026-10-29, muse-spark-1.3, 3 reel frames → UNCERTAIN with both candidates on an ambiguous reel, 4011 tokens).
+- Training is synthetic preparation only: 48 teaching and 30 held-out scenarios, no weight update. Live model results: the [reel-watch runs](docs/meta/meta-model-reel-watch.md) — 2026-10-29 probes (muse-spark-1.3, UNCERTAIN on an ambiguous reel) and, since 2026-10-31, Muse Spark live in the public demo's path via `POST /v1/demo/reel-grounding` (six frames per reel: one reel exact at high confidence, the other UNCERTAIN → picker; both measured, neither staged).
 - Green CI does not establish external credentials, webhook delivery, live transaction success, native connector approval, receipt delivery, or Shop-app visibility.

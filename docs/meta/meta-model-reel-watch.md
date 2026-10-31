@@ -142,3 +142,47 @@ problem is hard even for specialized systems, which is why the consumer
 flow asks instead of guessing. The checkpoint run is also the canonical
 one — OpenAI's ViT-B/32, published zero-shot ImageNet top-1 of 63.2% —
 so the reel result is not an artifact of a weak or misconfigured model.
+
+## Live in the demo path (2026-10-31)
+
+`POST /v1/demo/reel-grounding` on the production API puts Muse Spark
+in the public demo's live path. Design constraints: the input is an
+enum of demo reel ids only (no uploads, no free text — nothing a
+visitor supplies reaches the model); the frames are fixed server-side
+stills; the raw model output is validated by the same fail-closed
+grounding module as the agent path (`muse-reel-grounding.ts`); results
+are cached per reel for 24 hours and fresh model calls are budgeted
+(20/hour), so the public endpoint cannot drain the model credit; CORS
+is scoped to this path and the demo origin. The route cannot approve,
+sign, or execute anything. The catalog context is the demo catalog
+(the two THEENRG products, screenshot-derived, labelled `demo` in
+every response) — not a live catalog read.
+
+Each reel is judged on six frames sampled across its full 15 seconds
+(1s, 2s, 5s, 7s, 10s, 12s). Measured live reads, 2026-10-31,
+muse-spark-1.3:
+
+- Studio clip V5 (demo Reel 1 after the curation below): visible —
+  the navy ENRG tee at 0:01, 0:02, 0:05, 0:12; the hoodie at 0:07.
+  Featured: the tee, confidence **high** → grounding **exact**
+  ($44.00 USD). A human frame-by-frame check confirmed the read: four
+  of the six frames show the navy tee; one shows the hoodie; one shows
+  a white "Highest Vibration" tee, which is not in the demo catalog
+  and which the model did not claim.
+- Studio clip V3 (demo Reel 2): visible — tee at 0:01, 0:05; hoodie at
+  0:07. Featured: **UNCERTAIN**, confidence medium → the picker.
+
+Feed curation followed the measurements, not the other way round: the
+exact-match reel now leads the demo feed and the picker reel follows,
+and one reel's caption track was corrected — it described segments
+the rendered video does not contain (the AI-generated clip follows
+neither its generation prompt's segment layout nor the product label
+it shipped with; the model's read was right and the caption was
+wrong). The 3-frame sampling used in the 2026-10-29 probes was also
+re-run through the live route before the switch to six frames: it
+returned UNCERTAIN for both reels, which is what prompted the denser
+sampling.
+
+Fresh-call latency measured at 6–13 seconds; cached responses return
+in about a second. Total Meta Model API spend across all 2026-10-29 →
+2026-10-31 probing and live calls: roughly $0.08 of the $150 credit.
