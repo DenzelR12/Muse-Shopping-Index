@@ -335,6 +335,11 @@ createServer(async(req,res)=>{
   // are cached 24h with a fresh-call budget, and the route cannot
   // approve, sign, or execute anything. CORS is scoped to this path and
   // the public demo origin only.
+  if(req.method==='GET'&&req.url==='/v1/demo/status'){
+    res.setHeader('access-control-allow-origin','https://denzelr12.github.io');
+    res.setHeader('cache-control','no-store');
+    return send(res,200,{ok:true,service:'muse-shopping-index-api',modelConfigured:Boolean(process.env.META_MODEL_API_KEY&&process.env.META_MODEL_API_BASE_URL&&process.env.META_MUSE_MODEL),serverTime:new Date().toISOString()},requestId);
+  }
   if(req.method==='OPTIONS'&&req.url==='/v1/demo/reel-grounding'){
     res.writeHead(204,{'access-control-allow-origin':'https://denzelr12.github.io','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'content-type','access-control-max-age':'86400'});
     return res.end();
