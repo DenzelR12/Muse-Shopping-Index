@@ -33,13 +33,18 @@ catalog, Development Mode, read-only: not a commercial seller.
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v72, verified live 2026-10-31, published from main, folder /docs)
+(demo v73, verified live 2026-10-31, published from main, folder /docs)
 
 Disclosure, up front: **the five demo Reels are AI-generated studio
 clips made for this demo.** The products, prices, and catalog photos
 in them are the real THEENRG items, and the grounding measurements
 below were run against these clips frame by frame. In production,
 the same flow runs on a seller's real Reels.
+
+After a confirmed order the demo offers one optional step — share
+the find (or, for a gift, share the moment without naming the item).
+It uses the phone's own share sheet, carries no price or order
+details, and is never required: Done is always one tap away.
 
 1. **Reel 1 — THEENRG, products that ship.** Tap **Shop this reel
    in Muse**. The demo calls the production API and **Muse Spark
