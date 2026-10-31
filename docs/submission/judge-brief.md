@@ -33,15 +33,16 @@ catalog, Development Mode, read-only: not a commercial seller.
 ## Try it first (live demo, no sign-in, no backend)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v58, verified live 2026-10-30, published from main, folder /docs)
+(demo v60, verified live 2026-10-30, published from main, folder /docs)
 
 1. **Reel 1 — THEENRG, products that ship.** The feed opens with two
-   THEENRG studio clips. On the first (both products appear), tap
-   **Shop this reel in Muse** and Muse asks "Which one?" — pick the
-   tee ($44.00 USD). On the tee clip, Shop goes straight to the same
-   review. Review the exact terms — seller THEENRG.COM, item,
-   shipping and tax (demo examples, see below), total $52.52 USD —
-   then **Approve $52.52** and watch Processing → Shipped → Delivered.
+   THEENRG studio clips. The first is the tee clip: tap **Shop this
+   reel in Muse** and you go straight to the exact review — seller
+   THEENRG.COM, item, shipping and tax (demo examples, see below),
+   total $52.52 USD — then **Approve $52.52** and watch Processing →
+   Shipped → Delivered. On the second clip both products appear, so
+   Muse asks "Which one?" first — the safety picker — because the
+   match is uncertain.
 2. **Try the safety case.** In Product Review, tap
    **Test price change (TEST)**. The total moves $52.52 → $54.52
    (item $46.00 + shipping $5.00 + tax $3.52). The old approval does
