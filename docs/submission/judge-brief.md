@@ -33,7 +33,7 @@ catalog, Development Mode, read-only: not a commercial seller.
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v63, verified live 2026-10-31, published from main, folder /docs)
+(demo v64, verified live 2026-10-31, published from main, folder /docs)
 
 Disclosure, up front: **the five demo Reels are AI-generated studio
 clips made for this demo.** The products, prices, and catalog photos
@@ -64,15 +64,19 @@ the same flow runs on a seller's real Reels.
    **not** execute and no payment is taken at the old price. You must
    **Reapprove $54.52** to continue, or **Cancel** to return to the
    $52.52 review with nothing executed.
-3. **Reel 2 — Travel, tickets.** Scroll to the park clip and tap
-   **Shop this reel in Muse**. The Ticket Review shows the exact
-   demo terms the pitch video uses: Starfall Park (a fictional demo
-   park), 1-Day Ticket, **Sat, Nov 14, 2026, 2 adults, $119.00 × 2 +
-   $15.47 tax = $253.47 USD**, mobile tickets in Muse, no shipping.
-   **Change date or guests** recomputes the total, and the approval
-   binds to exactly what is shown. **Approve Purchase** runs
-   "Booking your tickets…" and lands on the ticket in Muse with
-   its gate QR (a demo ticket, not valid for entry).
+3. **Reel 2 — Travel, tickets that open at the gate.** On the
+   Starfall Park Reel, tap Shop: the **"A few details, all at
+   once"** screen asks for the date on a November 2026 calendar
+   and the guests (Adults / Children steppers) together, then
+   **Continue to exact review** — the same flow and terms as the
+   pitch video: Starfall Park (fictional demo park); Sat, Nov 14,
+   2026; 2 adults; $119.00 × 2 + $15.47 tax = **$253.47 USD**;
+   mobile tickets in Muse, no shipping. **Change date or
+   guests** returns to the calendar and every screen recomputes
+   (Sat Nov 21 + 1 child = $380.21). Approve → "Booking your
+   tickets…" → **Tickets confirmed** (Add to Apple / Google
+   Wallet, day-of reminder) → the ticket in Muse ("Demo ticket,
+   not valid for entry").
 4. **Reel 3 — ClutchAgent, a service.** Two clips. Tap **Shop this
    reel in Muse**. Same workflow, different outcome: service access
    delivered in Muse, not a shipment — no shipping, no door delivery,
