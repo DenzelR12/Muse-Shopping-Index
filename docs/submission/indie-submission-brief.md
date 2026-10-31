@@ -8,7 +8,7 @@ is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
 
-**Measured on the live demo (2026-10-30, demo v55):** Reel tap → approval takes **2 taps** on an exact match (THEENRG tee — Shop this reel → Approve Purchase; ClutchAgent service — Shop this reel → Approve Service Access). When Muse's match is uncertain — the mixed-product hoodie Reel — it asks "Which one?" first: **3 taps**, and the extra tap is the safety behavior working as designed. Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
+**Measured on the live demo (2026-10-30, demo v58):** Reel tap → approval takes **2 taps** on an exact match (THEENRG tee — Shop this reel → Approve Purchase; ClutchAgent service — Shop this reel → Approve Service Access). When Muse's match is uncertain — the mixed-product hoodie Reel — it asks "Which one?" first: **3 taps**, and the extra tap is the safety behavior working as designed. Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
 
 ## 1. Track: Indie developer
 
@@ -75,7 +75,7 @@ Meta business-verification work. It is not the source ladder, and it must
 not be cited as source behaviour. In the target, META_VERIFIED and
 CATALOG_VERIFIED are evidence-recording gates, not live Meta checks.
 
-### Meta catalog integration plan (new work, in order, not done)
+### Meta catalog integration plan (new work, in order — steps 1–4 done for the TEST catalog, 2026-10-30)
 
 1. A business authorizes a Meta catalog connection for its own business
    (Meta Business Manager, authorized catalog, read access granted by
@@ -98,8 +98,10 @@ CATALOG_VERIFIED are evidence-recording gates, not live Meta checks.
    any production claim: one real business, one real catalog item, one
    exact review built from catalog data, one explicit approval.
 
-Until steps 1–5 are done, every catalog claim in this project is
-"supplied events / supplied items only," and must stay labelled that way.
+Until step 5 completes — an exact review and an explicit approval
+built on live catalog data — every catalog claim beyond the one
+verified TEST-catalog read stays "supplied events / supplied items
+only," and must stay labelled that way.
 
 ### Shopify catalog client — code only, same honesty rule (added after HEAD 11b51a3)
 
@@ -200,10 +202,13 @@ provider failure has been exercised.
   the `order.cancel` capability in the readiness manifest, not as a
   separate order state.
 
-Demo recommendation (not yet recorded): show one failure case and its
-recovery in the demo video — for example, a price change after review
-triggering reapproval — because judges remember a recovered failure more
-than a second happy path.
+Demo recommendation: show one failure case and its recovery — for
+example, a price change after review triggering reapproval — because
+judges remember a recovered failure more than a second happy path.
+This is in the product today: the live demo's tee review carries a
+Test price change (TEST) case ($52.52 → $54.52, old approval refused,
+reapproval required), and the 2:57 pitch includes a "try to break
+it" section.
 
 ## 5. Privacy, solved
 
@@ -280,7 +285,10 @@ and not "an AI chatbot with a buy button."
   a read-only Shopify catalog adapter now exists in code so a
   store-owner call can be answered with ready code, but no store,
   token, or seller is verified yet — the first real seller is
-  still open, and a store-owner call is pending.
+  still open, and a store-owner call is pending. Update 2026-10-30:
+  the ClutchAgent TEST catalog has since been read live through the
+  repo client (section 2) — a test catalog, not a commercial seller;
+  the first real seller is still open.
 - **Business model:** none found. No fee, commission, subscription
   price, or revenue model exists in the source or target. Who pays, and
   for what, is an open decision for the user.
@@ -309,14 +317,21 @@ and not "an AI chatbot with a buy button."
    (the extra tap is the safety behavior). Still open: a before-versus-
    after comparison and any time number, measured on a real run — no
    baseline exists yet, and reading time is not claimed.
-5. A 90-second demo video with a failure/reapproval case, ending on the
-   honest close: green CI, no-money demo, credential-gated live paths.
-6. Real Postgres verification (against the Render database once it
-   exists) and a real-browser confirmation run — both currently
-   code-verified, not live-verified.
+5. Pitch video: DONE as a 2:57 cut (live at
+   `docs/muse_demo-video.MP4`, linked at the top of this brief),
+   including failure / "try to break it" material. It is not a
+   90-second cut; the no-money demo and the credential-gated live
+   paths are stated in this brief rather than claimed in the video.
+6. Real Postgres verification of the panel / exactly-once stores
+   against the live Render database (created 2026-10-28) and a
+   real-browser confirmation run — still code-verified, not
+   live-verified; the 2026-10-30 live run exercised the catalog
+   client, not the Postgres stores.
 7. External approvals, in order: Meta Reels distribution, Meta
-   verification channel acceptance, Meta catalog connection (section 2
-   above), Shop partnership / backend handling / identity, each real
+   verification channel acceptance, Meta catalog for commercial
+   sellers (per-seller authorization; Business Verification + App
+   Review for Live mode — the TEST catalog connection in section 2
+   is done), Shop partnership / backend handling / identity, each real
    company's authorized provider connection, Stripe live credentials
    and webhook delivery. Real money only with explicit approval of that
    exact transaction, never automatic after the steps above.
@@ -326,8 +341,9 @@ See also: `docs/submission/demo-walkthrough.md` (no-money demo),
 `docs/operations/render-deployment.md` (live Render deployment status and tomorrow
 checklist), `docs/research/real-model-agent-test.md` (real-model agent-host test,
 mock host, no live agent),
-`docs/meta/meta-catalog-client.md` (read-only Meta catalog client code, gated,
-no live read verified — not a live catalog connection),
+`docs/meta/meta-catalog-client.md` (read-only Meta catalog client;
+TEST catalog live read verified 2026-10-30 — not a commercial seller
+connection),
 `docs/sellers/shopify-catalog.md` (read-only Shopify catalog client code, gated,
 no live read verified — not a live Shopify connection),
 `docs/platform/panel-host-wiring.md` (panel callbacks → existing server methods;
@@ -368,8 +384,8 @@ when measured evidence is recorded under the protocols below.
   first, one test product each, tenant-scoped, revocable by uninstall,
   test-only. No sellers are verified yet; a store-owner call is
   pending later 2026-10-27.
-- **Multi-company TEST demo (two tenants, TEST only):** [Multi-company test tenants](../sellers/multi-company-test-tenants.md) + `apps/demo/src/muse-multi-company-demo.ts` — Company 1 = THEENRG.COM (test, Shopify, Storefront read-only, physical TEST product); Company 2 = ClutchAgent (test, Muse Meta context, Meta catalog read-only, Reel entry, Muse panel — NOT a Shopify seller, NOT a service product). Shopify flow, then Meta flow, then Company 1 drift → reapproval with Company 2 unaffected, then tenant-trimmed verified-only BI. NOT live; no third real company (company C) in this batch; Meta Business Verification entity work NOT in this batch; THEENRG.COM real store/product/token and ClutchAgent Meta real catalog/System User/token still unverified.
-- **Product 100% checklist (code-100% vs live-100%):** [Product 100% checklist](../operations/product-100-checklist.md) — every item with status (Done in code / Code-ready not mounted / Blocked external), evidence, and owner. Code-100% is closed in code after the panel mount adapter + multi-company gates in this batch; live-100% remains blocked externally (Render card/DB, THEENRG token/product, ClutchAgent Meta catalog/token, business model decision, Meta distribution, Shop Pay partnership, real money). Panel routes stay code-ready, not mounted, because index.ts has no panel session token store yet — the one remaining internal code gap, stated plainly. Mockup realness is documented separately in [Mockup realness](../research/mockup-realness.md): AI mockups are DEMO only, never real screenshots.
+- **Multi-company TEST demo (two tenants, TEST only):** [Multi-company test tenants](../sellers/multi-company-test-tenants.md) + `apps/demo/src/muse-multi-company-demo.ts` — Company 1 = THEENRG.COM (test, Shopify, Storefront read-only, physical TEST product); Company 2 = ClutchAgent (test, Muse Meta context, Meta catalog read-only, Reel entry, Muse panel — NOT a Shopify seller, NOT a service product). Shopify flow, then Meta flow, then Company 1 drift → reapproval with Company 2 unaffected, then tenant-trimmed verified-only BI. NOT live; no third real company (company C) in this batch; Meta Business Verification entity work NOT in this batch; THEENRG.COM real store/product/token and ClutchAgent Meta real catalog/System User/token still unverified at the time. Superseded in part 2026-10-30: the ClutchAgent TEST catalog, its System User, and its token have since been verified by live reads (section 2); THEENRG.COM real store/product/token remain unverified.
+- **Product 100% checklist (code-100% vs live-100%):** [Product 100% checklist](../operations/product-100-checklist.md) — every item with status (Done in code / Code-ready not mounted / Blocked external), evidence, and owner. Code-100% is closed in code after the panel mount adapter + multi-company gates in this batch; live-100% remains blocked externally (THEENRG token/product, business model decision, Meta distribution, Shop Pay partnership, real money; the Render card/DB item and the ClutchAgent TEST catalog/token item closed on 2026-10-28 and 2026-10-30). Panel routes have since been wired in code (draft registry, session issuance, token store — see "Panel live wiring (added 2026-10-28)" below); the remaining gap is production host binding, not a missing store. Mockup realness is documented separately in [Mockup realness](../research/mockup-realness.md): AI mockups are DEMO only, never real screenshots.
 - **Meta lead callback webhook, code-ready not mounted (separate from purchase):** [Meta lead webhook](../meta/meta-lead-webhook.md) — `apps/api/src/muse-lead-webhook.ts`, tests `apps/api/test/muse-lead-webhook.test.ts`, plus a provider-readiness gate. Webhook-first (`leadgen` field, HMAC-SHA256 signature, server-owned page → company mapping, deduplication by leadgen_id, PII minimized to full_name / phone_number / preferred_callback_date_time only); polling only as fallback/backfill. NOT live; no route mounted in `apps/api/src/index.ts`, no leadgen subscription, no `leads_retrieval` approval, no live lead or live Graph fetch verified. A callback request never grants approval, signs a draft, or executes a purchase.
 - **Accessibility / multilingual as market expansion:**
   [Accessibility and multilingual expansion](../research/accessibility-multilingual-expansion.md) —
@@ -377,13 +393,16 @@ when measured evidence is recorded under the protocols below.
   pre-expiry warning, resume-by-draft, and verified review in profile
   language (profile → device, location never language, model
   translation never verified). No accessibility standard or audit is
-  claimed, and demo rendering is English-only today.
+  claimed. The demo UI translates into 48 languages (live-tested in
+  Spanish); the exact review terms stay English until a verified
+  translation exists, so no verified multilingual review is claimed.
 - **Meta AI tooling:** [Meta AI tooling](../meta/meta-ai-tooling.md) — Spark
   1.3 for interpretation, Muse Image for DEMO-labelled demo visuals
   only (workspace files, not pushed to the repo, never seller product
   photos, never a price claim, no official logo), Meta Catalog API
-  for verified reads (read-only client in code, no live read
-  verified), Reel entry contract + simulator (not a native button),
+  for verified reads (read-only client in code; TEST catalog live
+  read verified 2026-10-30), Reel entry contract + simulator (not a
+  native button),
   and a new multimodal intent candidate module
   (`apps/demo/src/muse-multimodal-intent.ts`) that never supplies a
   title, price, or stock level — the catalog record does, or the
@@ -394,13 +413,17 @@ when measured evidence is recorded under the protocols below.
   [Live panel routes design](../platform/live-panel-routes-design.md) —
   `apps/api/src/muse-panel-routes.ts` (pure handler logic, fail-closed
   principal / tenant / draft checks, approval returns 202 accepted
-  not executed) plus its tests and a provider-readiness gate. Nothing
-  is mounted in `apps/api/src/index.ts`, so there is no live
-  panel-to-API route yet; the design doc is the mount contract.
+  not executed) plus its tests and a provider-readiness gate. Since
+  wired in code (see "Panel live wiring (added 2026-10-28)" below):
+  index.ts resolves drafts through the registry and requests fail
+  closed without an authenticated panel session — so there is still
+  no live panel-to-API traffic, and the remaining gap is production
+  host binding.
 - **Technical verification:** [Technical verification checklist](../operations/technical-verification-checklist.md) —
-  real Postgres (blocked: user-only card + database), real-browser
+  real Postgres (database created 2026-10-28; Postgres-backed store
+  verification still pending), real-browser
   confirmation run, live Shopify read (blocked: store-owner call),
-  live Meta catalog read (blocked: test catalog not verified),
+  live Meta catalog read (verified 2026-10-30 for the TEST catalog),
   end-to-end test order in test mode, latency measurement, and an
   adversarial evidence summary with standing caveats (CI-listed
   gates vs standalone files, no pnpm/Docker in the VM, provider
