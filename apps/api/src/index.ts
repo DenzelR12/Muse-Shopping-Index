@@ -14,6 +14,7 @@ import {issueHumanApproval,verifyHumanIdentity,approvalErrorStatus} from './appr
 import {productionReadiness} from './readiness.js';
 import {handleStripeWebhook,handleShopifyWebhook} from './provider-webhooks.js';
 import {onboardingStatus} from './onboarding.js';
+import {getDemoReelGrounding,isDemoReelId} from './muse-demo-grounding.js';
 import {providerCatalog,providerConnectionPlan,PostgresTenantProviderCredentialVault,VaultBackedProviderRuntime,PostgresProviderOAuthTransactionStore,ProviderOAuthCoordinator,PostgresZeroTrustAuthority,ZeroTrustConnectorRegistry,ZeroTrustConnectorRuntime,landedQuoteTotalAmount,decimalPriceToMinorUnits,type OAuthProvider,type ShopifyShippingAddress} from '@gift-signal/mcp-gateway';
 import {PostgresProviderConnectionStore} from './provider-connections.js';
 import {ProviderRuntimeControlPlane} from './provider-runtime-control.js';
@@ -325,6 +326,32 @@ createServer(async(req,res)=>{
       const message=error instanceof Error?error.message:'reel_entry_failed';
       const status=/not_configured/.test(message)?410:/signature/.test(message)?401:/payload|invalid/.test(message)?400:500;
       return send(res,status,{error:message},requestId);
+    }
+  }
+  // Public demo grounding (read-only): the demo page sends a reel id
+  // and Muse Spark's verdict returns through the fail-closed grounding
+  // module. Unauthenticated by design: the input surface is an enum of
+  // demo reels, frames and catalog are server-side demo data, results
+  // are cached 24h with a fresh-call budget, and the route cannot
+  // approve, sign, or execute anything. CORS is scoped to this path and
+  // the public demo origin only.
+  if(req.method==='OPTIONS'&&req.url==='/v1/demo/reel-grounding'){
+    res.writeHead(204,{'access-control-allow-origin':'https://denzelr12.github.io','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'content-type','access-control-max-age':'86400'});
+    return res.end();
+  }
+  if(req.method==='POST'&&req.url==='/v1/demo/reel-grounding'){
+    res.setHeader('access-control-allow-origin','https://denzelr12.github.io');
+    res.setHeader('cache-control','no-store');
+    const demoModelKey=process.env.META_MODEL_API_KEY,demoModelBase=process.env.META_MODEL_API_BASE_URL,demoModelName=process.env.META_MUSE_MODEL;
+    if(!demoModelKey||!demoModelBase||!demoModelName) return send(res,503,{error:'muse_not_configured'},requestId);
+    try{
+      const payload=await readJson(req) as Record<string,unknown>;
+      if(!isDemoReelId(payload.reelId)) return send(res,400,{error:'demo_reel_unknown'},requestId);
+      const result=await getDemoReelGrounding(payload.reelId,{apiKey:<redacted>,baseUrl:demoModelBase,model:demoModelName});
+      return send(res,200,result,requestId);
+    }catch(error){
+      const message=error instanceof Error?error.message:'demo_grounding_failed';
+      return send(res,/budget/.test(message)?429:502,{error:message},requestId);
     }
   }
   if(process.env.NODE_ENV==='production'&&!sharedLimiter) return send(res,503,{error:'persistent_rate_limit_not_configured'},requestId);
