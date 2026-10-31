@@ -8,7 +8,7 @@ is either code-verified, demo-verified, or explicitly marked as not done.
 No live Shop handling, live Meta/Reels distribution, live payment, live
 Shop Pay execution, live Meta ad reporting, or live shipment is claimed here.
 
-**Measured on the live demo (2026-10-31, demo v65):** Reel tap → approval takes **3 taps** when Muse Spark's live verdict is an exact match (THEENRG tee — Shop this reel → See the exact review → Approve Purchase; the model is consulted live on the first tap, so the evidence card is one of the three). When the live verdict is uncertain it asks "Which one?" first: **4 taps**, the extra taps being the live consultation and the safety behavior working as designed. The ClutchAgent service flow takes **2 taps** (Shop this reel → Approve Service Access). Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
+**Measured on the live demo (2026-10-31, demo v66):** Reel tap → approval takes **3 taps** when Muse Spark's live verdict is an exact match (THEENRG tee — Shop this reel → See the exact review → Approve Purchase; the model is consulted live on the first tap, so the evidence card is one of the three). When the live verdict is uncertain it asks "Which one?" first: **4 taps**, the extra taps being the live consultation and the safety behavior working as designed. The ClutchAgent service flow takes **2 taps** (Shop this reel → Approve Service Access). Clicks only: no time claim (reading time is the reader's), and no before/after baseline exists yet.
 
 ## 1. Track: Indie developer
 
@@ -312,7 +312,7 @@ and not "an AI chatbot with a buy button."
    is the store owner's authorization and a verified read
    against a real store, which is pending a call.
 4. A measured clicks/time number — CLICKS MEASURED on the live demo
-   (2026-10-31, demo v65): 3 taps from Reel tap to approval on a live
+   (2026-10-31, demo v66): 3 taps from Reel tap to approval on a live
    exact match (the live model consultation is one of the taps); 4 taps
    when the live verdict is uncertain and asks "Which one?" first. Still open: a before-versus-
    after comparison and any time number, measured on a real run — no
