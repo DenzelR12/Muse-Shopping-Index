@@ -312,7 +312,7 @@ and not "an AI chatbot with a buy button."
    is the store owner's authorization and a verified read
    against a real store, which is pending a call.
 4. A measured clicks/time number — CLICKS MEASURED on the live demo
-   (2026-10-30, demo v55): 2 taps from Reel tap to approval on an exact
+   (2026-10-30, demo v58): 2 taps from Reel tap to approval on an exact
    match; 3 taps when Muse is uncertain and asks "Which one?" first
    (the extra tap is the safety behavior). Still open: a before-versus-
    after comparison and any time number, measured on a real run — no
