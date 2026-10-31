@@ -347,7 +347,7 @@ createServer(async(req,res)=>{
     try{
       const payload=await readJson(req) as Record<string,unknown>;
       if(!isDemoReelId(payload.reelId)) return send(res,400,{error:'demo_reel_unknown'},requestId);
-      const result=await getDemoReelGrounding(payload.reelId,{apiKey:<redacted>,baseUrl:demoModelBase,model:demoModelName});
+      const result=await getDemoReelGrounding(payload.reelId,{apiKey:demoModelKey,baseUrl:demoModelBase,model:demoModelName});
       return send(res,200,result,requestId);
     }catch(error){
       const message=error instanceof Error?error.message:'demo_grounding_failed';
