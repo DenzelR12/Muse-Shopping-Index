@@ -102,7 +102,7 @@ same tables. Per seller, record additionally:
   simulator (`docs/platform/muse-entry-contract.md`) remain the aim, and Meta
   distribution approval remains outstanding.
 - It does not prove a business model. See
-  `docs/research/business-model-options.md` — the model is undecided, and the
+  `docs/research/business-model-options.md` — the model is decided (option A, 2026-10-31), and the
   pilot must not be presented as if a model had been chosen.
 - It does not prove scale. Three test-mode sellers are a pilot, not a
   network, and must be described as such.

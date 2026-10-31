@@ -4,6 +4,15 @@
 
 Tap **Shop this reel** in Muse, review exactly once, approve once, and let the server execute — fewer clicks from a Reel to the door.
 
+## What's live today
+
+- **Live demo (v72):** https://denzelr12.github.io/Muse-Shopping-Index/demo/ — the full Reel → exact review → one-approval flow, tap it now, no sign-in.
+- **Live model path:** every THEENRG "Shop this reel" tap calls the production API on Render — Muse Spark (Meta Model API) watches the reel's frames server-side and returns the verdict the demo acts on: exact review, or "Which one?" when it can't verify.
+- **Verified catalog read:** the server's read-only Meta Catalog client read a real Meta test catalog end-to-end on 2026-10-30 — all checks pass.
+- **Pitch video:** the 2:57 cut below is the re-recorded walkthrough of this build.
+
+**Business model:** sellers pay a fee only on a verified order — no fee for clicks, drafts, or abandoned carts. The fee level is set with pilot sellers; no figure is claimed yet.
+
 ## Watch the pitch (2:57)
 
 <p align="center"><a href="https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4"><img src="docs/pitch-poster.jpg.JPG" alt="Muse Shopping Index — pitch video" width="720"></a></p>

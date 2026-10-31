@@ -2,11 +2,11 @@
 
 ## Limits — read first
 
-- **Options only. No model is decided.** No fee, commission,
-  subscription price, revenue share, or revenue model exists in the
-  source or target today, and none is chosen by this document. The
-  user decides; this document exists so that decision is made with
-  its trade-offs in view, not by accident in a demo script.
+- **Decision made (2026-10-31).** The user chose option A: sellers
+  pay a fee only on a verified order — no fee for clicks, drafts, or
+  abandoned carts. The fee LEVEL is not set and no figure is claimed
+  anywhere; it is set with pilot sellers. The options analysis below
+  is kept as the record the decision was made from.
 - **No numbers are facts.** No fee level, percentage, price, or
   revenue figure appears in this document as a fact, and none is put
   in code or in the submission brief as a fact. Any number added later

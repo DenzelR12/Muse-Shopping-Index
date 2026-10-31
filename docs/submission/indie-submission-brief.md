@@ -289,9 +289,12 @@ and not "an AI chatbot with a buy button."
   the ClutchAgent TEST catalog has since been read live through the
   repo client (section 2) — a test catalog, not a commercial seller;
   the first real seller is still open.
-- **Business model:** none found. No fee, commission, subscription
-  price, or revenue model exists in the source or target. Who pays, and
-  for what, is an open decision for the user.
+- **Business model:** decided 2026-10-31 — sellers pay a fee only
+  on a verified order; no fee for clicks, drafts, or abandoned carts.
+  No fee level or revenue figure is claimed; the level is set with
+  pilot sellers. (At the time of the source audit, no model existed
+  in the source or target; the decision is the user's, recorded in
+  docs/research/business-model-options.md.)
 
 ## Remaining live blockers (not done)
 
@@ -428,13 +431,11 @@ when measured evidence is recorded under the protocols below.
   adversarial evidence summary with standing caveats (CI-listed
   gates vs standalone files, no pnpm/Docker in the VM, provider
   gates need a full build and first run in CI).
-- **Business model, still undecided:**
-  [Business model options](../research/business-model-options.md) — four options
-  (fee only on a verified order; seller subscription; platform / Shop
-  backend share only where authorized; hybrid) with pros, cons,
-  risks, and a decision-needed flag. No option is chosen, and no fee
-  or revenue figure is claimed anywhere. The "Still open decisions"
-  section above therefore remains true: business model undecided.
+- **Business model, decided 2026-10-31:** option A from
+  [Business model options](../research/business-model-options.md) —
+  sellers pay a fee only on a verified order; no fee for clicks,
+  drafts, or abandoned carts. No fee level or revenue figure is
+  claimed anywhere; the level is set with pilot sellers.
 
 Training is unchanged in this batch: 48 teaching / 30 held-out
 synthetic scenarios, no model trained or fine-tuned, no regeneration
