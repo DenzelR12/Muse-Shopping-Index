@@ -203,7 +203,7 @@ Keep `MUSE_AGENT_ENABLED=false` until controlled test-environment validation is 
 ## What is NOT live yet
 
 - **10,000-request burst handling is not proven.** The exactly-once guard is in code, but no concurrent load test, queue service, or scaled host exists yet — a burst is fail-closed, not guaranteed through.
-- No live seller, no live payment, no live Shop handling, and no live Shopify catalog read. First live Meta catalog read verified 2026-10-28 via Graph Explorer only (see [live proof](docs/meta/live-meta-catalog-proof.md)); not yet through the repo client or a Render route.
+- No live seller, no live payment, no live Shop handling, and no live Shopify catalog read. Meta catalog reads ARE verified live: 2026-10-28 via Graph Explorer, and 2026-10-30 through the repo client itself, run in the Render shell against the same test catalog — all checks pass (see [live proof](docs/meta/live-meta-catalog-proof.md)). TEST catalog only; no commercial seller read yet.
 - No native Muse window. The panel is host-agnostic DOM a Muse host mounts; native Muse integration needs Meta approval and is not claimed.
 - No live panel-to-API routes yet. Panel host wiring maps callbacks to existing server methods; a production host passing bound methods is still a separate step.
 - No live reminder channel. Opt-in entry and wiring exist, but no authorized channel is configured, so no live reminder is claimed.
