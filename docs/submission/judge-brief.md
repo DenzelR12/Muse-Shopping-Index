@@ -33,26 +33,33 @@ catalog, Development Mode, read-only: not a commercial seller.
 ## Try it first (live demo, no sign-in, no backend)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(verified live 2026-10-28, published from main, folder /docs)
+(demo v58, verified live 2026-10-30, published from main, folder /docs)
 
-1. **Reel 1 — THEENRG, a product.** Tap the small product thumbnail
-   (the black ENRG tee, $44.00 USD) or **Shop this reel in Muse**.
-   Review the exact terms — seller THEENRG.COM, item, shipping and
-   tax (demo examples, see below), total $52.52 USD — then
-   **Approve $52.52** and watch Processing → Shipped → Delivered.
+1. **Reel 1 — THEENRG, products that ship.** The feed opens with two
+   THEENRG studio clips. On the first (both products appear), tap
+   **Shop this reel in Muse** and Muse asks "Which one?" — pick the
+   tee ($44.00 USD). On the tee clip, Shop goes straight to the same
+   review. Review the exact terms — seller THEENRG.COM, item,
+   shipping and tax (demo examples, see below), total $52.52 USD —
+   then **Approve $52.52** and watch Processing → Shipped → Delivered.
 2. **Try the safety case.** In Product Review, tap
    **Test price change (TEST)**. The total moves $52.52 → $54.52
    (item $46.00 + shipping $5.00 + tax $3.52). The old approval does
    **not** execute and no payment is taken at the old price. You must
    **Reapprove $54.52** to continue, or **Cancel** to return to the
    $52.52 review with nothing executed.
-3. **Reel 2 — ClutchAgent, a service.** Scroll down, tap its thumbnail
-   or **Shop this reel in Muse**. Same workflow, different outcome:
-   service access delivered in Muse, not a shipment — no shipping, no
-   door delivery, no tracking, and no price is shown, because no
-   ClutchAgent service price has ever been supplied and none is
+3. **Reel 2 — Travel, tickets.** Scroll to the park clip and tap
+   **Shop this reel in Muse**. The review is for theme park day
+   tickets × 2, price "To be confirmed at review" (no travel partner
+   exists, so no price is invented). **Approve Tickets** confirms in
+   Muse — tickets delivered in Muse, no shipping.
+4. **Reel 3 — ClutchAgent, a service.** Two clips. Tap **Shop this
+   reel in Muse**. Same workflow, different outcome: service access
+   delivered in Muse, not a shipment — no shipping, no door delivery,
+   no tracking. The price shows "To be confirmed at review," because
+   no ClutchAgent service price has ever been supplied and none is
    invented here.
-4. **For business (last tab).** How the connector helps a seller:
+5. **For business (last tab).** How the connector helps a seller:
    verified sales, not just likes — a full funnel, Reel tap →
    Review → Approved → Shipped → Delivered, with no double-counting
    and refunds subtracting. The numbers shown are a one-order demo
@@ -89,7 +96,7 @@ catalog, Development Mode, read-only: not a commercial seller.
 | Panel live wiring (`muse-panel-live-wiring.ts`) | **In code, CI-gated.** Draft registry (Postgres + memory), server-side session issuance, live host adapter with tenant + in-flight guards. Panel routes in `index.ts` now resolve drafts instead of returning null — **live traffic still blocked at one gap only: production host binding** (consumer identity + connection + session token from a real Muse host). See [docs/platform/muse-panel-live-wiring.md](../platform/muse-panel-live-wiring.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **Wired in code, host binding open.** Draft lookup is live via the registry and host methods go through the live adapter; requests still refuse without an authenticated panel session and bound host methods. The remaining gap is production host binding only, not draft lookup or issuance. |
-| Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads.** No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). |
+| Live panel route, live Postgres, live seller, live payment | **Not live, except the Meta catalog reads.** The Postgres database itself is live (created 2026-10-28), but no Postgres-backed panel or execution run is verified yet. No live panel-to-API traffic, no live Shopify catalog read, no live Shop Pay execution, no native Muse distribution. Live Meta catalog reads (ClutchAgent TEST item, $1.00 USD) are proved in [docs/meta/live-meta-catalog-proof.md](../meta/live-meta-catalog-proof.md): Graph Explorer on 2026-10-28, and through the repo client on Render on 2026-10-30 (all checks pass). |
 | Measured chat-to-door time | **Not measured.** No tap → approval → verified order → delivered timestamps exist yet, because no real seller test has run. No time is claimed. |
 | Business model | **Undecided.** Who pays, and for what, is not yet decided. This brief does not invent one. |
 | Reel-to-SKU match | **Not independently verified.** The ENRG Reel and the $44 tee match by the terms shown, but the exact SKU link has not been verified against a live catalog. |
@@ -122,18 +129,21 @@ or carrier fact in the demo is real.
   color-histogram similarity baseline was tried and rejected (it
   scored the wrong garment higher); only a semantic embedding is an
   acceptable visual signal, and no invented scores are shown. Honest
-  limits: one live run, TEST catalog, embedding scores pending.
+  limits: a small number of live runs, TEST catalog, embedding
+  scores pending.
 - **Technical (20%)** — Deterministic server authorization, signed
   drafts, consume-once approval, drift reapproval, tenant isolation,
   and a fail-closed panel mount that refuses rather than invents.
-  Still missing: the full live wiring (session issuance, draft
-  lookup, host methods) and a live Postgres-backed run. New:
+  Still missing: production host binding for the panel and a live
+  Postgres-backed run; session issuance, draft lookup, and host
+  methods are in code. New:
   `muse-reel-grounding.ts` takes the model's structured output and
   runs it through catalog verification (tenant check, verified-only
   matching, fail-closed on hallucination), 8/8 tests green.
-- **Demo (25%)** — A live, clickable Reels feed with both a product
-  and a service, product thumbnail tags like Instagram, and the
-  price-change safety case, all demo-labelled. Still missing: a real
+- **Demo (25%)** — A live, clickable 5-Reel feed with three purchase
+  kinds through one flow — a product that ships, travel tickets, and
+  a service that unlocks — with product thumbnail tags like Instagram
+  and the price-change safety case, all demo-labelled. Still missing: a real
   seller test run to replace demo numbers with measured ones.
 
 ## In short
