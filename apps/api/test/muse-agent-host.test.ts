@@ -506,3 +506,180 @@ test('abandoned resume fails closed on foreign ownership and on tampered drafts'
   await assert.rejects(tampered.host.resumeDraft(), /tampered_draft/);
   assert.equal(tampered.calls.submits.length, 0);
 });
+
+// --- Stripe TEST-MODE adapter (muse-stripe-test-adapter.ts) ---
+// These gates run in CI via this already-listed file. Every Stripe
+// call below is a fixture fetch: no network, no real key, no real
+// money. The adapter refuses live keys in code; the only key used
+// here is the fake unit-test string 'sk_test_unit'.
+import {StripeTestModeConnectorAdapter,resolveStripeTestConfig,registerStripeTestAdapter,stripeTestIdempotencyKey,metaCatalogItemsToStripeTestOffers,clutchAgentStripeTestManifest} from '../dist/muse-stripe-test-adapter.js';
+import {MemoryExactlyOnceStore,executeExactlyOnce} from '../dist/muse-exactly-once.js';
+import {ZeroTrustConnectorRegistry,ZeroTrustConnectorRuntime,MemoryConnectionAuthority,MemoryDraftAuthority} from '@gift-signal/mcp-gateway';
+import {InMemoryReplayStore} from '@gift-signal/zero-trust';
+
+const stripeTestOffers=[{offerId:'catalog-test-item',title:'Test - ClutchAgent Access',provider:'ClutchAgent (TEST)',price:1,currency:'USD',availability:'AVAILABLE' as const,evidenceAt:'2026-10-31T00:00:00Z'}];
+function stripeTestFetchOk(state:{calls:number;keys:string[];amounts:string[];methods:string[]}){
+  return (async(_url:unknown,init?:{headers?:Record<string,string>;body?:unknown})=>{
+    state.calls++;
+    state.keys.push(init?.headers?.['idempotency-key']??'');
+    const params=new URLSearchParams(init?.body as string);
+    state.amounts.push(params.get('amount')??'');
+    state.methods.push(params.get('payment_method')??'');
+    return {ok:true,status:200,json:async()=>({id:'pi_test_unit_1',status:'succeeded',amount:Number(params.get('amount')),currency:params.get('currency')})} as unknown as Response;
+  }) as unknown as typeof fetch;
+}
+function stripeTestAdapter(state:{calls:number;keys:string[];amounts:string[];methods:string[]},overrides:any={}){
+  return new StripeTestModeConnectorAdapter({secretKey:'sk_test_unit',enabled:true,
+    resolveOffers:async()=>stripeTestOffers.map(o=>({...o})),fetchImpl:stripeTestFetchOk(state),...overrides});
+}
+function stripeTestRuntime(adapter:unknown){
+  const registry=new ZeroTrustConnectorRegistry();
+  registry.register(clutchAgentStripeTestManifest,adapter as never);
+  const connections=new MemoryConnectionAuthority();
+  connections.put({connectionId:'conn-test',companyId:'clutchagent',subjectId:'buyer-test',
+    grantedActions:['search_offers','create_action_draft','execute_action'],secretRef:'unit-test',createdAt:'2026-01-01T00:00:00Z'});
+  const drafts=new MemoryDraftAuthority();
+  const runtime=new ZeroTrustConnectorRuntime(registry,connections,drafts,new InMemoryReplayStore(),
+    {draftSigningSecret:'draft-secret',approvalSigningSecret:'approval-secret'});
+  return {runtime,drafts};
+}
+async function stripeTestDraft(runtime:any,drafts:any){
+  const created=await runtime.createDraft('clutchagent','conn-test',{offerIds:['catalog-test-item'],quantity:1,kind:'PURCHASE'});
+  const envelope=await drafts.get(created.draft.draftId);
+  const proof = issueApprovalToken({subjectId:'buyer-test',companyId:'clutchagent',connectionId:'conn-test',
+    draftId:created.draft.draftId,draftHash:envelope.payloadHash,amount:created.draft.total,currency:created.draft.currency,
+    expiresAt:created.draft.expiresAt},'approval-secret');
+  return {draft:created.draft, approvalToken: proof};
+}
+
+test('stripe test config gates refuse disabled, missing, live, and malformed keys before any registration',()=>{
+  assert.deepEqual(resolveStripeTestConfig({}),{enabled:false,keyConfigured:false,keyShape:'missing'});
+  assert.equal(resolveStripeTestConfig({MUSE_STRIPE_TEST_ENABLED:'1',STRIPE_TEST_SECRET_KEY:'sk_live_x'}).keyShape,'live');
+  assert.throws(()=>new StripeTestModeConnectorAdapter({secretKey:'sk_test_unit',enabled:false,resolveOffers:async()=>[]}),/muse_stripe_test_disabled/);
+  assert.throws(()=>new StripeTestModeConnectorAdapter({secretKey:'',enabled:true,resolveOffers:async()=>[]}),/muse_stripe_test_key_missing/);
+  assert.throws(()=>new StripeTestModeConnectorAdapter({secretKey:'sk_live_unit',enabled:true,resolveOffers:async()=>[]}),/muse_stripe_test_live_key_refused/);
+  assert.throws(()=>new StripeTestModeConnectorAdapter({secretKey:'not-a-stripe-key',enabled:true,resolveOffers:async()=>[]}),/muse_stripe_test_key_invalid/);
+  const registry=new ZeroTrustConnectorRegistry();
+  const offers=async()=>stripeTestOffers;
+  assert.deepEqual(registerStripeTestAdapter({registry,env:{},adapterConfig:{clutchagent:'stripe-test-mode'},resolveOffers:offers}),
+    {registered:false,reason:'muse_stripe_test_disabled'});
+  assert.deepEqual(registerStripeTestAdapter({registry,env:{MUSE_STRIPE_TEST_ENABLED:'1',STRIPE_TEST_SECRET_KEY:'sk_test_unit'},adapterConfig:{},resolveOffers:offers}),
+    {registered:false,reason:'muse_stripe_test_adapter_not_configured'});
+  assert.deepEqual(registerStripeTestAdapter({registry,env:{MUSE_STRIPE_TEST_ENABLED:'1',STRIPE_TEST_SECRET_KEY:'sk_live_unit'},adapterConfig:{clutchagent:'stripe-test-mode'},resolveOffers:offers}),
+    {registered:false,reason:'muse_stripe_test_live_key_refused'});
+  assert.throws(()=>registry.get('clutchagent'),/unknown_company_connector/);
+  assert.deepEqual(registerStripeTestAdapter({registry,env:{MUSE_STRIPE_TEST_ENABLED:'1',STRIPE_TEST_SECRET_KEY:'sk_test_unit'},adapterConfig:{clutchagent:'stripe-test-mode'},resolveOffers:offers}),
+    {registered:true});
+  assert.equal(registry.get('clutchagent').manifest.companyId,'clutchagent');
+});
+
+test('stripe test happy path: catalog-priced draft, exact approval, one confirmed test PaymentIntent',async()=>{
+  const state={calls:0,keys:[] as string[],amounts:[] as string[],methods:[] as string[]};
+  const adapter=stripeTestAdapter(state);
+  const {runtime,drafts}=stripeTestRuntime(adapter);
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  assert.equal(draft.total,1);
+  assert.equal(draft.currency,'USD');
+  const execution=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+  assert.equal(execution.status,'CONFIRMED');
+  assert.equal(execution.providerReference,'pi_test_unit_1');
+  assert.equal(state.calls,1);
+  // Existing gift-signal: idempotency prefix — never renamed.
+  assert.equal(state.keys[0],`gift-signal:test-order:clutchagent:${draft.draftId}`);
+  assert.equal(state.keys[0],stripeTestIdempotencyKey('clutchagent',draft.draftId));
+  // Amount came from the verified draft ($1.00 -> 100), method is Stripe's test card.
+  assert.equal(state.amounts[0],'100');
+  assert.equal(state.methods[0],'pm_card_visa');
+  // Adapter-level idempotency: a repeated execute returns the original result, no second provider call.
+  const again=await adapter.execute({draft,connection:{connectionId:'conn-test'} as never,approval:{approved:true,approvedAt:new Date().toISOString(),approvalId:'unit'}});
+  assert.equal(again.providerReference,'pi_test_unit_1');
+  assert.equal(state.calls,1);
+});
+
+test('stripe test execution without a valid exact approval never reaches Stripe',async()=>{
+  const state={calls:0,keys:[] as string[],amounts:[] as string[],methods:[] as string[]};
+  const {runtime,drafts}=stripeTestRuntime(stripeTestAdapter(state));
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  await assert.rejects(runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken:'bogus'}),/malformed_approval/);
+  const wrongAmount=issueApprovalToken({subjectId:'buyer-test',companyId:'clutchagent',connectionId:'conn-test',
+    draftId:draft.draftId,draftHash:(await drafts.get(draft.draftId)).payloadHash,amount:2,currency:'USD',expiresAt:draft.expiresAt},'approval-secret');
+  const mismatchedArgs = {draftId:draft.draftId, approvalToken: ''};
+  mismatchedArgs.approvalToken = wrongAmount;
+  await assert.rejects(runtime.execute('clutchagent','conn-test',mismatchedArgs),/approval_amount_mismatch/);
+  assert.equal(state.calls,0);
+  // The genuine token still works afterwards: failed approvals consumed nothing.
+  const execution=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+  assert.equal(execution.status,'CONFIRMED');
+  assert.equal(state.calls,1);
+});
+
+test('stripe test drift at revalidation forces reapproval and never charges',async()=>{
+  const state={calls:0,keys:[] as string[],amounts:[] as string[],methods:[] as string[]};
+  let reads=0;
+  const adapter=stripeTestAdapter(state,{resolveOffers:async()=>{reads++;return stripeTestOffers.map(o=>({...o,price:reads===1?1:2}));}});
+  const {runtime,drafts}=stripeTestRuntime(adapter);
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  assert.equal(draft.total,1);
+  await assert.rejects(runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken}),/provider_state_changed_reapproval_required/);
+  assert.equal(state.calls,0);
+});
+
+test('stripe test duplicate run is blocked by the exactly-once guard and charges exactly once',async()=>{
+  const state={calls:0,keys:[] as string[],amounts:[] as string[],methods:[] as string[]};
+  const {runtime,drafts}=stripeTestRuntime(stripeTestAdapter(state));
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  const store=new MemoryExactlyOnceStore();
+  const key=stripeTestIdempotencyKey('clutchagent',draft.draftId);
+  const handler=async()=>{
+    const ex=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+    return {result:{status:ex.status,providerReference:ex.providerReference}};
+  };
+  const first=await executeExactlyOnce(store,{key,companyId:'clutchagent',draftId:draft.draftId,operation:'stripe_test_order'},handler);
+  assert.equal(first.executed,true);
+  assert.equal((first.result as {status:string}).status,'CONFIRMED');
+  const second=await executeExactlyOnce(store,{key,companyId:'clutchagent',draftId:draft.draftId,operation:'stripe_test_order'},handler);
+  assert.equal(second.executed,false);
+  assert.equal(second.outcome,'duplicate');
+  assert.equal((second.result as {status:string}).status,'CONFIRMED');
+  assert.equal(state.calls,1);
+});
+
+test('stripe test uncertain provider outcome requires reconciliation, leaves the claim in progress, never retries',async()=>{
+  const state={calls:0};
+  const failingFetch=(async()=>{state.calls++;throw new TypeError('network down');}) as unknown as typeof fetch;
+  const adapter=stripeTestAdapter({calls:0,keys:[],amounts:[],methods:[]} as never,{fetchImpl:failingFetch});
+  const {runtime,drafts}=stripeTestRuntime(adapter);
+  const {draft,approvalToken}=await stripeTestDraft(runtime,drafts);
+  const store=new MemoryExactlyOnceStore();
+  const key=stripeTestIdempotencyKey('clutchagent',draft.draftId);
+  const outcome=await executeExactlyOnce(store,{key,companyId:'clutchagent',draftId:draft.draftId,operation:'stripe_test_order'},async()=>{
+    try{
+      const ex=await runtime.execute('clutchagent','conn-test',{draftId:draft.draftId,approvalToken});
+      return {result:{status:ex.status}};
+    }catch(err){
+      if((err as Error).message.includes('reconciliation')) return {result:{status:'UNCERTAIN'},uncertain:true};
+      throw err;
+    }
+  });
+  assert.equal(outcome.executed,true);
+  assert.equal(outcome.outcome,'stale_reconcile');
+  const again=await store.claim({key,companyId:'clutchagent',operation:'stripe_test_order'});
+  assert.equal(again.outcome,'in_progress');
+  assert.equal(state.calls,1);
+});
+
+test('meta catalog items map to stable test offers, unverified items excluded, no raw provider IDs',()=>{
+  const at='2026-10-31T00:00:00Z';
+  const offers=metaCatalogItemsToStripeTestOffers([
+    {title:'Test - ClutchAgent Access',priceAmount:1,currency:'USD',availability:'in stock',status:'verified'},
+    {title:'Stale Thing',priceAmount:5,currency:'USD',availability:'in stock',status:'unavailable'},
+  ],at);
+  assert.equal(offers.length,1);
+  assert.equal(offers[0].price,1);
+  assert.equal(offers[0].currency,'USD');
+  const again=metaCatalogItemsToStripeTestOffers([
+    {title:'Test - ClutchAgent Access',priceAmount:1,currency:'USD',availability:'in stock',status:'verified'},
+  ],at);
+  assert.equal(offers[0].offerId,again[0].offerId);
+  assert.doesNotMatch(JSON.stringify(offers),/gid:\/\/|acct_|catalog_/);
+});

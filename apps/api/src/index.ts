@@ -53,6 +53,8 @@ import {runMuseToolAgent} from '@gift-signal/competition-demo/muse-tool-agent';
 import {PostgresConsumerCommerceIdentityStore} from './consumer-commerce-identity.js';
 import {PostgresEnrollmentStore,startConsumerEnrollment,completeConsumerEnrollment,enrollmentRequest,enrollmentErrorStatus} from './consumer-enrollment.js';
 import {verifyStripeSetupIntent,createStripeEnrollmentSetup,readStripeTransactionCheckout} from '@gift-signal/payments';
+import {registerStripeTestAdapter,metaCatalogItemsToStripeTestOffers,CLUTCHAGENT_COMPANY_ID} from './muse-stripe-test-adapter.js';
+import {getMetaCatalogClient,readMetaCatalog,resolveMetaCatalogConfig,resolveMetaCatalogId} from './meta-catalog.js';
 
 const giftContextSchema = z.object({
   recipient: z.string().min(1).optional(),
@@ -160,6 +162,38 @@ console.log(JSON.stringify({
   metaAdsReady:liveActivation.metaAds.ready,
   reelEntryConfigured:liveActivation.reelEntry.secretConfigured,
   genericAdapterCompanies:Object.keys(genericAdapterConfig),
+}));
+// Stripe TEST-MODE adapter for the ClutchAgent company
+// (muse-stripe-test-adapter.ts): registered at startup ONLY when the
+// operator has enabled test mode (MUSE_STRIPE_TEST_ENABLED), supplied
+// a Stripe TEST key (STRIPE_TEST_SECRET_KEY — a live key is refused in
+// code), AND declared the company in MUSE_GENERIC_ADAPTER_CONFIG_JSON.
+// Registration alone executes nothing: execution still flows through
+// the generic host path (registered company profile, exact approval,
+// consume-once, drift revalidation, single execution claim), and
+// MUSE_AGENT_ENABLED stays false. Offers are priced lazily from the
+// read-only Meta catalog client; with no startup-registered catalog
+// client the read fails closed and no draft can be built. Presence and
+// outcome only — the key value is never logged.
+const stripeTestAdapterRegistration=registerStripeTestAdapter({
+  registry:genericConnectorRegistry,
+  env:process.env,
+  adapterConfig:genericAdapterConfig,
+  resolveOffers:async()=>{
+    const catalogResult=await readMetaCatalog({
+      config:resolveMetaCatalogConfig(process.env),
+      client:getMetaCatalogClient(),
+      companyId:CLUTCHAGENT_COMPANY_ID,
+      principalCompanyId:CLUTCHAGENT_COMPANY_ID,
+      catalogId:resolveMetaCatalogId({envCatalogId:process.env.META_CATALOG_ID}),
+    });
+    return metaCatalogItemsToStripeTestOffers(catalogResult.verified,new Date().toISOString());
+  },
+});
+console.log(JSON.stringify({
+  event:'stripe_test_adapter_registration',
+  registered:stripeTestAdapterRegistration.registered,
+  ...(stripeTestAdapterRegistration.reason?{reason:stripeTestAdapterRegistration.reason}:{}),
 }));
 const biLiveEventStore:BiEventStore&BiWatermarkStore=(dbPool
   ? new PostgresBiEventStore(dbPool)
