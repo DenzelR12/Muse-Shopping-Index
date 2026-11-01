@@ -91,3 +91,25 @@
 set with pilot sellers.** The three remaining boxes are terms agreed
 with pilot sellers before the first test order; until the fee-level
 box is checked, no fee or revenue figure is claimed anywhere.
+
+
+## Buyer-sharer monetization — designed extension of option A (2026-11-01)
+
+Designed, not built, and no figure is claimed. A buyer who shares
+the find (the demo's post-purchase share step) carries the purchased
+item's verified identity with the post — no model has to guess what
+a friend is looking at, so a purchase through a share is exact by
+construction and runs the same signed-draft, single-approval flow.
+When that purchase records as a verified order, the sharer earns a
+share of the seller's verified-order fee under option A. No new fee
+is created and buyers are never charged; the split comes out of the
+fee the seller already pays, and the split level is unset — it is
+set with pilot sellers alongside the fee level itself.
+
+Rules that keep it honest: earnings vest only after the order's
+return window closes on a kept order (a buy-share-return loop earns
+nothing); shared posts carry automatic paid-partnership / affiliate
+disclosure; the gift-safe share-the-moment variant is never
+monetized, because it hides the item by design; and payouts ride
+the same Stripe Connect machinery designed for collecting seller
+fees, never a side channel.

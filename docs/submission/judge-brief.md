@@ -239,7 +239,14 @@ the demo already runs: point-of-view frames to the same Muse Spark
 grounding, the index resolving the seen item to one exact catalog
 entry, and the exact review and single approval in the Muse window
 on the phone. Not built, and not claimed: public distribution of
-glasses apps is not yet open in the preview.
+glasses apps is not yet open in the preview. The loop closes
+socially: a buyer can share the find — from the phone today in the
+demo, from the glasses in this design — and because the share
+carries the purchased item's verified identity, a friend's
+purchase through it is exact by construction; the sharer earns
+part of the seller's verified-order fee. That monetization is a
+designed extension of the decided fee model — split unset, not
+built.
 
 ## In short
 
