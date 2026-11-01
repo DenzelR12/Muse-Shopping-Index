@@ -251,6 +251,11 @@ flow's shape today — a simulated point of view feeding the
 production grounding route, then the demo's exact review and share
 step; the camera is the only simulated part:
 https://denzelr12.github.io/Muse-Shopping-Index/glasses/
+The scenario that motivates it is a store aisle: look at the
+shelf, Muse matches the item to the retailer's catalog, approve
+on the phone, and it is bought — delivered, or held for pickup.
+Paying for the physical item in hand and walking out needs the
+retailer's point-of-sale integration and is not claimed.
 
 ## In short
 
