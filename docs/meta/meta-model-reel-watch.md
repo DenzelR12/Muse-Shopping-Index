@@ -245,10 +245,19 @@ frames, catalog photos, and seller-tag claim the public route sends.
 The live service process was not touched (its cache and fresh-call
 budget are separate). 20 reads, zero errors, all served live.
 
+A note on the reel IDs, which read backwards: they are historical
+names, not descriptions of the outcomes. `theenrg-tee` is named for
+its seller tag (the tee), but its frames feature the hoodie just as
+prominently, so the tag fails verification and the server asks.
+`theenrg-mixed` is the other THEENRG clip; despite the name, its
+frames are dominated by the tee, so it verifies as exact. Both
+clips belong to Reel 1 in the demo's numbering (the THEENRG pair);
+Reel 2 is Travel and Reel 3 is ClutchAgent.
+
 | Reel | Server verdict across 10 fresh reads | Detail |
 | --- | --- | --- |
-| `theenrg-mixed` (Reel 1) | **exact ×10** | ENRG Unisex Oversized T-Shirt, model confidence high ×10, seller tag verified ×10; latency 5.0–10.6s |
-| `theenrg-tee` (Reel 2) | **picker ×10** | featured UNCERTAIN ×10, same two candidates every read, seller tag not verified ×10; the model's self-reported confidence varied (high ×3, medium ×7) without changing the server verdict; latency 4.7–12.6s |
+| `theenrg-mixed` (Reel 1, first THEENRG clip) | **exact ×10** | ENRG Unisex Oversized T-Shirt, model confidence high ×10, seller tag verified ×10; latency 5.0–10.6s |
+| `theenrg-tee` (Reel 1, second THEENRG clip) | **picker ×10** | featured UNCERTAIN ×10, same two candidates every read, seller tag not verified ×10; the model's self-reported confidence varied (high ×3, medium ×7) without changing the server verdict; latency 4.7–12.6s |
 
 Reading: Reel 1's verdict is stable-exact in this sample. One
 UNCERTAIN read on Reel 1 was observed earlier the same day
