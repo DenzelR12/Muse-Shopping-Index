@@ -40,7 +40,7 @@ payment.
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v75, verified live 2026-10-31, published from main, folder /docs)
+(live demo, verified 2026-10-31, published from main, folder /docs)
 
 Disclosure, up front: **the five demo Reels are AI-generated studio
 clips made for this demo.** The products, prices, and catalog photos
