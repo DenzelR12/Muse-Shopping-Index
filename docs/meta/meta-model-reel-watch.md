@@ -259,12 +259,14 @@ Reel 2 is Travel and Reel 3 is ClutchAgent.
 | `theenrg-mixed` (Reel 1, first THEENRG clip) | **exact ×10** | ENRG Unisex Oversized T-Shirt, model confidence high ×10, seller tag verified ×10; latency 5.0–10.6s |
 | `theenrg-tee` (Reel 1, second THEENRG clip) | **picker ×10** | featured UNCERTAIN ×10, same two candidates every read, seller tag not verified ×10; the model's self-reported confidence varied (high ×3, medium ×7) without changing the server verdict; latency 4.7–12.6s |
 
-Reading: Reel 1's verdict is stable-exact in this sample. One
-UNCERTAIN read on Reel 1 was observed earlier the same day
+Reading: the first THEENRG clip's verdict is stable-exact in
+this sample. One UNCERTAIN read on the first THEENRG clip was
+observed earlier the same day
 (~13:04 EDT, single call), so the honest claim is a strong tendency,
 not a guarantee — and the failure mode is safe by design: a flip
 lands on the "Which one?" picker (4 taps), never on a wrong exact
-review. Reel 2 is stable-picker, which matches the clip itself: it
+review. The second THEENRG clip is stable-picker, which matches the
+clip itself: it
 genuinely features both products, so asking is the correct behavior.
 The judging-week warm-ups (Nov 4–8) re-read both reels each morning;
 the first read of the day becomes the cached verdict for that day.
