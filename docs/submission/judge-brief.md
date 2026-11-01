@@ -204,6 +204,25 @@ or carrier fact in the demo is real.
   test-order proof); the demo's own numbers remain demo-labelled,
   and a commercial seller's measured numbers are still to come.
 
+## How this differs from Muse's built-in shopping
+
+Muse already offers shopping and checkout help — a general
+assistant flow that finds a product and moves to purchase. This
+project is not a rival to it; it is the layer that flow does not
+carry. The Index verifies before money moves: Muse Spark watches
+the seller's actual Reel, a deterministic server validates the
+result, the seller's tag is checked — and when the item cannot be
+pinned exactly, it stops and asks instead of guessing. Approval
+here is a signed, single-use record of the exact terms (item,
+price, tax, shipping), voided by any change; an uncertain payment
+outcome reconciles instead of charging twice. And where Muse's
+shopping serves Meta's commerce graph, the Index is tenant-scoped
+infrastructure for independent sellers: isolated catalogs, and a
+fee only on a verified order. In one line: Muse does the buying;
+the Index makes sure it is the right item, at the reviewed price,
+from the right seller — and can prove it refused when it was not
+sure.
+
 ## Where this goes next
 
 Next surface: glasses. The index is surface-agnostic by design —
