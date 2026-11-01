@@ -246,7 +246,11 @@ carries the purchased item's verified identity, a friend's
 purchase through it is exact by construction; the sharer earns
 part of the seller's verified-order fee. That monetization is a
 designed extension of the decided fee model — split unset, not
-built.
+built. Separately, a labelled web concept page demonstrates the
+flow's shape today — a simulated point of view feeding the
+production grounding route, then the demo's exact review and share
+step; the camera is the only simulated part:
+https://denzelr12.github.io/Muse-Shopping-Index/glasses/
 
 ## In short
 
