@@ -223,6 +223,12 @@ the Index makes sure it is the right item, at the reviewed price,
 from the right seller — and can prove it refused when it was not
 sure.
 
+The difference shows in the caution Muse's own reviewers attach
+to it: test with low-value items first, because the agent
+purchases autonomously. The Index is built so that caution is
+unnecessary — nothing purchases without an exact, single-use
+approval, and ambiguity stops the flow instead of spending.
+
 ## Where this goes next
 
 Next surface: glasses. The index is surface-agnostic by design —
