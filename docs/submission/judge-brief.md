@@ -129,7 +129,7 @@ details, and is never required: Done is always one tap away.
 | --- | --- |
 | Interactive demo (above) | **Live** on GitHub Pages. The feed and panels are static files, but the demo is not backend-free: the THEENRG Shop buttons call the production API's live Muse Spark grounding route, and the page checks live API status on load. It proves the flow and the safety case; it is not a real purchase. |
 | Demo grounding route (`POST /v1/demo/reel-grounding`, `GET /v1/demo/status`) | **Live** on the production API (Render). Reel-id enum input only; server-held frames; Muse Spark verdict admitted only through the fail-closed grounding module; 24-hour cache, 20 fresh calls/hour budget; CORS scoped to the demo origin. Read-only: it cannot approve, sign, or execute anything. |
-| Exactly-once guard (`muse-exactly-once.ts`) | **In code, tested 8/8 locally.** Atomic Postgres claim per tenant + key, duplicate replay returns the original result, stale claims reconcile never auto-retry, burst limiter fails closed. Not a live route, not a 10,000-request load test, no scaled host/queue yet — see [docs/platform/muse-exactly-once.md](../platform/muse-exactly-once.md). |
+| Exactly-once guard (`muse-exactly-once.ts`) | **In code, tested 8/8 locally, and exercised live by the Oct 31 test order** — its Postgres store took the claim in production, completed it, and reconciliation read the confirmed result back. Atomic Postgres claim per tenant + key, duplicate replay returns the original result, stale claims reconcile never auto-retry, burst limiter fails closed. Not a live route, not a 10,000-request load test, no scaled host/queue yet — see [docs/platform/muse-exactly-once.md](../platform/muse-exactly-once.md). |
 | Panel live wiring (`muse-panel-live-wiring.ts`) | **In code, CI-gated.** Draft registry (Postgres + memory), server-side session issuance, live host adapter with tenant + in-flight guards. Panel routes in `index.ts` now resolve drafts instead of returning null — **live traffic still blocked at one gap only: production host binding** (consumer identity + connection + session token from a real Muse host). See [docs/platform/muse-panel-live-wiring.md](../platform/muse-panel-live-wiring.md). |
 | Panel session token store + mount adapter | **In code, CI-gated.** Server-owned draft → approval-token store (memory + Postgres), fail-closed on missing, mismatched, expired, or consumed tokens. |
 | Panel routes in `index.ts` | **Wired in code, host binding open.** Draft lookup is live via the registry and host methods go through the live adapter; requests still refuse without an authenticated panel session and bound host methods. The remaining gap is production host binding only, not draft lookup or issuance. |
@@ -186,7 +186,12 @@ or carrier fact in the demo is real.
   issuance, draft lookup, and host methods are in code. The live
   Postgres exactly-once store has been exercised in production by
   the 2026-10-31 TEST-mode order (claim won, completed, and read
-  back in reconciliation); a live panel run has not. New:
+  back in reconciliation); a live panel run has not. During that
+  run a redeploy killed the operator shell mid-order: nothing was
+  retried, no second charge was attempted, and reconciliation read
+  the confirmed PaymentIntent back from the stored claim — the
+  exactly-once design behaving as specified under a real failure,
+  not a scripted one. New:
   `muse-reel-grounding.ts` takes the model's structured output and
   runs it through catalog verification (tenant check, verified-only
   matching, fail-closed on hallucination), 8/8 tests green.
