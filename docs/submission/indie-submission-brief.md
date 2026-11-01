@@ -45,7 +45,9 @@ harness checks pass (proof: [live Meta catalog proof](../meta/live-meta-catalog-
 2026-10-30 addendum and screenshot). Plan steps 1–4 below are done
 for this TEST catalog. Step 5 is done only up to the verified live
 read: an exact review built from live catalog data, and an explicit
-approval on it, have not run. Commercial sellers still require
+approval on it, had not yet run at the time of that proof — they
+have since run, in Stripe TEST mode; see the update directly
+below. Commercial sellers still require
 per-seller authorization and, for Live mode, Business Verification
 plus App Review.
 
@@ -195,8 +197,10 @@ still missing, and they are listed as blockers below.
 
 These are state machines and validators in code, not documentation
 aspirations. They are showable in the demo only with synthetic state
-transitions, because the demo path uses mocked/demo transports — no live
-provider failure has been exercised.
+transitions, because the demo path uses mocked/demo transports — the demo
+itself exercises no live provider. (Live TEST-mode provider
+failures were exercised separately, in the operator test-order
+run: see the test-order proof.)
 
 - **Changed price, tax, shipping, configuration, terms, or payment
   authorization since review:** `changedSinceReview` →

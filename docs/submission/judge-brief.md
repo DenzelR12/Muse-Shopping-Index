@@ -149,8 +149,13 @@ or carrier fact in the demo is real.
 
 - **Impact (30%)** — Fewer clicks from Reel intent to door delivery,
   for products and for services, with the business side seeing
-  verified orders instead of likes. Proved in the demo; still
-  missing: one real seller in test mode with measured timestamps.
+  verified orders instead of likes. Proved in the demo, and one
+  measured end-to-end run has now completed in Stripe TEST mode
+  (2026-10-31: live catalog read → signed draft → explicit
+  approval → confirmed test PaymentIntent; timestamps in
+  [the test-order proof](../meta/live-stripe-test-order-proof.md)).
+  Still missing: a commercial seller run — gated on store access,
+  not on code.
 - **Meta AI (25%)** — **Live in the demo path since 2026-10-31:**
   tapping Shop on a THEENRG Reel calls the production API, and Muse
   Spark (muse-spark-1.3) watches six frames of the Reel plus both
@@ -177,22 +182,28 @@ or carrier fact in the demo is real.
 - **Technical (20%)** — Deterministic server authorization, signed
   drafts, consume-once approval, drift reapproval, tenant isolation,
   and a fail-closed panel mount that refuses rather than invents.
-  Still missing: production host binding for the panel and a live
-  Postgres-backed run; session issuance, draft lookup, and host
-  methods are in code. New:
+  Still missing: production host binding for the panel; session
+  issuance, draft lookup, and host methods are in code. The live
+  Postgres exactly-once store has been exercised in production by
+  the 2026-10-31 TEST-mode order (claim won, completed, and read
+  back in reconciliation); a live panel run has not. New:
   `muse-reel-grounding.ts` takes the model's structured output and
   runs it through catalog verification (tenant check, verified-only
   matching, fail-closed on hallucination), 8/8 tests green.
 - **Demo (25%)** — A live, clickable 5-Reel feed with three purchase
   kinds through one flow — a product that ships, travel tickets, and
   a service that unlocks — with product thumbnail tags like Instagram
-  and the price-change safety case, all demo-labelled. Still missing: a real
-  seller test run to replace demo numbers with measured ones.
+  and the price-change safety case, all demo-labelled. One measured
+  run now stands behind the demo's flow — the TEST catalog item's
+  Stripe TEST-mode order, completed with timestamps (see the
+  test-order proof); the demo's own numbers remain demo-labelled,
+  and a commercial seller's measured numbers are still to come.
 
 ## In short
 
 The idea is complete and clickable today, the safety rules are in
 code and tested, and the gaps are named above rather than hidden.
-What would turn this from a strong demo into a winning entry is one
-real seller in test mode, one measured end-to-end run, and the
-remaining live wiring — in that order.
+The measured end-to-end run that was missing now exists in test
+mode (2026-10-31, proof linked above). What would turn this from a
+strong demo into a winning entry is a commercial seller run and
+the remaining live wiring — in that order.
