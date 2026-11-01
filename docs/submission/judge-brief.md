@@ -1,6 +1,6 @@
 # Muse Shopping Index — Judge Brief
 
-**Watch the pitch (2:59):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.mp4)
+**Watch the pitch (2:59):** [Muse Shopping Index — pitch video](https://denzelr12.github.io/Muse-Shopping-Index/muse_demo-video.MP4)
 
 
 ## What it is, in one line
@@ -40,7 +40,7 @@ payment.
 ## Try it first (live demo, no sign-in)
 
 **https://denzelr12.github.io/Muse-Shopping-Index/demo/**
-(demo v74, verified live 2026-10-31, published from main, folder /docs)
+(demo v75, verified live 2026-10-31, published from main, folder /docs)
 
 Disclosure, up front: **the five demo Reels are AI-generated studio
 clips made for this demo.** The products, prices, and catalog photos
