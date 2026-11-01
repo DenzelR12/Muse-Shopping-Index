@@ -204,6 +204,18 @@ or carrier fact in the demo is real.
   test-order proof); the demo's own numbers remain demo-labelled,
   and a commercial seller's measured numbers are still to come.
 
+## Where this goes next
+
+Next surface: glasses. The index is surface-agnostic by design —
+capture, resolution, and approval are separate steps. Meta's
+Wearables Device Access Toolkit (developer preview) exposes the
+Ray-Ban Meta camera to a phone app, which maps onto the pipeline
+the demo already runs: point-of-view frames to the same Muse Spark
+grounding, the index resolving the seen item to one exact catalog
+entry, and the exact review and single approval in the Muse window
+on the phone. Not built, and not claimed: public distribution of
+glasses apps is not yet open in the preview.
+
 ## In short
 
 The idea is complete and clickable today, the safety rules are in

@@ -479,3 +479,8 @@ Duplicates, retries, webhook redelivery, and bursts are handled by a shared clai
 ## Panel live wiring (added 2026-10-28)
 
 Draft registry, session issuance, and a live host adapter are now in code (`apps/api/src/muse-panel-live-wiring.ts`, see `docs/platform/muse-panel-live-wiring.md`), CI-gated via `provider-readiness.test.ts`. index.ts no longer returns a null draft. Live panel traffic is still blocked at one gap only: production host binding — a real Muse host must supply an authenticated panel session (consumer identity, connection, session token) and bind its host methods. No fake consumer, guessed connection, or body token is used to close that gap.
+
+
+## Next surface: glasses (added 2026-11-01)
+
+Future direction only — nothing built, nothing claimed. The index is surface-agnostic by design: capture, resolution, and approval are separate steps, so a new capture surface reuses the same pipeline. Meta's Wearables Device Access Toolkit (developer preview) exposes the Ray-Ban Meta camera to a phone app; that maps onto point-of-view frames feeding the same Muse Spark grounding the demo route runs, the index resolving the seen item to one exact catalog entry, and the exact review and single approval in the Muse window on the phone (never a voice yes on the glasses themselves). Public distribution of glasses apps is not yet open in the preview, so this stays a roadmap item until Meta opens publishing.
