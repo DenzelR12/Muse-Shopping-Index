@@ -107,7 +107,7 @@ function pixelTrack(name, params){
 <div id="videoStage">
 <div class="hero"><b>Shop this reel → exact review → one approval → door</b><span class="live-badge">LIVE DEMO</span><br><button class="pitch-btn" onclick="openPitch()">▶ Watch the pitch (2:59)</button><br><span style="font-size:12px;color:#444">Deaf-friendly: all information is visual — captions available, full transcripts, no sound-only alerts.</span><br><button class="white" style="margin-top:8px;padding:8px 12px;font-size:13px" onclick="document.getElementById('videoStage').hidden=true;document.getElementById('flowStage').hidden=false;show('business');document.getElementById('flowStage').scrollIntoView();">Selling? See For business</button></div>
 <p style="color:#666;font-size:13px;text-align:center;margin:0 0 8px">Scroll Reels — like Instagram. Shop on either Reel.</p>
-<div class="card"><h2 style="margin:0 0 8px">Live status</h2><p id="liveStatusLine" style="margin:0 0 8px"><b>⏳ Checking the live API…</b></p><p style="color:#555;margin:0">What is verified (Oct 31, 2026): the Shop buttons on the THEENRG reels call <b>Muse Spark live</b> on the Render API, and the server verifies the verdict before any review opens. A live read of the ClutchAgent <b>TEST catalog</b> passed Oct 30 (a $1.00 test item — not a commercial seller). Postgres <b>muse-shopping-index-db</b> is live. Panel routes are in code and fail closed until a real Muse host binds them. <b>No live seller, payment, or order yet</b> — demo data is labelled demo.</p></div>
+<div class="card"><h2 style="margin:0 0 8px">Live status</h2><p id="liveStatusLine" style="margin:0 0 8px"><b>⏳ Checking the live API…</b></p><p style="color:#555;margin:0">What is verified (Oct 31, 2026): the Shop buttons on the THEENRG reels call <b>Muse Spark live</b> on the Render API, and the server verifies the verdict before any review opens. A live read of the ClutchAgent <b>TEST catalog</b> passed Oct 30 (a $1.00 test item — not a commercial seller). Postgres <b>muse-shopping-index-db</b> is live. Panel routes are in code and fail closed until a real Muse host binds them. <b>One real Stripe TEST mode order ran end to end on Oct 31 (no real money). No live seller or real payment yet</b> — demo data is labelled demo.</p></div>
 <div class="reel-feed" id="reelFeed">
 
 <div class="reel-item" data-site="https://theenrg.com" data-share="THEENRG ENRG Unisex Oversized T-Shirt $44 — Shop this reel in Muse (demo)">
@@ -547,7 +547,7 @@ function renderLiveEvidence(reelId,payload){
   <div class="svBox">
     <span class="svConcept">CONCEPT &middot; SIMULATED FOOTAGE</span>
     <h2 style="margin:10px 0 4px;font-size:20px">In the store &mdash; the glasses concept</h2>
-    <p class="svNote" style="margin:0 0 10px">Scanning the shelf, the live match, added to cart, sent to your door &mdash; the Mode 2 flow from the <a href="../glasses/">glasses concept page</a>, as a 36-second video.</p>
+    <p class="svNote" style="margin:0 0 10px">Scanning the shelf, the live match, one approval, sent to your door &mdash; the Mode 2 flow from the <a href="../glasses/">glasses concept page</a>, as a 36-second video.</p>
     <video id="storeVid" controls playsinline preload="none" src="../store-concept-video.mp4.MP4"></video>
     <br><button id="storeVidClose" onclick="closeStoreVid()">Close</button>
   </div>
