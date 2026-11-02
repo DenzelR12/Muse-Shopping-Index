@@ -562,7 +562,7 @@ function openStoreVid(){if(window.__svMiniTimer){clearTimeout(window.__svMiniTim
 function closeStoreVid(){var v=document.getElementById('storeVid');if(v){try{v.pause();}catch(e){}}document.getElementById('storeVidOverlay').hidden=true;var b=document.getElementById('storeVidBtn');if(b&&b.classList.contains('show')){b.classList.add('mini');}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeStoreVid();}});
 function dismissStorePill(e){if(e){e.stopPropagation();}try{sessionStorage.setItem('svPillDismissed','1');}catch(err){}if(window.__svMiniTimer){clearTimeout(window.__svMiniTimer);window.__svMiniTimer=null;}var b=document.getElementById('storeVidBtn');if(b){b.classList.remove('show');b.classList.remove('mini');}}
-(function(){var dismissed=false;try{dismissed=sessionStorage.getItem('svPillDismissed')==='1';}catch(err){}if(!dismissed){setTimeout(function(){var b=document.getElementById('storeVidBtn');if(b){b.classList.add('show');window.__svMiniTimer=setTimeout(function(){b.classList.add('mini');},6000);}},17000);}})();
+(function(){var dismissed=false;try{dismissed=sessionStorage.getItem('svPillDismissed')==='1';}catch(err){}if(!dismissed){setTimeout(function(){var b=document.getElementById('storeVidBtn');if(b){b.classList.add('show');window.__svMiniTimer=setTimeout(function(){b.classList.add('mini');},10000);}},17000);}})();
 </script>
 </body></html>
 
