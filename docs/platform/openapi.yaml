@@ -1,3 +1,6 @@
+# SUPERSEDED — gift-era draft, kept for history.
+# This spec describes the retired gift-recommendation API (api.thegiftsignal.com).
+# The current connector spec is docs/platform/muse-connector.openapi.json.
 openapi: 3.1.0
 info:
   title: Muse Shopping Index API

@@ -7,7 +7,7 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 - [Muse Shopping Index — Judge Brief](submission/judge-brief.md)
 - [No-Money Demo Walkthrough — Muse Shopping Index](submission/demo-walkthrough.md)
 - [Muse Shopping Index — Indie Submission Brief](submission/indie-submission-brief.md)
-- [Live readiness — credentials-only activation checklist](operations/live-readiness.md)
+- [Live readiness — credentials-only activation checklist](operations/live-readiness.md) — the activation source of truth: what going live requires once credentials and approvals exist
 - [Live model reel-watch — Muse resolves a Reel (2026-10-29)](meta/meta-model-reel-watch.md)
 
 ## Folders
@@ -24,7 +24,7 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 
 ### platform/ — How the product works
 
-- [Architecture](platform/architecture.md)
+- [Architecture](platform/architecture.md) — short overview; the maintained architecture document is [system-architecture.md](technical/system-architecture.md)
 - [Universal company adapter contract](platform/company-adapter-contract.md)
 - [Company Intelligence Reports](platform/company-intelligence-reports.md)
 - [Live panel-to-API routes — design contract (not mounted)](platform/live-panel-routes-design.md)
@@ -35,16 +35,16 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 - [Exactly-once execution guard — duplicates, retries, and bursts](platform/muse-exactly-once.md)
 - [Panel live wiring — session issuance, draft lookup, real host methods](platform/muse-panel-live-wiring.md)
 - [Panel session token store + session mount — Muse Shopping Index](platform/muse-panel-session-store.md)
-- [openapi.yaml](platform/openapi.yaml)
+- [openapi.yaml](platform/openapi.yaml) — SUPERSEDED: gift-era draft for the retired gift API; the current spec is muse-connector.openapi.json above
 - [Muse feature panel host wiring — callback to server method, nothing more](platform/panel-host-wiring.md)
 - [Semantic product contract](platform/semantic-product-contract.md)
 - [Universal agentic commerce network](platform/universal-agentic-commerce-network.md)
-- [Universal AI Commerce Network](platform/universal-ai-commerce-network.md)
+- [Universal AI Commerce Network](platform/universal-ai-commerce-network.md) — earlier draft; the current thesis is Universal agentic commerce network above
 
 ### meta/ — Meta catalog, Reels AI, Pixel, leads
 
 - [First live Meta catalog read — proof](meta/live-meta-catalog-proof.md)
-- [live-meta-catalog-proof.png](meta/live-meta-catalog-proof.png)
+- [Catalog-pass screenshot](meta/live-repo-client-catalog-pass.png.PNG) — the screenshot from the live repo-client catalog read (companion to the proof note above)
 - [Meta AI tooling — Muse Shopping Index](meta/meta-ai-tooling.md)
 - [Read-only Meta catalog client — code, gated, not live-verified](meta/meta-catalog-client.md)
 - [Repo-client harness for the live Meta catalog read](meta/meta-catalog-repo-client-harness.md)
@@ -64,14 +64,14 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 
 ### operations/ — Running it live — deployment, readiness, checklists
 
-- [Live readiness — credentials-only activation checklist](operations/live-readiness.md)
+- [Live readiness — credentials-only activation checklist](operations/live-readiness.md) — the activation source of truth: what going live requires once credentials and approvals exist
 - [Multi-seller pilot plan — Muse Shopping Index](operations/multi-seller-pilot-plan.md)
-- [Muse production readiness](operations/muse-production-readiness.md)
+- [Muse production readiness](operations/muse-production-readiness.md) — design principles and production posture
 - [Owner-Absence Operations](operations/owner-absence-operations.md)
-- [Product 100% checklist — Muse Shopping Index](operations/product-100-checklist.md)
-- [Production readiness checklist](operations/production-checklist.md)
+- [Product 100% checklist — Muse Shopping Index](operations/product-100-checklist.md) — what “100% product” means (a definition, not a run record)
+- [Production readiness checklist](operations/production-checklist.md) — LEGACY supplier-era checklist (gift-signal period); kept for history, not an activation gate
 - [Render deployment status — Muse Shopping Index](operations/render-deployment.md)
-- [Technical verification checklist — Muse Shopping Index](operations/technical-verification-checklist.md)
+- [Technical verification checklist — Muse Shopping Index](operations/technical-verification-checklist.md) — the evidence standard for verification runs (checklist only, not results)
 - [Zero-Trust Production Model](operations/zero-trust-production.md)
 
 ### research/ — Training, accessibility, language, measurement
@@ -101,3 +101,9 @@ Organized as a workflow: read top to bottom, or jump to a folder.
 
 The live demo stays at `demo/` in this folder — its address does not change.
 The pitch video stays at `muse_demo-video.MP4` in this folder.
+
+## Reading the tree — which demo is which
+
+- **The live demo is `demo/` in this folder** — the judged, Pages-served interactive demo (a single self-contained page). The glasses concept page is at `glasses/` in this folder.
+- **`apps/demo/` (in the repo's `apps/` folder) is not the live demo** — it is a TypeScript entry/panel simulator used in development and tests.
+- Canonical documents, where two similar files exist: architecture → `technical/system-architecture.md`; API spec → `platform/muse-connector.openapi.json`; network thesis → `platform/universal-agentic-commerce-network.md`.
