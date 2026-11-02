@@ -530,5 +530,32 @@ function renderLiveEvidence(reelId,payload){
 }
 </script>
 
+
+<style>
+#storeVidBtn{position:fixed;top:64px;right:max(10px,calc(50% - 177px));z-index:9000;background:rgba(10,16,28,.82);color:#eaf2ff;border:1px solid #2b4a75;border-radius:999px;padding:8px 14px;font:600 13.5px/1.2 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(4px)}
+#storeVidOverlay{position:fixed;inset:0;z-index:9999;background:rgba(2,6,14,.94);display:flex;align-items:center;justify-content:center;padding:18px}
+#storeVidOverlay[hidden]{display:none}
+#storeVidOverlay .svBox{max-width:760px;width:100%;text-align:center;color:#eaf2ff;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+#storeVidOverlay video{width:100%;max-height:62vh;background:#000;border-radius:12px}
+#storeVidOverlay .svConcept{display:inline-block;background:#3a2a10;color:#ffb84d;border:1px solid #6b4d16;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;letter-spacing:.04em}
+#storeVidOverlay .svNote{color:#93a7c4;font-size:13.5px}
+#storeVidOverlay a{color:#6ec1ff}
+#storeVidClose{margin-top:10px;background:transparent;color:#eaf2ff;border:1px solid #2b4a75;border-radius:11px;padding:11px 22px;font-size:15px;font-weight:600;cursor:pointer}
+</style>
+<button id="storeVidBtn" onclick="openStoreVid()">&#128083; In the store &middot; 0:36</button>
+<div id="storeVidOverlay" hidden>
+  <div class="svBox">
+    <span class="svConcept">CONCEPT &middot; SIMULATED FOOTAGE</span>
+    <h2 style="margin:10px 0 4px;font-size:20px">In the store &mdash; the glasses concept</h2>
+    <p class="svNote" style="margin:0 0 10px">Scanning the shelf, the live match, added to cart, sent to your door &mdash; the Mode 2 flow from the <a href="../glasses/">glasses concept page</a>, as a 36-second video.</p>
+    <video id="storeVid" controls playsinline preload="none" src="../store-concept-video.mp4.MP4"></video>
+    <br><button id="storeVidClose" onclick="closeStoreVid()">Close</button>
+  </div>
+</div>
+<script>
+function openStoreVid(){var o=document.getElementById('storeVidOverlay');o.hidden=false;var vs=document.querySelectorAll('video');for(var i=0;i<vs.length;i++){if(vs[i].id!=='storeVid'){try{vs[i].pause();}catch(e){}}}var v=document.getElementById('storeVid');if(v){var pr=v.play();if(pr&&pr.catch){pr.catch(function(){});}}}
+function closeStoreVid(){var v=document.getElementById('storeVid');if(v){try{v.pause();}catch(e){}}document.getElementById('storeVidOverlay').hidden=true;}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeStoreVid();}});
+</script>
 </body></html>
 
