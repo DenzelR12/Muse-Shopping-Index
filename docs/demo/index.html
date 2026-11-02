@@ -532,7 +532,9 @@ function renderLiveEvidence(reelId,payload){
 
 
 <style>
-#storeVidBtn{position:fixed;top:64px;right:max(10px,calc(50% - 177px));z-index:9000;background:rgba(10,16,28,.82);color:#eaf2ff;border:1px solid #2b4a75;border-radius:999px;padding:8px 14px;font:600 13.5px/1.2 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(4px)}
+#storeVidBtn{position:fixed;top:64px;right:max(10px,calc(50% - 177px));z-index:9000;background:rgba(10,16,28,.82);color:#eaf2ff;border:1px solid #2b4a75;border-radius:999px;padding:8px 14px;font:600 13.5px/1.2 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(4px);opacity:0;transform:translateY(-8px) scale(.9);pointer-events:none;transition:opacity .35s ease,transform .35s ease}
+#storeVidBtn.show{opacity:1;transform:none;pointer-events:auto}
+#storeVidBtnX{display:inline-block;margin-left:8px;padding:0 2px;color:#93a7c4;font-weight:700}
 #storeVidOverlay{position:fixed;inset:0;z-index:9999;background:rgba(2,6,14,.94);display:flex;align-items:center;justify-content:center;padding:18px}
 #storeVidOverlay[hidden]{display:none}
 #storeVidOverlay .svBox{max-width:760px;width:100%;text-align:center;color:#eaf2ff;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
@@ -542,7 +544,7 @@ function renderLiveEvidence(reelId,payload){
 #storeVidOverlay a{color:#6ec1ff}
 #storeVidClose{margin-top:10px;background:transparent;color:#eaf2ff;border:1px solid #2b4a75;border-radius:11px;padding:11px 22px;font-size:15px;font-weight:600;cursor:pointer}
 </style>
-<button id="storeVidBtn" onclick="openStoreVid()">&#128083; In the store &middot; 0:36</button>
+<button id="storeVidBtn" onclick="openStoreVid()">&#128083; In the store &middot; 0:36<span id="storeVidBtnX" onclick="dismissStorePill(event)" aria-label="Dismiss">&times;</span></button>
 <div id="storeVidOverlay" hidden>
   <div class="svBox">
     <span class="svConcept">CONCEPT &middot; SIMULATED FOOTAGE</span>
@@ -556,6 +558,8 @@ function renderLiveEvidence(reelId,payload){
 function openStoreVid(){var o=document.getElementById('storeVidOverlay');o.hidden=false;var vs=document.querySelectorAll('video');for(var i=0;i<vs.length;i++){if(vs[i].id!=='storeVid'){try{vs[i].pause();}catch(e){}}}var v=document.getElementById('storeVid');if(v){var pr=v.play();if(pr&&pr.catch){pr.catch(function(){});}}}
 function closeStoreVid(){var v=document.getElementById('storeVid');if(v){try{v.pause();}catch(e){}}document.getElementById('storeVidOverlay').hidden=true;}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeStoreVid();}});
+function dismissStorePill(e){if(e){e.stopPropagation();}try{sessionStorage.setItem('svPillDismissed','1');}catch(err){}var b=document.getElementById('storeVidBtn');if(b){b.classList.remove('show');}}
+(function(){var dismissed=false;try{dismissed=sessionStorage.getItem('svPillDismissed')==='1';}catch(err){}if(!dismissed){setTimeout(function(){var b=document.getElementById('storeVidBtn');if(b){b.classList.add('show');}},17000);}})();
 </script>
 </body></html>
 
