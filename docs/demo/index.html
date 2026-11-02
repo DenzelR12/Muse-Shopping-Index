@@ -320,7 +320,7 @@ Saved payment</p>
 <p>What this is: <b>travel tickets booked in Muse</b>, not a physical product shipment.<br>Delivery: tickets delivered in Muse — no shipping, no door delivery.<br>Exact review (as in the pitch video): <b>Sat, Nov 14, 2026 · 2 adults · $119.00 × 2 + $15.47 tax = $253.47 USD</b> — date and guests are picked once, in the review<br>Payment: Saved payment</p>
 <button class="blue" onclick="toDetails()">Choose date &amp; guests →</button>
 <button class="white" onclick="resetAll()">Back to Reels</button></div>
-<div id="travelDone" hidden><div class="bubble"><h2 style="color:#060;margin:0">✓ Tickets confirmed</h2><p>Tickets delivered in Muse for Sat, Nov 14, 2026 · 2 adults · $253.47. Show them at the gate — no shipment, no tracking, because these are tickets.</p></div><div class="shareStep" data-find="My tickets are booked — Muse watched the reel, verified the exact tickets, and I approved them." data-moment="Muse watched the reel, verified the exact item, and I approved it."><h3>Share the find</h3><div class="srow"><button type="button" class="white" onclick="shareStep(this,'find')">Share the find</button><button type="button" class="white" onclick="shareStep(this,'moment')">Share the moment</button><button type="button" class="shareDismiss" onclick="shareDismiss(this)">No thanks</button></div><div class="shareFallback" hidden><div class="srow"><a class="shareX" href="#" target="_blank" rel="noopener">Post to X</a><button type="button" class="white" onclick="shareCopy(this)">Copy link</button></div></div></div></div>
+
 <p style="color:#666;font-size:12px">Demo illustration only. This shows how a travel flow would look — it is not a real travel offering, price, or checkout.</p>
 </div>
 
@@ -347,8 +347,7 @@ function approve(){pixelTrack('InitiateCheckout',{content_ids:['enrg-tee'],value
 function showDrift(){hideFlow();document.getElementById('driftView').hidden=false;}
 function approveNew(){hideFlow();document.getElementById('processNewView').hidden=false;setTimeout(()=>{hideFlow();document.getElementById('doneNewView').hidden=false;},2000);}
 function cancelDrift(){hideFlow();document.getElementById('reviewView').hidden=false;document.getElementById('cancelNote').hidden=false;}
-function approveService(){pixelTrack('InitiateCheckout',{content_ids:['clutchagent-access']});document.getElementById('serviceApproveBtn').disabled=true;document.getElementById('serviceDone').hidden=false;}function toTravel(){pixelTrack('ViewContent',{content_type:'product',content_ids:['travel-park-tickets']});['clutchVideo','clutchVideo2','hoodieVideo','teeVideo2','travelVideo'].forEach(function(id){var v=document.getElementById(id);if(v){v.pause();}});document.getElementById('videoStage').hidden=true;document.getElementById('flowStage').hidden=false;hideFlow();show('travel');document.getElementById('flowStage').scrollIntoView();}function approveTravel(){pixelTrack('InitiateCheckout',{content_ids:['travel-park-tickets']});document.getElementById('travelApproveBtn').disabled=true;document.getElementById('travelDone').hidden=false;}
-var ticketState={day:14,adults:2,children:0};
+function approveService(){pixelTrack('InitiateCheckout',{content_ids:['clutchagent-access']});document.getElementById('serviceApproveBtn').disabled=true;document.getElementById('serviceDone').hidden=false;}var ticketState={day:14,adults:2,children:0};
 var TK_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function tkMoney(n){return '$'+n.toFixed(2);}
 function tkDateStr(){var d=new Date(2026,10,ticketState.day);return TK_WD[d.getDay()]+', Nov '+ticketState.day+', 2026';}
