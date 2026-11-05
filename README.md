@@ -1,4 +1,4 @@
-# Muse Shopping Index meta-hackathon-2026
+# Muse Shopping Index (meta-hackathon-2026)
 
 [![CI](https://github.com/DenzelR12/Muse-Shopping-Index/actions/workflows/ci.yml/badge.svg)](https://github.com/DenzelR12/Muse-Shopping-Index/actions)  [(Live Demo)](https://denzelr12.github.io/Muse-Shopping-Index/demo/)  [(Judge Brief)](docs/submission/judge-brief.md)
 
