@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an idea or improvement for Muse Shopping Index
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation and who it affects — consumers, sellers, or both.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: Describe the change you are proposing.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and honesty check
+      description: |
+        This project never buys without an exact, single-use approval, and
+        never claims a live capability without verified evidence. Does your
+        idea touch approvals, payments, seller data, or what the demo claims?
+        Say how it stays inside those rules.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+    validations:
+      required: false

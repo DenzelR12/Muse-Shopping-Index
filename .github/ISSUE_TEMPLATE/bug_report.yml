@@ -1,0 +1,55 @@
+name: Bug report
+description: Report something that is broken or behaving incorrectly
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If this is a security issue, stop here and
+        follow SECURITY.md instead of filing a public issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps that reproduce the problem, starting from the demo or page you opened.
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Live demo (GitHub Pages)
+        - Glasses concept page
+        - Local demo (pnpm demo)
+        - API
+        - Documentation / README
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      description: For example "iPhone, Safari" or "Laptop, Chrome". Layout bugs are usually device-specific.
+      placeholder: iPhone / Safari
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, error messages, or notes. Never paste secrets, keys, or payment details.
+    validations:
+      required: false

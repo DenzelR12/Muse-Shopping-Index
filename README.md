@@ -184,7 +184,7 @@ plug into the same signed draft → exact approval → execution flow.
 - `docs/` — the specialist docs, linked not duplicated here: [technical workflow index](docs/technical/README.md), [indie submission brief](docs/submission/indie-submission-brief.md), [Muse/Meta entry contract](docs/platform/muse-entry-contract.md), [Meta catalog client](docs/meta/meta-catalog-client.md), [Shopify catalog client](docs/sellers/shopify-catalog.md), [panel host wiring](docs/platform/panel-host-wiring.md), [locale implementation](docs/research/locale-implementation-2026-10-27.md), [accessibility and abandoned-chat recovery](docs/research/accessibility-abandoned-recovery.md), [model training](docs/research/muse-model-training.md), [live model reel-watch](docs/meta/meta-model-reel-watch.md), [live readiness](docs/operations/live-readiness.md), and [Render deployment](docs/operations/render-deployment.md).
 - `infra/`, `scripts/`, `tests/` — infrastructure, operational tooling, and cross-module validation.
 
-See [SECURITY.md](SECURITY.md) for security guidance. This repository does not currently declare an open-source license; access to the source does not itself grant a license.
+See [SECURITY.md](SECURITY.md) for security guidance. This repository is open source under the [MIT License](LICENSE): you may use, copy, modify, and distribute the code, provided the copyright notice is kept with it.
 
 ## Accessibility
 
